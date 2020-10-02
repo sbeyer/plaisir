@@ -125,6 +125,7 @@ impl Problem {
                 daily_cost: c_cost,
             });
         }
+        assert!(iter.next() == None, "There is junk at the end of the file");
 
         Ok(Problem {
             num_nodes: num_nodes,
