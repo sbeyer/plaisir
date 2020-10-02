@@ -2,11 +2,13 @@ use std::error::Error;
 use std::fs;
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    Problem::read_from_file(config.filename)?;
+    let problem = Problem::read_from_file(config.filename)?;
+    println!("Content:\n{:#?}", problem);
 
     Ok(())
 }
 
+#[derive(Debug)]
 pub struct Position {
     pub x: f64,
     pub y: f64,
@@ -18,6 +20,7 @@ impl Position {
     }
 }
 
+#[derive(Debug)]
 pub struct Depot {
     pub position: Position,
     pub start_level: i32,
@@ -25,6 +28,7 @@ pub struct Depot {
     pub daily_cost: f64,
 }
 
+#[derive(Debug)]
 pub struct Customer {
     pub id: i32,
     pub position: Position,
@@ -35,6 +39,7 @@ pub struct Customer {
     pub daily_cost: f64,
 }
 
+#[derive(Debug)]
 pub struct Problem {
     pub num_nodes: i32,
     pub num_days: i32,
@@ -60,8 +65,6 @@ impl Problem {
         let depot_level = iter.next().unwrap().parse::<i32>()?;
         let depot_production = iter.next().unwrap().parse::<i32>()?;
         let depot_cost = iter.next().unwrap().parse::<f64>()?;
-
-        println!("Content:\n{}", contents);
 
         let mut customers = Vec::new();
         let mut index = 0;
