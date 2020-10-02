@@ -9,8 +9,6 @@ fn main() {
         process::exit(1);
     });
 
-    println!("Reading file {:?}", config.filename);
-
     if let Err(e) = irp::run(config) {
         println!("Application error: {}", e);
         process::exit(1);

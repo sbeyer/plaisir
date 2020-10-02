@@ -1,9 +1,12 @@
 use std::error::Error;
+use std::fmt;
 use std::fs;
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
+    println!("Reading problem from file {:?}", config.filename);
+
     let problem = Problem::read_from_file(config.filename)?;
-    println!("Content:\n{:#?}", problem);
+    println!("{}", problem);
 
     Ok(())
 }
@@ -20,12 +23,28 @@ impl Position {
     }
 }
 
+impl fmt::Display for Position {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
 #[derive(Debug)]
 pub struct Depot {
     pub position: Position,
     pub start_level: i32,
     pub daily_production: i32,
     pub daily_cost: f64,
+}
+
+impl fmt::Display for Depot {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Depot at {} w/ initial level {}, daily production {}, daily cost {}",
+            self.position, self.start_level, self.daily_production, self.daily_cost
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -37,6 +56,22 @@ pub struct Customer {
     pub min_level: i32,
     pub daily_consumption: i32,
     pub daily_cost: f64,
+}
+
+impl fmt::Display for Customer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Customer {} at {} w/ levels {}:{}:{}, daily consumption {}, daily cost {}",
+            self.id,
+            self.position,
+            self.min_level,
+            self.start_level,
+            self.max_level,
+            self.daily_consumption,
+            self.daily_cost
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -103,6 +138,20 @@ impl Problem {
                 daily_cost: depot_cost,
             },
             customers: customers,
+        })
+    }
+}
+
+impl fmt::Display for Problem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Problem with {} locations for {} days with {} vehicles of capacity {}:\n",
+            self.num_nodes, self.num_days, self.num_vehicles, self.capacity
+        )?;
+        write!(f, "    {}\n", self.depot)?;
+        Ok(for customer in &self.customers {
+            write!(f, "    {}\n", customer)?
         })
     }
 }
