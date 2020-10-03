@@ -12,6 +12,16 @@ impl Position {
     pub fn new(x: f64, y: f64) -> Position {
         Position { x: x, y: y }
     }
+
+    fn real_distance(&self, other: &Self) -> f64 {
+        let xdist = self.x - other.x;
+        let ydist = self.y - other.y;
+        f64::sqrt(xdist * xdist + ydist * ydist)
+    }
+
+    pub fn distance(&self, other: &Self) -> i32 {
+        self.real_distance(&other).round() as i32
+    }
 }
 
 impl fmt::Display for Position {
@@ -134,5 +144,54 @@ impl fmt::Display for Problem {
         Ok(for customer in &self.customers {
             write!(f, "    {}\n", customer)?
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod position {
+        use super::*;
+
+        #[test]
+        fn computes_zero_distance() {
+            let pos1 = Position::new(12.5, 23.0);
+            let pos2 = Position::new(12.5, 23.0);
+            assert_eq!(pos1.distance(&pos2), 0);
+            assert_eq!(pos2.distance(&pos1), 0);
+        }
+
+        #[test]
+        fn computes_horizontal_distance() {
+            let pos1 = Position::new(12.5, 23.0);
+            let pos2 = Position::new(22.5, 23.0);
+            assert_eq!(pos1.distance(&pos2), 10);
+            assert_eq!(pos2.distance(&pos1), 10);
+        }
+
+        #[test]
+        fn computes_vertical_distance() {
+            let pos1 = Position::new(12.5, 23.0);
+            let pos2 = Position::new(12.5, 13.0);
+            assert_eq!(pos1.distance(&pos2), 10);
+            assert_eq!(pos2.distance(&pos1), 10);
+        }
+
+        #[test]
+        fn computes_diagonal_distance_rounded_down() {
+            let pos1 = Position::new(12.5, 23.0);
+            let pos2 = Position::new(13.5, 24.0);
+            assert_eq!(pos1.distance(&pos2), 1);
+            assert_eq!(pos2.distance(&pos1), 1);
+        }
+
+        #[test]
+        fn computes_diagonal_distance_rounded_up() {
+            let pos1 = Position::new(12.5, 23.0);
+            let pos2 = Position::new(14.0, 24.5);
+            assert_eq!(pos1.distance(&pos2), 2);
+            assert_eq!(pos2.distance(&pos1), 2);
+        }
     }
 }
