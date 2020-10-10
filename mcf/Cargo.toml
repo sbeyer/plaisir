@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 petgraph = { version = "0.5.1", features = [] }
+minilp = "0.2.2"
