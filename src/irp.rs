@@ -1,6 +1,6 @@
+use std::error::Error;
 use std::fmt;
 use std::fs;
-use std::error::Error;
 
 #[derive(Debug)]
 pub struct Position {
@@ -61,9 +61,16 @@ pub struct Customer {
 
 impl fmt::Display for Customer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f,
+        write!(
+            f,
             "Customer {} at {} w/ levels {}:{}:{}, daily consumption {}, daily cost {}",
-            self.id, self.position, self.min_level, self.start_level, self.max_level, self.daily_consumption, self.daily_cost
+            self.id,
+            self.position,
+            self.min_level,
+            self.start_level,
+            self.max_level,
+            self.daily_consumption,
+            self.daily_cost
         )
     }
 }
@@ -139,7 +146,11 @@ impl Problem {
 
 impl fmt::Display for Problem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Problem with {} locations for {} days with {} vehicles of capacity {}:\n", self.num_nodes, self.num_days, self.num_vehicles, self.capacity)?;
+        write!(
+            f,
+            "Problem with {} locations for {} days with {} vehicles of capacity {}:\n",
+            self.num_nodes, self.num_days, self.num_vehicles, self.capacity
+        )?;
         write!(f, "    {}\n", self.depot)?;
         Ok(for customer in &self.customers {
             write!(f, "    {}\n", customer)?
