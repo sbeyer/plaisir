@@ -22,13 +22,15 @@ impl Default for EdgeValues {
     }
 }
 
+type Instance = petgraph::Graph<i32, EdgeValues, petgraph::Directed>;
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn petgraph_works() {
-        let mut graph = petgraph::Graph::<i32, EdgeValues, petgraph::Directed>::new();
+        let mut graph = Instance::new();
         let s = graph.add_node(2);
         let v = graph.add_node(0);
         let t = graph.add_node(-2);
