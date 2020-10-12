@@ -24,36 +24,79 @@ impl Default for EdgeValues {
 
 type Instance = petgraph::Graph<f64, EdgeValues, petgraph::Directed>;
 
+#[derive(Debug)]
+pub struct Solution {
+    flow: Vec<f64>,
+    cost: f64,
+}
+
+pub fn run(instance: &Instance) -> Result<Solution, minilp::Error> {
+    let mut lp = minilp::Problem::new(minilp::OptimizationDirection::Minimize);
+    let mut vars = Vec::with_capacity(instance.edge_count());
+
+    for edge in instance.edge_indices() {
+        let val = &instance[edge];
+        vars.push(lp.add_var(val.cost, (val.lower_bound, val.upper_bound)));
+        // XXX: assumes indices of edges are 0..m-1
+    }
+
+    for node in instance.node_indices() {
+        use petgraph::visit::EdgeRef;
+
+        let mut lhs = minilp::LinearExpr::empty();
+
+        for edge in instance.edges_directed(node, petgraph::EdgeDirection::Incoming) {
+            let edge_index = edge.id().index();
+            lhs.add(vars[edge_index], 1.0);
+        }
+
+        for edge in instance.edges_directed(node, petgraph::EdgeDirection::Outgoing) {
+            let edge_index = edge.id().index();
+            lhs.add(vars[edge_index], -1.0);
+        }
+
+        lp.add_constraint(lhs, minilp::ComparisonOp::Eq, -instance[node])
+    }
+
+    let solution = lp.solve()?;
+
+    let mut flow = Vec::<f64>::with_capacity(instance.edge_count());
+    for var in vars {
+        flow.push(solution[var]);
+    }
+
+    let cost = solution.objective();
+
+    Ok(Solution {
+        flow: flow,
+        cost: cost,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn petgraph_works() {
+    fn computes_mcf_on_easy_instance() {
         let mut graph = Instance::new();
-        let s = graph.add_node(2);
-        let v = graph.add_node(0);
-        let t = graph.add_node(-2);
-        graph.extend_with_edges(&[
-            (s, v, EdgeValues::new(0, 1, 2.0)),
-            (v, t, EdgeValues::new(0, 1, 5.0)),
-        ]);
-        assert_eq!(graph.node_count(), 3);
-        assert_eq!(graph.edge_count(), 2);
-    }
+        let s = graph.add_node(2.0);
+        let u = graph.add_node(0.0);
+        let v = graph.add_node(0.0);
+        let t = graph.add_node(-2.0);
+        let su = graph.add_edge(s, u, EdgeValues::new(0.0, 2.0, 11.0));
+        let ut = graph.add_edge(u, t, EdgeValues::new(0.0, 2.0, 11.0));
+        let st = graph.add_edge(s, t, EdgeValues::new(0.0, 2.0, 12.0));
+        let sv = graph.add_edge(s, v, EdgeValues::new(0.0, 5.0, 2.0));
+        let vt = graph.add_edge(v, t, EdgeValues::new(0.0, 1.0, 6.0));
 
-    #[test]
-    fn minilp_works() {
-        let mut problem = minilp::Problem::new(minilp::OptimizationDirection::Maximize);
-        let x = problem.add_var(1.0, (0.0, f64::INFINITY));
-        let y = problem.add_var(2.0, (0.0, 3.0));
+        let solution = run(&graph).unwrap();
 
-        problem.add_constraint(&[(x, 1.0), (y, 1.0)], minilp::ComparisonOp::Le, 4.0);
-        problem.add_constraint(&[(x, 2.0), (y, 1.0)], minilp::ComparisonOp::Ge, 2.0);
-
-        let solution = problem.solve().unwrap();
-        assert_eq!(solution.objective(), 7.0);
-        assert_eq!(solution[x], 1.0);
-        assert_eq!(solution[y], 3.0);
+        assert_eq!(solution.cost, 20.0);
+        assert_eq!(solution.flow[su.index()], 0.0);
+        assert_eq!(solution.flow[ut.index()], 0.0);
+        assert_eq!(solution.flow[st.index()], 1.0);
+        assert_eq!(solution.flow[sv.index()], 1.0);
+        assert_eq!(solution.flow[vt.index()], 1.0);
     }
 }
