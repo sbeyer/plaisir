@@ -1,12 +1,12 @@
-#[derive(Clone)]
-struct EdgeValues {
-    lower_bound: i32,
-    upper_bound: i32,
+#[derive(Clone, Debug)]
+pub struct EdgeValues {
+    lower_bound: f64,
+    upper_bound: f64,
     cost: f64,
 }
 
 impl EdgeValues {
-    fn new(lb: i32, ub: i32, cost: f64) -> Self {
+    fn new(lb: f64, ub: f64, cost: f64) -> Self {
         Self {
             lower_bound: lb,
             upper_bound: ub,
@@ -18,11 +18,11 @@ impl EdgeValues {
 impl Default for EdgeValues {
     fn default() -> Self {
         // another default is probably better, or none at all, but this is a start
-        Self::new(0, 1, 1.0)
+        Self::new(0.0, f64::INFINITY, 1.0)
     }
 }
 
-type Instance = petgraph::Graph<i32, EdgeValues, petgraph::Directed>;
+type Instance = petgraph::Graph<f64, EdgeValues, petgraph::Directed>;
 
 #[cfg(test)]
 mod tests {
