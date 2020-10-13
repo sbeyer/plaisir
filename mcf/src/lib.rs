@@ -7,13 +7,13 @@ pub enum Error {
 }
 
 #[derive(Clone, Debug)]
-pub struct EdgeValues {
+pub struct FlowValues {
     lower_bound: f64,
     upper_bound: f64,
     cost: f64,
 }
 
-impl EdgeValues {
+impl FlowValues {
     fn new(lb: f64, ub: f64, cost: f64) -> Self {
         Self {
             lower_bound: lb,
@@ -23,14 +23,14 @@ impl EdgeValues {
     }
 }
 
-impl Default for EdgeValues {
+impl Default for FlowValues {
     fn default() -> Self {
         // another default is probably better, or none at all, but this is a start
         Self::new(0.0, f64::INFINITY, 1.0)
     }
 }
 
-type Instance = petgraph::Graph<f64, EdgeValues, petgraph::Directed>;
+type Instance = petgraph::Graph<f64, FlowValues, petgraph::Directed>;
 
 #[derive(Debug)]
 pub struct Solution {
@@ -108,11 +108,11 @@ mod tests {
         let u = graph.add_node(0.0);
         let v = graph.add_node(0.0);
         let t = graph.add_node(-2.0);
-        let su = graph.add_edge(s, u, EdgeValues::new(0.0, 2.0, 11.0));
-        let ut = graph.add_edge(u, t, EdgeValues::new(0.0, 2.0, 11.0));
-        let st = graph.add_edge(s, t, EdgeValues::new(0.0, 2.0, 12.0));
-        let sv = graph.add_edge(s, v, EdgeValues::new(0.0, 5.0, 2.0));
-        let vt = graph.add_edge(v, t, EdgeValues::new(0.0, 1.0, 6.0));
+        let su = graph.add_edge(s, u, FlowValues::new(0.0, 2.0, 11.0));
+        let ut = graph.add_edge(u, t, FlowValues::new(0.0, 2.0, 11.0));
+        let st = graph.add_edge(s, t, FlowValues::new(0.0, 2.0, 12.0));
+        let sv = graph.add_edge(s, v, FlowValues::new(0.0, 5.0, 2.0));
+        let vt = graph.add_edge(v, t, FlowValues::new(0.0, 1.0, 6.0));
 
         let solution = run(&graph).unwrap();
 
@@ -141,7 +141,7 @@ mod tests {
         let mut graph = Instance::new();
         let s = graph.add_node(2.0);
         let t = graph.add_node(-1.0);
-        graph.add_edge(s, t, EdgeValues::new(0.0, 2.0, 1.0));
+        graph.add_edge(s, t, FlowValues::new(0.0, 2.0, 1.0));
 
         let result = run(&graph);
 
@@ -154,7 +154,7 @@ mod tests {
         let mut graph = Instance::new();
         let s = graph.add_node(2.0);
         let t = graph.add_node(-2.0);
-        graph.add_edge(s, t, EdgeValues::new(0.0, 1.0, 1.0));
+        graph.add_edge(s, t, FlowValues::new(0.0, 1.0, 1.0));
 
         let result = run(&graph);
 
