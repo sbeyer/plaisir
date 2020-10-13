@@ -1,3 +1,13 @@
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum MCFError {
+    #[error("problem is not feasible")]
+    Infeasible,
+    #[error(transparent)]
+    Internal(#[from] minilp::Error),
+}
+
 #[derive(Clone, Debug)]
 pub struct EdgeValues {
     lower_bound: f64,
@@ -30,7 +40,7 @@ pub struct Solution {
     cost: f64,
 }
 
-pub fn run(instance: &Instance) -> Result<Solution, minilp::Error> {
+pub fn run(instance: &Instance) -> Result<Solution, MCFError> {
     let mut lp = minilp::Problem::new(minilp::OptimizationDirection::Minimize);
     let mut vars = Vec::with_capacity(instance.edge_count());
 
@@ -108,5 +118,40 @@ mod tests {
         assert_eq!(solution.flow[st.index()], 1.0);
         assert_eq!(solution.flow[sv.index()], 1.0);
         assert_eq!(solution.flow[vt.index()], 1.0);
+    }
+
+    #[test]
+    fn errors_on_infeasible_instance_due_to_disconnected_nodes() {
+        let mut graph = Instance::new();
+        graph.add_node(1.0);
+        graph.add_node(-1.0);
+
+        let result = run(&graph);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn errors_on_infeasible_instance_due_to_imbalanced_supply_and_demand() {
+        let mut graph = Instance::new();
+        let s = graph.add_node(2.0);
+        let t = graph.add_node(-1.0);
+        graph.add_edge(s, t, EdgeValues::new(0.0, 2.0, 1.0));
+
+        let result = run(&graph);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn errors_on_infeasible_instance_due_to_capacity_constraints() {
+        let mut graph = Instance::new();
+        let s = graph.add_node(2.0);
+        let t = graph.add_node(-2.0);
+        graph.add_edge(s, t, EdgeValues::new(0.0, 1.0, 1.0));
+
+        let result = run(&graph);
+
+        assert!(result.is_err());
     }
 }
