@@ -1,11 +1,11 @@
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum MCFError {
     #[error("problem is not feasible")]
     Infeasible,
-    #[error(transparent)]
-    Internal(#[from] minilp::Error),
+    #[error("internal error")]
+    Internal(#[source] minilp::Error),
 }
 
 #[derive(Clone, Debug)]
@@ -68,19 +68,25 @@ pub fn run(instance: &Instance) -> Result<Solution, MCFError> {
         lp.add_constraint(lhs, minilp::ComparisonOp::Eq, -instance[node])
     }
 
-    let solution = lp.solve()?;
+    let result = lp.solve();
 
-    let mut flow = Vec::<f64>::with_capacity(instance.edge_count());
-    for var in vars {
-        flow.push(solution[var]);
+    match result {
+        Ok(solution) => {
+            let mut flow = Vec::<f64>::with_capacity(instance.edge_count());
+            for var in vars {
+                flow.push(solution[var]);
+            }
+
+            let cost = solution.objective();
+
+            Ok(Solution {
+                flow: flow,
+                cost: cost,
+            })
+        }
+        Err(minilp::Error::Infeasible) => Err(MCFError::Infeasible),
+        Err(error) => Err(error).map_err(|source| MCFError::Internal(source)),
     }
-
-    let cost = solution.objective();
-
-    Ok(Solution {
-        flow: flow,
-        cost: cost,
-    })
 }
 
 #[cfg(test)]
@@ -129,6 +135,7 @@ mod tests {
         let result = run(&graph);
 
         assert!(result.is_err());
+        assert_eq!(result.err(), Some(MCFError::Infeasible));
     }
 
     #[test]
@@ -141,6 +148,7 @@ mod tests {
         let result = run(&graph);
 
         assert!(result.is_err());
+        assert_eq!(result.err(), Some(MCFError::Infeasible));
     }
 
     #[test]
@@ -153,5 +161,6 @@ mod tests {
         let result = run(&graph);
 
         assert!(result.is_err());
+        assert_eq!(result.err(), Some(MCFError::Infeasible));
     }
 }
