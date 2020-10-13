@@ -78,6 +78,16 @@ mod tests {
     use super::*;
 
     #[test]
+    fn computes_mcf_on_single_node() {
+        let mut graph = Instance::new();
+        graph.add_node(0.0);
+
+        let solution = run(&graph).unwrap();
+
+        assert_eq!(solution.cost, 0.0);
+    }
+
+    #[test]
     fn computes_mcf_on_easy_instance() {
         let mut graph = Instance::new();
         let s = graph.add_node(2.0);
