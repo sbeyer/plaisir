@@ -21,12 +21,20 @@ impl FlowValues {
             cost: cost,
         }
     }
+
+    fn new_unconstrained(cost: f64) -> Self {
+        Self {
+            lower_bound: 0.0,
+            upper_bound: f64::INFINITY,
+            cost: cost,
+        }
+    }
 }
 
 impl Default for FlowValues {
     fn default() -> Self {
         // another default is probably better, or none at all, but this is a start
-        Self::new(0.0, f64::INFINITY, 1.0)
+        Self::new_unconstrained(1.0)
     }
 }
 
@@ -108,8 +116,8 @@ mod tests {
         let u = graph.add_node(0.0);
         let v = graph.add_node(0.0);
         let t = graph.add_node(-2.0);
-        let su = graph.add_edge(s, u, FlowValues::new(0.0, 2.0, 11.0));
-        let ut = graph.add_edge(u, t, FlowValues::new(0.0, 2.0, 11.0));
+        let su = graph.add_edge(s, u, FlowValues::new_unconstrained(11.0));
+        let ut = graph.add_edge(u, t, FlowValues::new_unconstrained(11.0));
         let st = graph.add_edge(s, t, FlowValues::new(0.0, 2.0, 12.0));
         let sv = graph.add_edge(s, v, FlowValues::new(0.0, 5.0, 2.0));
         let vt = graph.add_edge(v, t, FlowValues::new(0.0, 1.0, 6.0));
@@ -141,7 +149,7 @@ mod tests {
         let mut graph = Instance::new();
         let s = graph.add_node(2.0);
         let t = graph.add_node(-1.0);
-        graph.add_edge(s, t, FlowValues::new(0.0, 2.0, 1.0));
+        graph.add_edge(s, t, FlowValues::new_unconstrained(1.0));
 
         let result = run(&graph);
 
