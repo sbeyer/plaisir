@@ -2,6 +2,8 @@ use std::error::Error;
 use std::fmt;
 use std::fs;
 
+pub mod solver;
+
 #[derive(Debug)]
 pub struct Position {
     pub x: f64,
@@ -50,7 +52,7 @@ impl fmt::Display for Depot {
 
 #[derive(Debug)]
 pub struct Customer {
-    pub id: i32,
+    pub id: usize,
     pub position: Position,
     pub start_level: i32,
     pub max_level: i32,
@@ -77,9 +79,9 @@ impl fmt::Display for Customer {
 
 #[derive(Debug)]
 pub struct Problem {
-    pub num_nodes: i32,
-    pub num_days: i32,
-    pub num_vehicles: i32,
+    pub num_nodes: usize,
+    pub num_days: usize,
+    pub num_vehicles: usize,
     pub capacity: i32,
     pub depot: Depot,
     pub customers: Vec<Customer>,
@@ -90,10 +92,10 @@ impl Problem {
         let contents = fs::read_to_string(filename)?;
         let mut iter = contents.split_whitespace();
 
-        let num_nodes = iter.next().unwrap().parse::<i32>()?;
-        let num_days = iter.next().unwrap().parse::<i32>()?;
+        let num_nodes = iter.next().unwrap().parse::<usize>()?;
+        let num_days = iter.next().unwrap().parse::<usize>()?;
         let capacity = iter.next().unwrap().parse::<i32>()?;
-        let num_vehicles = iter.next().unwrap().parse::<i32>()?;
+        let num_vehicles = iter.next().unwrap().parse::<usize>()?;
         let depot_id = iter.next().unwrap().parse::<i32>()?;
         assert!(depot_id == 0, "Depot identifier is not 0");
         let depot_x = iter.next().unwrap().parse::<f64>()?;
@@ -103,10 +105,10 @@ impl Problem {
         let depot_cost = iter.next().unwrap().parse::<f64>()?;
 
         let mut customers = Vec::new();
-        let mut index = 0;
+        let mut index: usize = 0;
         while index < num_nodes - 1 {
             index += 1;
-            let c_id = iter.next().unwrap().parse::<i32>()?;
+            let c_id = iter.next().unwrap().parse::<usize>()?;
             assert!(c_id == index, "Customer does not have expected index");
             let c_x = iter.next().unwrap().parse::<f64>()?;
             let c_y = iter.next().unwrap().parse::<f64>()?;

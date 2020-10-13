@@ -38,7 +38,7 @@ impl Default for FlowValues {
     }
 }
 
-type Instance = petgraph::Graph<f64, FlowValues, petgraph::Directed>;
+pub type Instance = petgraph::Graph<f64, FlowValues, petgraph::Directed>;
 
 #[derive(Debug)]
 pub struct Solution {

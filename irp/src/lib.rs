@@ -8,6 +8,8 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let problem = irp::Problem::read_from_file(config.filename)?;
     println!("{}", problem);
 
+    irp::solver::solve(problem);
+
     Ok(())
 }
 
