@@ -1,7 +1,5 @@
-use thiserror::Error;
-
-#[derive(Error, Debug, PartialEq)]
-pub enum MCFError {
+#[derive(thiserror::Error, Debug, PartialEq)]
+pub enum Error {
     #[error("problem is not feasible")]
     Infeasible,
     #[error("internal error")]
@@ -40,7 +38,7 @@ pub struct Solution {
     cost: f64,
 }
 
-pub fn run(instance: &Instance) -> Result<Solution, MCFError> {
+pub fn run(instance: &Instance) -> Result<Solution, Error> {
     let mut lp = minilp::Problem::new(minilp::OptimizationDirection::Minimize);
     let mut vars = Vec::with_capacity(instance.edge_count());
 
@@ -84,8 +82,8 @@ pub fn run(instance: &Instance) -> Result<Solution, MCFError> {
                 cost: cost,
             })
         }
-        Err(minilp::Error::Infeasible) => Err(MCFError::Infeasible),
-        Err(error) => Err(error).map_err(|source| MCFError::Internal(source)),
+        Err(minilp::Error::Infeasible) => Err(Error::Infeasible),
+        Err(error) => Err(error).map_err(|source| Error::Internal(source)),
     }
 }
 
@@ -135,7 +133,7 @@ mod tests {
         let result = run(&graph);
 
         assert!(result.is_err());
-        assert_eq!(result.err(), Some(MCFError::Infeasible));
+        assert_eq!(result.err(), Some(Error::Infeasible));
     }
 
     #[test]
@@ -148,7 +146,7 @@ mod tests {
         let result = run(&graph);
 
         assert!(result.is_err());
-        assert_eq!(result.err(), Some(MCFError::Infeasible));
+        assert_eq!(result.err(), Some(Error::Infeasible));
     }
 
     #[test]
@@ -161,6 +159,6 @@ mod tests {
         let result = run(&graph);
 
         assert!(result.is_err());
-        assert_eq!(result.err(), Some(MCFError::Infeasible));
+        assert_eq!(result.err(), Some(Error::Infeasible));
     }
 }
