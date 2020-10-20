@@ -14,7 +14,7 @@ pub struct FlowValues {
 }
 
 impl FlowValues {
-    fn new(lb: f64, ub: f64, cost: f64) -> Self {
+    pub fn new(lb: f64, ub: f64, cost: f64) -> Self {
         Self {
             lower_bound: lb,
             upper_bound: ub,
