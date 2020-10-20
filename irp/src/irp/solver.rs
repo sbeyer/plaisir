@@ -36,7 +36,7 @@ impl AuxiliaryMCFInstance {
     }
 
     pub fn customer(&self, day: usize, idx: usize) -> Node {
-        assert!(idx > 0);
+        debug_assert!(idx > 0);
         self.v[idx][day]
     }
 }
@@ -89,7 +89,7 @@ impl AuxiliaryMCFInstanceBuilder {
         self.init_location_nodes_vector(self.problem.depot.start_level);
 
         for i in 0..(self.problem.num_nodes - 1) {
-            assert_eq!(self.problem.customers[i].id, i + 1);
+            debug_assert_eq!(self.problem.customers[i].id, i + 1);
             self.init_location_nodes_vector(self.problem.customers[i].start_level);
         }
     }
