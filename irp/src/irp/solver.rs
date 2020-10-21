@@ -36,7 +36,7 @@ impl AuxiliaryMCFInstance {
     }
 
     pub fn customer(&self, day: usize, idx: usize) -> Node {
-        debug_assert!(idx > 0);
+        debug_assert!(idx > 0, "the depot (index 0) is not a customer");
         self.v[idx][day]
     }
 }
