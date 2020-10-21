@@ -7,7 +7,13 @@ struct AuxiliaryMCFInstance {
     graph: mcf::Instance,
 
     // Location nodes indexed by location and day
-    v: Vec<Vec<Node>>,
+    customers: Vec<Vec<Node>>,
+
+    // Depot source nodes indexed by day
+    depot_source: Vec<Node>,
+
+    // Depot target nodes indexed by day
+    depot_target: Vec<Node>,
 
     // Nodes for daily production and consumption
     daily: Vec<Vec<Node>>,
@@ -16,12 +22,16 @@ struct AuxiliaryMCFInstance {
 impl AuxiliaryMCFInstance {
     fn empty() -> Self {
         let graph = mcf::Instance::new();
-        let v = Vec::<Vec<Node>>::new();
+        let customers = Vec::<Vec<Node>>::new();
+        let depot_source = Vec::<Node>::new();
+        let depot_target = Vec::<Node>::new();
         let daily = Vec::<Vec<Node>>::new();
 
         Self {
             graph: graph,
-            v: v,
+            customers: customers,
+            depot_source: depot_source,
+            depot_target: depot_target,
             daily: daily,
         }
     }
@@ -29,15 +39,6 @@ impl AuxiliaryMCFInstance {
     fn new(problem: Problem) -> Self {
         let builder = AuxiliaryMCFInstanceBuilder::new(problem);
         builder.build()
-    }
-
-    pub fn depot(&self, day: usize) -> Node {
-        self.v[0][day]
-    }
-
-    pub fn customer(&self, day: usize, idx: usize) -> Node {
-        debug_assert!(idx > 0, "the depot (index 0) is not a customer");
-        self.v[idx][day]
     }
 }
 
@@ -73,7 +74,7 @@ impl AuxiliaryMCFInstanceBuilder {
         self.instance.graph.add_node(value)
     }
 
-    fn init_location_nodes_vector(&mut self, start_level: i32) {
+    fn new_location_nodes_vector(&mut self, start_level: i32) -> Vec<Node> {
         let mut v = Vec::<Node>::new();
         v.push(self.new_node(start_level));
 
@@ -81,33 +82,35 @@ impl AuxiliaryMCFInstanceBuilder {
             v.push(self.new_node(0));
         }
 
-        self.instance.v.push(v);
+        debug_assert!(v.len() == self.problem.num_days + 1);
+
+        v
     }
 
     fn add_location_nodes(&mut self) {
-        self.init_location_nodes_vector(self.problem.depot.start_level);
+        self.instance.depot_source = self.new_location_nodes_vector(self.problem.depot.start_level);
+        self.instance.depot_target = self.new_location_nodes_vector(0);
+        // we don't need a depot target node for the last day, but keep it for simplicity
 
         for i in 0..(self.problem.num_nodes - 1) {
-            debug_assert_eq!(self.problem.customers[i].id, i + 1);
-            self.init_location_nodes_vector(self.problem.customers[i].start_level);
+            let v = self.new_location_nodes_vector(self.problem.customers[i].start_level);
+            self.instance.customers.push(v);
         }
     }
 
     // temporary solution to compute lower bound... TODO
     fn add_free_edges_between_depot_and_customers(&mut self) {
-        for customer in 1..self.problem.num_nodes {
+        for customer in 0..(self.problem.num_nodes - 1) {
             for _vehicle in 0..self.problem.num_vehicles {
                 for day in 0..self.problem.num_days {
                     self.instance.graph.add_edge(
-                        self.instance.depot(day),
-                        self.instance.customer(day, customer),
+                        self.instance.depot_source[day],
+                        self.instance.customers[customer][day],
                         mcf::FlowValues::new(0.0, self.problem.capacity.into(), 0.0),
                     );
-                }
-                for day in 0..(self.problem.num_days - 1) {
                     self.instance.graph.add_edge(
-                        self.instance.customer(day, customer),
-                        self.instance.depot(day + 1),
+                        self.instance.customers[customer][day],
+                        self.instance.depot_target[day],
                         mcf::FlowValues::new(0.0, self.problem.capacity.into(), 0.0),
                     );
                 }
@@ -126,7 +129,7 @@ impl AuxiliaryMCFInstanceBuilder {
             daily_production.push(node);
             self.instance.graph.add_edge(
                 node,
-                self.instance.depot(day),
+                self.instance.depot_source[day],
                 mcf::FlowValues::new(
                     daily_production_value.into(),
                     daily_production_value.into(),
@@ -138,15 +141,15 @@ impl AuxiliaryMCFInstanceBuilder {
     }
 
     fn add_daily_consumption(&mut self) {
-        for customer in 1..self.problem.num_nodes {
+        for customer in 0..(self.problem.num_nodes - 1) {
             let mut daily_consumption = Vec::<Node>::new();
-            let daily_consumption_value = self.problem.customers[customer - 1].daily_consumption;
+            let daily_consumption_value = self.problem.customers[customer].daily_consumption;
 
             for day in 0..self.problem.num_days {
                 let node = self.new_node(-daily_consumption_value);
                 daily_consumption.push(node);
                 self.instance.graph.add_edge(
-                    self.instance.customer(day, customer),
+                    self.instance.customers[customer][day],
                     node,
                     mcf::FlowValues::new(
                         daily_consumption_value.into(),
