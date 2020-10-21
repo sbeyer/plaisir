@@ -60,8 +60,8 @@ impl AuxiliaryMCFInstanceBuilder {
         self.add_location_nodes();
         self.add_free_edges_between_depot_and_customers();
         self.add_daily_production();
+        self.add_daily_consumption();
 
-        // TODO: daily consumption
         // TODO: super-sink with flow_imbalance
         // TODO
 
@@ -117,22 +117,47 @@ impl AuxiliaryMCFInstanceBuilder {
     }
 
     fn add_daily_production(&mut self) {
-        // Add daily production
         let mut daily_production = Vec::<Node>::new();
-        let daily_production_value = self.problem.depot.daily_production as f64;
+        let daily_production_value = self.problem.depot.daily_production;
 
         daily_production.push(self.new_node(0)); // dummy node, only necessary for indexing
 
         for day in 1..self.problem.num_days {
-            let node = self.new_node(self.problem.depot.daily_production);
+            let node = self.new_node(daily_production_value);
             daily_production.push(node);
             self.instance.graph.add_edge(
                 node,
                 self.instance.depot(day),
-                mcf::FlowValues::new(daily_production_value, daily_production_value, 0.0),
+                mcf::FlowValues::new(
+                    daily_production_value.into(),
+                    daily_production_value.into(),
+                    0.0,
+                ),
             );
         }
         self.instance.daily.push(daily_production);
+    }
+
+    fn add_daily_consumption(&mut self) {
+        for customer in 1..self.problem.num_nodes {
+            let mut daily_consumption = Vec::<Node>::new();
+            let daily_consumption_value = self.problem.customers[customer - 1].daily_consumption;
+
+            for day in 0..self.problem.num_days {
+                let node = self.new_node(-daily_consumption_value);
+                daily_consumption.push(node);
+                self.instance.graph.add_edge(
+                    self.instance.customer(day, customer),
+                    node,
+                    mcf::FlowValues::new(
+                        daily_consumption_value.into(),
+                        daily_consumption_value.into(),
+                        0.0,
+                    ),
+                );
+            }
+            self.instance.daily.push(daily_consumption);
+        }
     }
 }
 
