@@ -49,7 +49,8 @@ impl AuxiliaryMCFInstanceBuilder {
 
     fn build(mut self) -> AuxiliaryMCFInstance {
         self.add_location_nodes();
-        self.add_free_edges_between_depot_and_customers();
+        self.add_edges_between_depot_and_customers();
+        self.add_routes_between_customers();
         self.add_daily_production();
         self.add_daily_consumption();
         self.add_overnight_edges();
@@ -88,21 +89,52 @@ impl AuxiliaryMCFInstanceBuilder {
         }
     }
 
-    // temporary solution to compute lower bound... TODO
-    fn add_free_edges_between_depot_and_customers(&mut self) {
+    fn add_edges_between_depot_and_customers(&mut self) {
+        let capacity = self.problem.capacity as f64;
         for customer in 0..self.problem.num_customers {
             for _vehicle in 0..self.problem.num_vehicles {
                 for day in 0..self.problem.num_days {
+                    let distance = self
+                        .problem
+                        .depot
+                        .position
+                        .distance(&self.problem.customers[customer].position)
+                        as f64;
+                    let initial_cost = distance / capacity;
                     self.instance.graph.add_edge(
                         self.instance.depot_source[day],
                         self.instance.customers[customer][day],
-                        mcf::FlowValues::new(0.0, self.problem.capacity.into(), 0.0),
+                        mcf::FlowValues::new(0.0, capacity, initial_cost),
                     );
                     self.instance.graph.add_edge(
                         self.instance.customers[customer][day],
                         self.instance.depot_target[day],
-                        mcf::FlowValues::new(0.0, self.problem.capacity.into(), 0.0),
+                        mcf::FlowValues::new(0.0, capacity, initial_cost),
                     );
+                }
+            }
+        }
+    }
+
+    fn add_routes_between_customers(&mut self) {
+        let capacity = self.problem.capacity as f64;
+        for source in 0..self.problem.num_customers {
+            for target in 0..self.problem.num_customers {
+                if source != target {
+                    let distance = self.problem.customers[source]
+                        .position
+                        .distance(&self.problem.customers[target].position)
+                        as f64;
+                    let initial_cost = distance / capacity;
+                    for day in 0..self.problem.num_days {
+                        for _vehicle in 0..self.problem.num_vehicles {
+                            self.instance.graph.add_edge(
+                                self.instance.customers[source][day],
+                                self.instance.customers[target][day],
+                                mcf::FlowValues::new(0.0, capacity, initial_cost),
+                            );
+                        }
+                    }
                 }
             }
         }
