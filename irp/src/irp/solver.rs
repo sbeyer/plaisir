@@ -145,11 +145,40 @@ impl AuxiliaryMCFInstanceBuilder {
     }
 
     fn add_overnight_edges(&mut self) {
-        // TODO
+        for day in 0..self.problem.num_days {
+            self.instance.graph.add_edge(
+                self.instance.depot_target[day],
+                self.instance.depot_source[day + 1],
+                mcf::FlowValues::new_unconstrained(self.problem.depot.daily_cost),
+            );
+
+            for customer in 0..self.problem.num_customers {
+                self.instance.graph.add_edge(
+                    self.instance.customers[customer][day],
+                    self.instance.customers[customer][day + 1],
+                    mcf::FlowValues::new_unconstrained(self.problem.customers[customer].daily_cost),
+                );
+            }
+        }
     }
 
     fn add_super_sink(&mut self) {
-        // TODO
+        let day = self.problem.num_days;
+        let node = self.instance.graph.add_node(-self.flow_imbalance);
+
+        self.instance.graph.add_edge(
+            self.instance.depot_source[day],
+            node,
+            mcf::FlowValues::new_unconstrained(0.0),
+        );
+
+        for customer in 0..self.problem.num_customers {
+            self.instance.graph.add_edge(
+                self.instance.customers[customer][day],
+                node,
+                mcf::FlowValues::new_unconstrained(0.0),
+            );
+        }
     }
 }
 

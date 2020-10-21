@@ -22,7 +22,7 @@ impl FlowValues {
         }
     }
 
-    fn new_unconstrained(cost: f64) -> Self {
+    pub fn new_unconstrained(cost: f64) -> Self {
         Self {
             lower_bound: 0.0,
             upper_bound: f64::INFINITY,
