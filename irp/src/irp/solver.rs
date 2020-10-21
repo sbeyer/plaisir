@@ -188,7 +188,21 @@ struct BranchAndBound {
 
 impl BranchAndBound {
     fn solve(problem: Problem) {
-        let mut _instance = AuxiliaryMCFInstance::new(problem);
+        let instance = AuxiliaryMCFInstance::new(problem);
+
+        let result = mcf::run(&instance.graph);
+
+        match result {
+            Ok(solution) => {
+                println!("MCF solution is: {}", solution.cost);
+            }
+            Err(mcf::Error::Infeasible) => {
+                println!("Instance is infeasible!");
+            }
+            Err(error) => {
+                panic!(error);
+            }
+        }
 
         // TODO
     }

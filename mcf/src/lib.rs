@@ -42,8 +42,8 @@ pub type Instance = petgraph::Graph<f64, FlowValues, petgraph::Directed>;
 
 #[derive(Debug)]
 pub struct Solution {
-    flow: Vec<f64>,
-    cost: f64,
+    pub flow: Vec<f64>,
+    pub cost: f64,
 }
 
 pub fn run(instance: &Instance) -> Result<Solution, Error> {
