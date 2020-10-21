@@ -61,9 +61,8 @@ impl AuxiliaryMCFInstanceBuilder {
         self.add_free_edges_between_depot_and_customers();
         self.add_daily_production();
         self.add_daily_consumption();
-
-        // TODO: super-sink with flow_imbalance
-        // TODO
+        self.add_overnight_edges();
+        self.add_super_sink();
 
         self.instance
     }
@@ -158,6 +157,14 @@ impl AuxiliaryMCFInstanceBuilder {
             }
             self.instance.daily.push(daily_consumption);
         }
+    }
+
+    fn add_overnight_edges(&mut self) {
+        // TODO
+    }
+
+    fn add_super_sink(&mut self) {
+        // TODO
     }
 }
 
