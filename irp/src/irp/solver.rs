@@ -21,18 +21,12 @@ struct AuxiliaryMCFInstance {
 
 impl AuxiliaryMCFInstance {
     fn empty() -> Self {
-        let graph = mcf::Instance::new();
-        let customers = Vec::<Vec<Node>>::new();
-        let depot_source = Vec::<Node>::new();
-        let depot_target = Vec::<Node>::new();
-        let daily = Vec::<Vec<Node>>::new();
-
         Self {
-            graph: graph,
-            customers: customers,
-            depot_source: depot_source,
-            depot_target: depot_target,
-            daily: daily,
+            graph: mcf::Instance::new(),
+            customers: Vec::<Vec<Node>>::new(),
+            depot_source: Vec::<Node>::new(),
+            depot_target: Vec::<Node>::new(),
+            daily: Vec::<Vec<Node>>::new(),
         }
     }
 
