@@ -82,7 +82,7 @@ impl AuxiliaryMCFInstanceBuilder {
         self.instance.depot_target = self.new_location_nodes_vector(0);
         // we don't need a depot target node for the last day, but keep it for simplicity
 
-        for i in 0..(self.problem.num_nodes - 1) {
+        for i in 0..self.problem.num_customers {
             let v = self.new_location_nodes_vector(self.problem.customers[i].start_level);
             self.instance.customers.push(v);
         }
@@ -90,7 +90,7 @@ impl AuxiliaryMCFInstanceBuilder {
 
     // temporary solution to compute lower bound... TODO
     fn add_free_edges_between_depot_and_customers(&mut self) {
-        for customer in 0..(self.problem.num_nodes - 1) {
+        for customer in 0..self.problem.num_customers {
             for _vehicle in 0..self.problem.num_vehicles {
                 for day in 0..self.problem.num_days {
                     self.instance.graph.add_edge(
@@ -126,7 +126,7 @@ impl AuxiliaryMCFInstanceBuilder {
     }
 
     fn add_daily_consumption(&mut self) {
-        for customer in 0..(self.problem.num_nodes - 1) {
+        for customer in 0..self.problem.num_customers {
             let daily_consumption_value = self.problem.customers[customer].daily_consumption;
 
             for day in 0..self.problem.num_days {

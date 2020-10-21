@@ -79,7 +79,7 @@ impl fmt::Display for Customer {
 
 #[derive(Debug)]
 pub struct Problem {
-    pub num_nodes: usize,
+    pub num_customers: usize,
     pub num_days: usize,
     pub num_vehicles: usize,
     pub capacity: i32,
@@ -131,7 +131,7 @@ impl Problem {
         assert!(iter.next() == None, "There is junk at the end of the file");
 
         Ok(Problem {
-            num_nodes: num_nodes,
+            num_customers: num_nodes - 1,
             num_days: num_days,
             num_vehicles: num_vehicles,
             capacity: capacity,
@@ -150,8 +150,8 @@ impl fmt::Display for Problem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Problem with {} locations for {} days with {} vehicles of capacity {}:\n",
-            self.num_nodes, self.num_days, self.num_vehicles, self.capacity
+            "Problem with {} customers for {} days with {} vehicles of capacity {}:\n",
+            self.num_customers, self.num_days, self.num_vehicles, self.capacity
         )?;
         write!(f, "    {}\n", self.depot)?;
         Ok(for customer in &self.customers {
