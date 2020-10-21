@@ -14,9 +14,6 @@ struct AuxiliaryMCFInstance {
 
     // Depot target nodes indexed by day
     depot_target: Vec<Node>,
-
-    // Nodes for daily production and consumption
-    daily: Vec<Vec<Node>>,
 }
 
 impl AuxiliaryMCFInstance {
@@ -26,7 +23,6 @@ impl AuxiliaryMCFInstance {
             customers: Vec::<Vec<Node>>::new(),
             depot_source: Vec::<Node>::new(),
             depot_target: Vec::<Node>::new(),
-            daily: Vec::<Vec<Node>>::new(),
         }
     }
 
@@ -113,14 +109,10 @@ impl AuxiliaryMCFInstanceBuilder {
     }
 
     fn add_daily_production(&mut self) {
-        let mut daily_production = Vec::<Node>::new();
         let daily_production_value = self.problem.depot.daily_production;
-
-        daily_production.push(self.new_node(0)); // dummy node, only necessary for indexing
 
         for day in 1..self.problem.num_days {
             let node = self.new_node(daily_production_value);
-            daily_production.push(node);
             self.instance.graph.add_edge(
                 node,
                 self.instance.depot_source[day],
@@ -131,17 +123,14 @@ impl AuxiliaryMCFInstanceBuilder {
                 ),
             );
         }
-        self.instance.daily.push(daily_production);
     }
 
     fn add_daily_consumption(&mut self) {
         for customer in 0..(self.problem.num_nodes - 1) {
-            let mut daily_consumption = Vec::<Node>::new();
             let daily_consumption_value = self.problem.customers[customer].daily_consumption;
 
             for day in 0..self.problem.num_days {
                 let node = self.new_node(-daily_consumption_value);
-                daily_consumption.push(node);
                 self.instance.graph.add_edge(
                     self.instance.customers[customer][day],
                     node,
@@ -152,7 +141,6 @@ impl AuxiliaryMCFInstanceBuilder {
                     ),
                 );
             }
-            self.instance.daily.push(daily_consumption);
         }
     }
 
