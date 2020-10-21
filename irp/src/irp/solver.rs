@@ -27,7 +27,7 @@ impl AuxiliaryMCFInstance {
     }
 
     fn new(problem: Problem) -> Self {
-        let mut builder = AuxiliaryMCFInstanceBuilder::new(problem);
+        let builder = AuxiliaryMCFInstanceBuilder::new(problem);
         builder.build()
     }
 
