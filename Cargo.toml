@@ -1,6 +1,11 @@
-[workspace]
+[package]
+name = "irp"
+version = "0.1.0"
+authors = ["Stephan Beyer <s-beyer@gmx.net>"]
+edition = "2018"
 
-members = [
-    "irp",
-    "mcf",
-]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+minilp = "0.2.2"
+thiserror = "1.0"
