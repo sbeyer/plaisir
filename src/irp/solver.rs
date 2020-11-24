@@ -144,7 +144,95 @@ impl BranchAndBound {
             }
         }
 
-        // TODO: more variables, more constraints
+        // glue: disable carry flow if we have no route flow
+        for t in 0..problem.num_days {
+            for i in 0..=problem.num_customers {
+                for j in 0..=problem.num_customers {
+                    if j != i {
+                        let mut lhs = minilp::LinearExpr::empty();
+                        lhs.add(vars.route(t, i, j), problem.capacity as f64);
+                        lhs.add(vars.carry(t, i, j), -1.0);
+
+                        lp.add_constraint(lhs, minilp::ComparisonOp::Ge, 0.0);
+                    }
+                }
+            }
+        }
+
+        // carry and deliver flow
+        for t in 0..problem.num_days {
+            for i in 1..=problem.num_customers {
+                let mut lhs = minilp::LinearExpr::empty();
+                for j in 0..=problem.num_customers {
+                    if j != i {
+                        lhs.add(vars.carry(t, j, i), 1.0); // incoming carry
+                    }
+                }
+                for j in 1..=problem.num_customers {
+                    if j != i {
+                        lhs.add(vars.carry(t, i, j), -1.0); // outgoing carry
+                    }
+                }
+                lhs.add(vars.deliver(t, i), -1.0); // deliver to customer
+
+                lp.add_constraint(lhs, minilp::ComparisonOp::Eq, 0.0);
+            }
+        }
+
+        // inventory flow for depot
+        for t in 0..problem.num_days {
+            let mut lhs = minilp::LinearExpr::empty();
+            for j in 1..=problem.num_customers {
+                lhs.add(vars.carry(t, 0, j), -1.0); // outgoing carry
+            }
+            lhs.add(vars.inventory(t, 0), -1.0); // outgoing inventory
+            let mut value = -problem.daily_level_change(0);
+
+            if t == 0 {
+                value -= problem.start_level(0);
+            } else {
+                lhs.add(vars.inventory(t - 1, 0), 1.0); // incoming inventory
+            }
+
+            lp.add_constraint(lhs, minilp::ComparisonOp::Eq, value);
+        }
+
+        // inventory flow for customers
+        for t in 0..problem.num_days {
+            for i in 1..=problem.num_customers {
+                let mut lhs = minilp::LinearExpr::empty();
+                lhs.add(vars.deliver(t, i), 1.0); // delivered
+                lhs.add(vars.inventory(t, i), -1.0); // outgoing inventory
+                let mut value = -problem.daily_level_change(i);
+
+                if t == 0 {
+                    value -= problem.start_level(i);
+                } else {
+                    lhs.add(vars.inventory(t - 1, i), 1.0); // incoming inventory
+                }
+
+                lp.add_constraint(lhs, minilp::ComparisonOp::Eq, value);
+            }
+        }
+
+        // finalize flow; not necessary
+        /*{
+            let mut lhs = minilp::LinearExpr::empty();
+            let t = problem.num_days - 1;
+            for i in 0..=problem.num_customers {
+                lhs.add(vars.inventory(t, i), 1.0); // incoming inventory
+            }
+            let mut value = 0 as f64;
+            for i in 0..=problem.num_customers {
+                value += problem.daily_level_change(i);
+            }
+            value *= t as f64;
+            for i in 0..=problem.num_customers {
+                value += problem.start_level(i);
+            }
+
+            lp.add_constraint(lhs, minilp::ComparisonOp::Eq, value);
+        }*/
 
         let result = lp.solve();
 
