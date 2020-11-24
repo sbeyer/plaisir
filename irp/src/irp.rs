@@ -144,6 +144,22 @@ impl Problem {
             customers: customers,
         })
     }
+
+    fn distance(&self, i: usize, j: usize) -> i32 {
+        if i == j {
+            0
+        } else if i > j {
+            self.distance(j, i)
+        } else {
+            let pos1 = if i == 0 {
+                &self.depot.position
+            } else {
+                &self.customers[i - 1].position
+            };
+            let pos2 = &self.customers[j - 1].position;
+            pos1.distance(pos2)
+        }
+    }
 }
 
 impl fmt::Display for Problem {
