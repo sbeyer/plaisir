@@ -215,25 +215,6 @@ impl BranchAndBound {
             }
         }
 
-        // finalize flow; not necessary
-        /*{
-            let mut lhs = minilp::LinearExpr::empty();
-            let t = problem.num_days - 1;
-            for i in 0..=problem.num_customers {
-                lhs.add(vars.inventory(t, i), 1.0); // incoming inventory
-            }
-            let mut value = 0 as f64;
-            for i in 0..=problem.num_customers {
-                value += problem.daily_level_change(i);
-            }
-            value *= t as f64;
-            for i in 0..=problem.num_customers {
-                value += problem.start_level(i);
-            }
-
-            lp.add_constraint(lhs, minilp::ComparisonOp::Eq, value);
-        }*/
-
         let result = lp.solve();
 
         match result {
