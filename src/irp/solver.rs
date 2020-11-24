@@ -3,9 +3,9 @@ use super::*;
 struct Variables<'a> {
     problem: &'a Problem,
     route: Vec<minilp::Variable>,
-    carry: Vec<minilp::Variable>,
-    deliver: Vec<minilp::Variable>,
-    inventory: Vec<minilp::Variable>,
+    carry: Vec<Vec<Vec<minilp::Variable>>>,
+    deliver: Vec<Vec<minilp::Variable>>,
+    inventory: Vec<Vec<minilp::Variable>>,
 }
 
 impl<'a> Variables<'a> {
@@ -13,9 +13,9 @@ impl<'a> Variables<'a> {
         let mut vars = Variables {
             problem: &problem,
             route: Vec::new(),
-            carry: Vec::new(),
-            deliver: Vec::new(),
-            inventory: Vec::new(),
+            carry: Vec::with_capacity(problem.num_days),
+            deliver: Vec::with_capacity(problem.num_days),
+            inventory: Vec::with_capacity(problem.num_days),
         };
 
         // route variables
@@ -25,6 +25,37 @@ impl<'a> Variables<'a> {
                     vars.route
                         .push(lp.add_var(problem.distance(i, j).into(), (0.0, 1.0)));
                 }
+            }
+        }
+
+        // carry variables
+        for t in 0..problem.num_days {
+            vars.carry
+                .push(Vec::with_capacity(problem.num_customers + 1));
+            for i in 0..=problem.num_customers {
+                vars.carry[t].push(Vec::with_capacity(problem.num_customers));
+                for j in 0..=problem.num_customers {
+                    if i != j {
+                        vars.carry[t][i].push(lp.add_var(0.0, (0.0, problem.capacity.into())));
+                    }
+                }
+            }
+        }
+
+        // inventory variables
+        for t in 0..problem.num_days {
+            vars.inventory
+                .push(Vec::with_capacity(problem.num_customers + 1));
+            for i in 0..=problem.num_customers {
+                vars.inventory[t].push(lp.add_var(problem.daily_cost(i), problem.level_bounds(i)));
+            }
+        }
+
+        // deliver variables
+        for t in 0..problem.num_days {
+            vars.deliver.push(Vec::with_capacity(problem.num_customers));
+            for _ in 1..=problem.num_customers {
+                vars.deliver[t].push(lp.add_var(0.0, (0.0, problem.capacity.into())));
             }
         }
 
@@ -42,6 +73,30 @@ impl<'a> Variables<'a> {
         debug_assert!(i * targetsize + j < sourcesize);
 
         self.route[t * sourcesize + i * targetsize + j]
+    }
+
+    fn carry(&self, t: usize, i: usize, j: usize) -> minilp::Variable {
+        debug_assert!(t < self.problem.num_days);
+        debug_assert!(i <= self.problem.num_customers);
+        debug_assert!(j <= self.problem.num_customers);
+        debug_assert!(i != j);
+
+        self.carry[t][i][if j > i { j - 1 } else { j }]
+    }
+
+    fn inventory(&self, t: usize, i: usize) -> minilp::Variable {
+        debug_assert!(t < self.problem.num_days);
+        debug_assert!(i <= self.problem.num_customers);
+
+        self.inventory[t][i]
+    }
+
+    fn deliver(&self, t: usize, i: usize) -> minilp::Variable {
+        debug_assert!(t < self.problem.num_days);
+        debug_assert!(i >= 1);
+        debug_assert!(i <= self.problem.num_customers);
+
+        self.deliver[t][i - 1]
     }
 }
 

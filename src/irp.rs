@@ -160,6 +160,40 @@ impl Problem {
             pos1.distance(pos2)
         }
     }
+
+    fn start_level(&self, site: usize) -> f64 {
+        if site == 0 {
+            self.depot.start_level
+        } else {
+            self.customers[site - 1].start_level
+        }
+        .into()
+    }
+
+    fn level_bounds(&self, site: usize) -> (f64, f64) {
+        if site == 0 {
+            (0.0, f64::INFINITY)
+        } else {
+            let customer = &self.customers[site - 1];
+            (customer.min_level.into(), customer.max_level.into())
+        }
+    }
+
+    fn daily_cost(&self, site: usize) -> f64 {
+        if site == 0 {
+            self.depot.daily_cost.into()
+        } else {
+            self.customers[site - 1].daily_cost.into()
+        }
+    }
+
+    fn daily_level_change(&self, site: usize) -> f64 {
+        if site == 0 {
+            self.depot.daily_production.into()
+        } else {
+            (-self.customers[site - 1].daily_consumption).into()
+        }
+    }
 }
 
 impl fmt::Display for Problem {
