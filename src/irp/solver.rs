@@ -163,6 +163,16 @@ impl BranchAndBound {
             }
         }
 
+        // don't carry too much
+        let max_amount = problem.capacity as f64 * problem.num_vehicles as f64;
+        for t in 0..problem.num_days {
+            let mut lhs = minilp::LinearExpr::empty();
+            for j in 1..=problem.num_customers {
+                lhs.add(vars.carry(t, 0, j), 1.0);
+            }
+            lp.add_constraint(lhs, minilp::ComparisonOp::Le, max_amount);
+        }
+
         // carry and deliver flow
         for t in 0..problem.num_days {
             for i in 1..=problem.num_customers {
