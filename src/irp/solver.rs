@@ -1,15 +1,16 @@
 use super::*;
+use grb::prelude as gurobi;
 
 struct Variables<'a> {
     problem: &'a Problem,
-    route: Vec<Vec<Vec<minilp::Variable>>>,
-    carry: Vec<Vec<Vec<minilp::Variable>>>,
-    deliver: Vec<Vec<minilp::Variable>>,
-    inventory: Vec<Vec<minilp::Variable>>,
+    route: Vec<Vec<Vec<gurobi::Var>>>,
+    carry: Vec<Vec<Vec<gurobi::Var>>>,
+    deliver: Vec<Vec<gurobi::Var>>,
+    inventory: Vec<Vec<gurobi::Var>>,
 }
 
 impl<'a> Variables<'a> {
-    fn new(problem: &'a Problem, lp: &mut minilp::Problem) -> Self {
+    fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> Self {
         let mut vars = Variables {
             problem: &problem,
             route: Vec::with_capacity(problem.num_days),
@@ -26,8 +27,21 @@ impl<'a> Variables<'a> {
                 vars.route[t].push(Vec::with_capacity(problem.num_customers));
                 for j in 0..=problem.num_customers {
                     if i != j {
+                        let name = String::from(format!("r_{}_{}_{}", t, i, j));
                         let coeff = problem.distance(i, j).into();
-                        vars.route[t][i].push(lp.add_var(coeff, (0.0, 1.0)));
+                        let bounds = (0.0, 1.0);
+                        //let var = grb::add_binvar!(lp, name: &name, obj: coeff).unwrap();
+                        let var = lp
+                            .add_var(
+                                &name,
+                                gurobi::VarType::Binary,
+                                coeff,
+                                bounds.0,
+                                bounds.1,
+                                std::iter::empty(),
+                            )
+                            .unwrap();
+                        vars.route[t][i].push(var);
                     }
                 }
             }
@@ -41,7 +55,20 @@ impl<'a> Variables<'a> {
                 vars.carry[t].push(Vec::with_capacity(problem.num_customers));
                 for j in 0..=problem.num_customers {
                     if i != j {
-                        vars.carry[t][i].push(lp.add_var(0.0, (0.0, problem.capacity.into())));
+                        let name = String::from(format!("c_{}_{}_{}", t, i, j));
+                        let coeff = 0.0;
+                        let bounds = (0.0, problem.capacity.into());
+                        let var = lp
+                            .add_var(
+                                &name,
+                                gurobi::VarType::Continuous,
+                                coeff,
+                                bounds.0,
+                                bounds.1,
+                                std::iter::empty(),
+                            )
+                            .unwrap();
+                        vars.carry[t][i].push(var);
                     }
                 }
             }
@@ -52,22 +79,48 @@ impl<'a> Variables<'a> {
             vars.inventory
                 .push(Vec::with_capacity(problem.num_customers + 1));
             for i in 0..=problem.num_customers {
-                vars.inventory[t].push(lp.add_var(problem.daily_cost(i), problem.level_bounds(i)));
+                let name = String::from(format!("i_{}_{}", t, i));
+                let coeff = problem.daily_cost(i);
+                let bounds = problem.level_bounds(i);
+                let var = lp
+                    .add_var(
+                        &name,
+                        gurobi::VarType::Continuous,
+                        coeff,
+                        bounds.0,
+                        bounds.1,
+                        std::iter::empty(),
+                    )
+                    .unwrap();
+                vars.inventory[t].push(var);
             }
         }
 
         // deliver variables
         for t in 0..problem.num_days {
             vars.deliver.push(Vec::with_capacity(problem.num_customers));
-            for _ in 1..=problem.num_customers {
-                vars.deliver[t].push(lp.add_var(0.0, (0.0, problem.capacity.into())));
+            for i in 1..=problem.num_customers {
+                let name = String::from(format!("d_{}_{}", t, i));
+                let coeff = 0.0;
+                let bounds = (0.0, problem.capacity.into());
+                let var = lp
+                    .add_var(
+                        &name,
+                        gurobi::VarType::Continuous,
+                        coeff,
+                        bounds.0,
+                        bounds.1,
+                        std::iter::empty(),
+                    )
+                    .unwrap();
+                vars.deliver[t].push(var);
             }
         }
 
         vars
     }
 
-    fn route(&self, t: usize, i: usize, j: usize) -> minilp::Variable {
+    fn route(&self, t: usize, i: usize, j: usize) -> gurobi::Var {
         debug_assert!(t < self.problem.num_days);
         debug_assert!(i <= self.problem.num_customers);
         debug_assert!(j <= self.problem.num_customers);
@@ -76,7 +129,7 @@ impl<'a> Variables<'a> {
         self.route[t][i][if j > i { j - 1 } else { j }]
     }
 
-    fn carry(&self, t: usize, i: usize, j: usize) -> minilp::Variable {
+    fn carry(&self, t: usize, i: usize, j: usize) -> gurobi::Var {
         debug_assert!(t < self.problem.num_days);
         debug_assert!(i <= self.problem.num_customers);
         debug_assert!(j <= self.problem.num_customers);
@@ -85,14 +138,14 @@ impl<'a> Variables<'a> {
         self.carry[t][i][if j > i { j - 1 } else { j }]
     }
 
-    fn inventory(&self, t: usize, i: usize) -> minilp::Variable {
+    fn inventory(&self, t: usize, i: usize) -> gurobi::Var {
         debug_assert!(t < self.problem.num_days);
         debug_assert!(i <= self.problem.num_customers);
 
         self.inventory[t][i]
     }
 
-    fn deliver(&self, t: usize, i: usize) -> minilp::Variable {
+    fn deliver(&self, t: usize, i: usize) -> gurobi::Var {
         debug_assert!(t < self.problem.num_days);
         debug_assert!(i >= 1);
         debug_assert!(i <= self.problem.num_customers);
@@ -104,47 +157,47 @@ impl<'a> Variables<'a> {
 struct BranchAndBound {}
 
 impl BranchAndBound {
-    fn solve(problem: Problem) {
-        let mut lp = minilp::Problem::new(minilp::OptimizationDirection::Minimize);
+    fn solve(problem: Problem) -> grb::Result<()> {
+        let mut lp = gurobi::Model::new("irp")?;
+        lp.set_objective(0, gurobi::ModelSense::Minimize)?;
         let vars = Variables::new(&problem, &mut lp);
 
         // at most m vehicles for the routing
         for t in 0..problem.num_days {
-            let mut lhs = minilp::LinearExpr::empty();
+            let mut lhs = grb::expr::LinExpr::new();
             for j in 1..=problem.num_customers {
-                lhs.add(vars.route(t, 0, j), 1.0);
+                lhs.add_term(1.0, vars.route(t, 0, j));
             }
 
-            lp.add_constraint(lhs, minilp::ComparisonOp::Le, problem.num_vehicles as f64);
-            //lp.add_constraint(lhs, minilp::ComparisonOp::Eq, -instance[node]) // geq M
+            lp.add_constr("Rmv", grb::c!(lhs <= problem.num_vehicles))?;
         }
 
         // route flow node-disjointness (at most one visit)
         for t in 0..problem.num_days {
             for i in 1..=problem.num_customers {
-                let mut lhs = minilp::LinearExpr::empty();
+                let mut lhs = grb::expr::LinExpr::new();
                 for j in 0..=problem.num_customers {
                     if i != j {
-                        lhs.add(vars.route(t, j, i), 1.0);
+                        lhs.add_term(1.0, vars.route(t, j, i));
                     }
                 }
 
-                lp.add_constraint(lhs, minilp::ComparisonOp::Le, 1.0);
+                lp.add_constr("Rnd", grb::c!(lhs <= 1.0))?;
             }
         }
 
         // route flow conservation
         for t in 0..problem.num_days {
             for i in 1..=problem.num_customers {
-                let mut lhs = minilp::LinearExpr::empty();
+                let mut lhs = grb::expr::LinExpr::new();
                 for j in 0..=problem.num_customers {
                     if i != j {
-                        lhs.add(vars.route(t, j, i), 1.0);
-                        lhs.add(vars.route(t, i, j), -1.0);
+                        lhs.add_term(1.0, vars.route(t, j, i));
+                        lhs.add_term(-1.0, vars.route(t, i, j));
                     }
                 }
 
-                lp.add_constraint(lhs, minilp::ComparisonOp::Eq, 0.0);
+                lp.add_constr("Rfc", grb::c!(lhs == 0.0))?;
             }
         }
 
@@ -153,11 +206,11 @@ impl BranchAndBound {
             for i in 0..=problem.num_customers {
                 for j in 0..=problem.num_customers {
                     if j != i {
-                        let mut lhs = minilp::LinearExpr::empty();
-                        lhs.add(vars.route(t, i, j), problem.capacity as f64);
-                        lhs.add(vars.carry(t, i, j), -1.0);
+                        let mut lhs = grb::expr::LinExpr::new();
+                        lhs.add_term(problem.capacity as f64, vars.route(t, i, j));
+                        lhs.add_term(-1.0, vars.carry(t, i, j));
 
-                        lp.add_constraint(lhs, minilp::ComparisonOp::Ge, 0.0);
+                        lp.add_constr("Gcr", grb::c!(lhs >= 0.0))?;
                     }
                 }
             }
@@ -166,85 +219,81 @@ impl BranchAndBound {
         // don't carry too much
         let max_amount = problem.capacity as f64 * problem.num_vehicles as f64;
         for t in 0..problem.num_days {
-            let mut lhs = minilp::LinearExpr::empty();
+            let mut lhs = grb::expr::LinExpr::new();
             for j in 1..=problem.num_customers {
-                lhs.add(vars.carry(t, 0, j), 1.0);
+                lhs.add_term(1.0, vars.carry(t, 0, j));
             }
-            lp.add_constraint(lhs, minilp::ComparisonOp::Le, max_amount);
+            lp.add_constr("Clim", grb::c!(lhs <= max_amount))?;
         }
 
         // carry and deliver flow
         for t in 0..problem.num_days {
             for i in 1..=problem.num_customers {
-                let mut lhs = minilp::LinearExpr::empty();
+                let mut lhs = grb::expr::LinExpr::new();
                 for j in 0..=problem.num_customers {
                     if j != i {
-                        lhs.add(vars.carry(t, j, i), 1.0); // incoming carry
+                        lhs.add_term(1.0, vars.carry(t, j, i)); // incoming carry
                     }
                 }
                 for j in 1..=problem.num_customers {
                     if j != i {
-                        lhs.add(vars.carry(t, i, j), -1.0); // outgoing carry
+                        lhs.add_term(-1.0, vars.carry(t, i, j)); // outgoing carry
                     }
                 }
-                lhs.add(vars.deliver(t, i), -1.0); // deliver to customer
+                lhs.add_term(-1.0, vars.deliver(t, i)); // deliver to customer
 
-                lp.add_constraint(lhs, minilp::ComparisonOp::Eq, 0.0);
+                lp.add_constr("CDf", grb::c!(lhs == 0.0))?;
             }
         }
 
         // inventory flow for depot
         for t in 0..problem.num_days {
-            let mut lhs = minilp::LinearExpr::empty();
+            let mut lhs = grb::expr::LinExpr::new();
             for j in 1..=problem.num_customers {
-                lhs.add(vars.carry(t, 0, j), -1.0); // outgoing carry
+                lhs.add_term(-1.0, vars.carry(t, 0, j)); // outgoing carry
             }
-            lhs.add(vars.inventory(t, 0), -1.0); // outgoing inventory
+            lhs.add_term(-1.0, vars.inventory(t, 0)); // outgoing inventory
             let mut value = -problem.daily_level_change(0);
 
             if t == 0 {
                 value -= problem.start_level(0);
             } else {
-                lhs.add(vars.inventory(t - 1, 0), 1.0); // incoming inventory
+                lhs.add_term(1.0, vars.inventory(t - 1, 0)); // incoming inventory
             }
 
-            lp.add_constraint(lhs, minilp::ComparisonOp::Eq, value);
+            lp.add_constr("Ifd", grb::c!(lhs == value))?;
         }
 
         // inventory flow for customers
         for t in 0..problem.num_days {
             for i in 1..=problem.num_customers {
-                let mut lhs = minilp::LinearExpr::empty();
-                lhs.add(vars.deliver(t, i), 1.0); // delivered
-                lhs.add(vars.inventory(t, i), -1.0); // outgoing inventory
+                let mut lhs = grb::expr::LinExpr::new();
+                lhs.add_term(1.0, vars.deliver(t, i)); // delivered
+                lhs.add_term(-1.0, vars.inventory(t, i)); // outgoing inventory
                 let mut value = -problem.daily_level_change(i);
 
                 if t == 0 {
                     value -= problem.start_level(i);
                 } else {
-                    lhs.add(vars.inventory(t - 1, i), 1.0); // incoming inventory
+                    lhs.add_term(1.0, vars.inventory(t - 1, i)); // incoming inventory
                 }
 
-                lp.add_constraint(lhs, minilp::ComparisonOp::Eq, value);
+                lp.add_constr("Ifc", grb::c!(lhs == value))?;
             }
         }
 
-        let result = lp.solve();
+        lp.optimize()?;
 
-        match result {
-            Ok(solution) => {
-                println!("MIP solution is: {}", solution.objective());
-            }
-            Err(minilp::Error::Infeasible) => {
-                println!("Instance is infeasible!");
-            }
-            Err(error) => {
-                panic!(error);
-            }
-        }
+        let status = lp.status()?;
+        println!("MIP solution status: {:?}", status);
+
+        let objective = lp.get_attr(gurobi::attr::ObjVal)?;
+        println!("MIP solution value: {}", objective);
+
+        Ok(())
     }
 }
 
 pub fn solve(problem: Problem) {
-    BranchAndBound::solve(problem)
+    BranchAndBound::solve(problem).unwrap();
 }
