@@ -172,7 +172,8 @@ impl Problem {
 
     fn level_bounds(&self, site: usize) -> (f64, f64) {
         if site == 0 {
-            let max = self.depot.start_level as usize + self.depot.daily_production as usize * self.num_days;
+            let max = self.depot.start_level as usize
+                + self.depot.daily_production as usize * self.num_days;
             (0.0, max as f64)
         } else {
             let customer = &self.customers[site - 1];
