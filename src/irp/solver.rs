@@ -154,10 +154,14 @@ impl<'a> Variables<'a> {
     }
 }
 
-struct BranchAndBound {}
+struct Solver<'a> {
+    problem: &'a Problem,
+    vars: Variables<'a>,
+    lp: gurobi::Model,
+}
 
-impl BranchAndBound {
-    fn solve(problem: Problem) -> grb::Result<()> {
+impl<'a> Solver<'a> {
+    fn solve(problem: &'a Problem) -> grb::Result<Self> {
         let mut lp = gurobi::Model::new("irp")?;
         lp.set_objective(0, gurobi::ModelSense::Minimize)?;
         let vars = Variables::new(&problem, &mut lp);
@@ -284,16 +288,54 @@ impl BranchAndBound {
 
         lp.optimize()?;
 
-        let status = lp.status()?;
+        Ok(Self {
+            problem: &problem,
+            vars,
+            lp,
+        })
+    }
+
+    fn print_raw_variable(&self, var: &gurobi::Var) -> grb::Result<()> {
+        let name = self.lp.get_obj_attr(grb::attr::VarName, &var)?;
+        let value = self.lp.get_obj_attr(grb::attr::X, &var)?;
+        if value > 0. {
+            println!("  - {}: {}", name, value);
+        }
+        Ok(())
+    }
+
+    fn print_raw_solution(&self) -> grb::Result<()> {
+        let status = self.lp.status()?;
         println!("MIP solution status: {:?}", status);
 
-        let objective = lp.get_attr(gurobi::attr::ObjVal)?;
+        let objective = self.lp.get_attr(gurobi::attr::ObjVal)?;
         println!("MIP solution value: {}", objective);
+
+        // print raw solution:
+        for t in 0..self.problem.num_days {
+            for i in 0..=self.problem.num_customers {
+                for j in 0..=self.problem.num_customers {
+                    if i != j {
+                        self.print_raw_variable(&self.vars.route(t, i, j))?;
+                        self.print_raw_variable(&self.vars.carry(t, i, j))?;
+                    }
+                }
+            }
+
+            for i in 0..=self.problem.num_customers {
+                self.print_raw_variable(&self.vars.inventory(t, i))?;
+            }
+
+            for i in 1..=self.problem.num_customers {
+                self.print_raw_variable(&self.vars.deliver(t, i))?;
+            }
+        }
 
         Ok(())
     }
 }
 
 pub fn solve(problem: Problem) {
-    BranchAndBound::solve(problem).unwrap();
+    let solver = Solver::solve(&problem).unwrap();
+    solver.print_raw_solution().unwrap();
 }
