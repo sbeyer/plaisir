@@ -154,6 +154,35 @@ impl<'a> Variables<'a> {
     }
 }
 
+struct Delivery {
+    quantity: usize,
+    customer: usize,
+}
+
+struct Solution {
+    routes: Vec<Vec<Vec<Delivery>>>,
+}
+
+impl fmt::Display for Solution {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (t, routes) in self.routes.iter().enumerate() {
+            writeln!(f, "Day {}", t + 1)?;
+            for (route_idx, route) in routes.iter().enumerate() {
+                write!(f, "Route {}: ", route_idx + 1)?;
+                for route_stop in route.iter() {
+                    write!(f, "{} ", route_stop.customer)?;
+                    if route_stop.quantity != 0 {
+                        write!(f, "( {} ) ", route_stop.quantity)?;
+                    }
+                    write!(f, "- ")?;
+                }
+                writeln!(f, "{}", route[0].customer)?;
+            }
+        }
+        Ok(())
+    }
+}
+
 struct Solver<'a> {
     problem: &'a Problem,
     vars: Variables<'a>,
@@ -333,9 +362,73 @@ impl<'a> Solver<'a> {
 
         Ok(())
     }
+
+    fn get_delivery_amount(&self, t: usize, source: usize, target: usize) -> grb::Result<usize> {
+        let var_route = self.vars.route(t, source, target);
+        let delivered = self.lp.get_obj_attr(grb::attr::X, &var_route)?;
+        if delivered > 0. {
+            let var_deliver = self.vars.deliver(t, target);
+            let quantity = self.lp.get_obj_attr(grb::attr::X, &var_deliver)?;
+            Ok(quantity.round() as usize)
+        } else {
+            Ok(0)
+        }
+    }
+
+    fn get_solution(&self) -> grb::Result<Solution> {
+        let mut sol = Solution {
+            routes: Vec::with_capacity(self.problem.num_days),
+        };
+        for t in 0..self.problem.num_days {
+            sol.routes.push(Vec::new());
+            for _ in 0..self.problem.num_vehicles {
+                sol.routes[t].push(vec![Delivery {
+                    quantity: 0,
+                    customer: 0,
+                }]);
+            }
+
+            let mut visited = vec![false; self.problem.num_customers + 1];
+            visited[0] = true;
+            for route in 0..self.problem.num_vehicles {
+                let mut found_something = false;
+                loop {
+                    let i = sol.routes[t][route].last().unwrap().customer;
+                    let mut found = false;
+                    for j in 1..=self.problem.num_customers {
+                        if i != j && !visited[j] {
+                            let delivered = self.get_delivery_amount(t, i, j)?;
+                            if delivered > 0 {
+                                visited[j] = true;
+                                sol.routes[t][route].push(Delivery {
+                                    quantity: delivered,
+                                    customer: j.into(),
+                                });
+                                found = true;
+                                found_something = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if !found {
+                        break;
+                    }
+                }
+
+                if !found_something {
+                    break;
+                }
+            }
+        }
+
+        Ok(sol)
+    }
 }
 
 pub fn solve(problem: Problem) {
     let solver = Solver::solve(&problem).unwrap();
     solver.print_raw_solution().unwrap();
+    let solution = solver.get_solution().unwrap();
+    println!("{}", solution);
 }
