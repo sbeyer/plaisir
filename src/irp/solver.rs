@@ -165,6 +165,7 @@ struct Solution {
 
 impl fmt::Display for Solution {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Routes
         for (t, routes) in self.routes.iter().enumerate() {
             writeln!(f, "Day {}", t + 1)?;
             for (route_idx, route) in routes.iter().enumerate() {
@@ -179,6 +180,17 @@ impl fmt::Display for Solution {
                 writeln!(f, "{}", route[0].customer)?;
             }
         }
+
+        // Costs
+        writeln!(f, "TODO: Total transportation cost")?;
+        writeln!(f, "TODO: Total inventory cost at customer locations")?;
+        writeln!(f, "TODO: Total inventory cost at the depot")?;
+        writeln!(f, "TODO: Total cost of the solution")?;
+
+        // Meta
+        writeln!(f, "TODO: Processor")?;
+        writeln!(f, "TODO: Solution time")?;
+
         Ok(())
     }
 }
