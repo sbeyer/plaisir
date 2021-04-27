@@ -1,5 +1,6 @@
 use super::*;
 use grb::prelude as gurobi;
+use std::time;
 
 struct Variables<'a> {
     problem: &'a Problem,
@@ -161,6 +162,7 @@ struct Delivery {
 
 struct Solution {
     routes: Vec<Vec<Vec<Delivery>>>,
+    time: time::Duration,
 }
 
 impl fmt::Display for Solution {
@@ -189,7 +191,7 @@ impl fmt::Display for Solution {
 
         // Meta
         writeln!(f, "TODO: Processor")?;
-        writeln!(f, "TODO: Solution time")?;
+        writeln!(f, "{}", self.time.as_secs())?;
 
         Ok(())
     }
@@ -199,10 +201,12 @@ struct Solver<'a> {
     problem: &'a Problem,
     vars: Variables<'a>,
     lp: gurobi::Model,
+    start_time: time::Instant,
 }
 
 impl<'a> Solver<'a> {
     fn solve(problem: &'a Problem) -> grb::Result<Self> {
+        let start_time = time::Instant::now();
         let mut lp = gurobi::Model::new("irp")?;
         lp.set_objective(0, gurobi::ModelSense::Minimize)?;
         let vars = Variables::new(&problem, &mut lp);
@@ -333,6 +337,7 @@ impl<'a> Solver<'a> {
             problem: &problem,
             vars,
             lp,
+            start_time,
         })
     }
 
@@ -390,6 +395,7 @@ impl<'a> Solver<'a> {
     fn get_solution(&self) -> grb::Result<Solution> {
         let mut sol = Solution {
             routes: Vec::with_capacity(self.problem.num_days),
+            time: self.start_time.elapsed(),
         };
         for t in 0..self.problem.num_days {
             sol.routes.push(Vec::new());
