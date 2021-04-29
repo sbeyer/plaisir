@@ -164,12 +164,30 @@ type Routes = Vec<Vec<Vec<Delivery>>>;
 
 struct Solution {
     routes: Routes,
+    cost_transportation: f64,
+    cost_inventory_depot: f64,
+    cost_inventory_customers: f64,
+    cost_total: f64,
+    // processor
     time: time::Duration,
 }
 
 impl Solution {
-    fn new(routes: Routes, time: time::Duration) -> Self {
-        Solution { routes, time }
+    fn new(problem: &Problem, routes: Routes, time: time::Duration) -> Self {
+        let mut sol = Solution {
+            routes,
+            cost_transportation: 0.,
+            cost_inventory_depot: 0.,
+            cost_inventory_customers: 0.,
+            cost_total: 0.,
+            time,
+        };
+
+        // total cost
+        sol.cost_total =
+            sol.cost_transportation + sol.cost_inventory_depot + sol.cost_inventory_customers;
+
+        sol
     }
 }
 
@@ -192,10 +210,10 @@ impl fmt::Display for Solution {
         }
 
         // Costs
-        writeln!(f, "TODO: Total transportation cost")?;
-        writeln!(f, "TODO: Total inventory cost at customer locations")?;
-        writeln!(f, "TODO: Total inventory cost at the depot")?;
-        writeln!(f, "TODO: Total cost of the solution")?;
+        writeln!(f, "{}", self.cost_transportation)?;
+        writeln!(f, "{}", self.cost_inventory_depot)?;
+        writeln!(f, "{}", self.cost_inventory_customers)?;
+        writeln!(f, "{}", self.cost_total)?;
 
         // Meta
         writeln!(f, "TODO: Processor")?;
@@ -454,6 +472,6 @@ pub fn solve(problem: Problem) {
     let solver = Solver::solve(&problem).unwrap();
     solver.print_raw_solution().unwrap();
     let routes = solver.get_solution_routes().unwrap();
-    let solution = Solution::new(routes, solver.start_time.elapsed());
+    let solution = Solution::new(&problem, routes, solver.start_time.elapsed());
     println!("{}", solution);
 }
