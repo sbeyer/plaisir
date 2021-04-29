@@ -160,9 +160,17 @@ struct Delivery {
     customer: usize,
 }
 
+type Routes = Vec<Vec<Vec<Delivery>>>;
+
 struct Solution {
-    routes: Vec<Vec<Vec<Delivery>>>,
+    routes: Routes,
     time: time::Duration,
+}
+
+impl Solution {
+    fn new(routes: Routes, time: time::Duration) -> Self {
+        Solution { routes, time }
+    }
 }
 
 impl fmt::Display for Solution {
@@ -392,15 +400,13 @@ impl<'a> Solver<'a> {
         }
     }
 
-    fn get_solution(&self) -> grb::Result<Solution> {
-        let mut sol = Solution {
-            routes: Vec::with_capacity(self.problem.num_days),
-            time: self.start_time.elapsed(),
-        };
+    fn get_solution_routes(&self) -> grb::Result<Routes> {
+        let mut routes = Vec::with_capacity(self.problem.num_days);
+
         for t in 0..self.problem.num_days {
-            sol.routes.push(Vec::new());
+            routes.push(Vec::new());
             for _ in 0..self.problem.num_vehicles {
-                sol.routes[t].push(vec![Delivery {
+                routes[t].push(vec![Delivery {
                     quantity: 0,
                     customer: 0,
                 }]);
@@ -411,14 +417,14 @@ impl<'a> Solver<'a> {
             for route in 0..self.problem.num_vehicles {
                 let mut found_something = false;
                 loop {
-                    let i = sol.routes[t][route].last().unwrap().customer;
+                    let i = routes[t][route].last().unwrap().customer;
                     let mut found = false;
                     for j in 1..=self.problem.num_customers {
                         if i != j && !visited[j] {
                             let delivered = self.get_delivery_amount(t, i, j)?;
                             if delivered > 0 {
                                 visited[j] = true;
-                                sol.routes[t][route].push(Delivery {
+                                routes[t][route].push(Delivery {
                                     quantity: delivered,
                                     customer: j.into(),
                                 });
@@ -440,13 +446,14 @@ impl<'a> Solver<'a> {
             }
         }
 
-        Ok(sol)
+        Ok(routes)
     }
 }
 
 pub fn solve(problem: Problem) {
     let solver = Solver::solve(&problem).unwrap();
     solver.print_raw_solution().unwrap();
-    let solution = solver.get_solution().unwrap();
+    let routes = solver.get_solution_routes().unwrap();
+    let solution = Solution::new(routes, solver.start_time.elapsed());
     println!("{}", solution);
 }
