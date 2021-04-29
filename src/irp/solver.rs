@@ -183,6 +183,19 @@ impl Solution {
             time,
         };
 
+        // transportation cost
+        for day_routes in sol.routes.iter() {
+            for route in day_routes.iter() {
+                let mut tour: Vec<usize> = route.iter().map(|x| x.customer).collect();
+                if tour.len() > 1 {
+                    tour.push(0);
+                    for path in tour.windows(2) {
+                        sol.cost_transportation += problem.distance(path[0], path[1]) as f64
+                    }
+                }
+            }
+        }
+
         // total cost
         sol.cost_total =
             sol.cost_transportation + sol.cost_inventory_depot + sol.cost_inventory_customers;
