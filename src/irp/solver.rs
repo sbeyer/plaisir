@@ -198,7 +198,13 @@ impl Solution {
 
         // inventory cost
         let mut inventory: Vec<f64> = (0..=problem.num_customers)
-            .map(|x| problem.start_level(x))
+            .map(|i| problem.start_level(i))
+            .collect();
+        let inventory_change: Vec<f64> = (0..=problem.num_customers)
+            .map(|i| problem.daily_level_change(i))
+            .collect();
+        let inventory_cost: Vec<f64> = (0..=problem.num_customers)
+            .map(|i| problem.daily_cost(i))
             .collect();
         let mut cost_inventory = vec![0.; problem.num_customers + 1];
 
@@ -213,12 +219,12 @@ impl Solution {
 
             // step two: daily change (production at depot, consumption at customers)
             for i in 0..=problem.num_customers {
-                inventory[i] += problem.daily_level_change(i);
+                inventory[i] += inventory_change[i];
             }
 
             // update inventory costs
             for i in 0..=problem.num_customers {
-                cost_inventory[i] += problem.daily_cost(i) * inventory[i]
+                cost_inventory[i] += inventory_cost[i] * inventory[i]
             }
         }
 
