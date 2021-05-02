@@ -196,6 +196,35 @@ impl Solution {
             }
         }
 
+        // inventory cost
+        let mut inventory: Vec<f64> = (0..=problem.num_customers)
+            .map(|x| problem.start_level(x))
+            .collect();
+        let mut cost_inventory = vec![0.; problem.num_customers + 1];
+
+        for day_routes in sol.routes.iter() {
+            // step one: deliveries
+            for route in day_routes.iter() {
+                for Delivery { quantity, customer } in route.iter() {
+                    inventory[*customer] += *quantity as f64;
+                    inventory[0] -= *quantity as f64;
+                }
+            }
+
+            // step two: daily change (production at depot, consumption at customers)
+            for i in 0..=problem.num_customers {
+                inventory[i] += problem.daily_level_change(i);
+            }
+
+            // update inventory costs
+            for i in 0..=problem.num_customers {
+                cost_inventory[i] += problem.daily_cost(i) * inventory[i]
+            }
+        }
+
+        sol.cost_inventory_depot = cost_inventory[0];
+        sol.cost_inventory_customers = cost_inventory[1..].iter().sum();
+
         // total cost
         sol.cost_total =
             sol.cost_transportation + sol.cost_inventory_depot + sol.cost_inventory_customers;
