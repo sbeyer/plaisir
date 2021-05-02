@@ -168,18 +168,19 @@ struct Solution {
     cost_inventory_depot: f64,
     cost_inventory_customers: f64,
     cost_total: f64,
-    // processor
+    processor: String,
     time: time::Duration,
 }
 
 impl Solution {
-    fn new(problem: &Problem, routes: Routes, time: time::Duration) -> Self {
+    fn new(problem: &Problem, routes: Routes, time: time::Duration, cpu: String) -> Self {
         let mut sol = Solution {
             routes,
             cost_transportation: 0.,
             cost_inventory_depot: 0.,
             cost_inventory_customers: 0.,
             cost_total: 0.,
+            processor: cpu,
             time,
         };
 
@@ -258,7 +259,7 @@ impl fmt::Display for Solution {
         writeln!(f, "{}", self.cost_total)?;
 
         // Meta
-        writeln!(f, "TODO: Processor")?;
+        writeln!(f, "{}", self.processor)?;
         writeln!(f, "{}", self.time.as_secs())?;
 
         Ok(())
@@ -510,10 +511,10 @@ impl<'a> Solver<'a> {
     }
 }
 
-pub fn solve(problem: Problem) {
+pub fn solve(problem: Problem, cpu: String) {
     let solver = Solver::solve(&problem).unwrap();
     solver.print_raw_solution().unwrap();
     let routes = solver.get_solution_routes().unwrap();
-    let solution = Solution::new(&problem, routes, solver.start_time.elapsed());
+    let solution = Solution::new(&problem, routes, solver.start_time.elapsed(), cpu);
     println!("{}", solution);
 }

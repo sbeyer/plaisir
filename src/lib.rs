@@ -8,13 +8,14 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let problem = irp::Problem::read_from_file(config.filename)?;
     println!("{}", problem);
 
-    irp::solver::solve(problem);
+    irp::solver::solve(problem, config.cpu);
 
     Ok(())
 }
 
 pub struct Config {
     pub filename: String,
+    pub cpu: String,
 }
 
 impl Config {
@@ -24,7 +25,8 @@ impl Config {
         }
 
         let filename = args[1].clone();
+        let cpu = "Intel Core i5-3320M @ 2.60GHz".to_string(); // hardcoded for now
 
-        Ok(Config { filename })
+        Ok(Config { filename, cpu })
     }
 }
