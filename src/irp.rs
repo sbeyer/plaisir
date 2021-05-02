@@ -12,7 +12,7 @@ pub struct Position {
 
 impl Position {
     pub fn new(x: f64, y: f64) -> Position {
-        Position { x: x, y: y }
+        Position { x, y }
     }
 
     fn real_distance(&self, other: &Self) -> f64 {
@@ -132,16 +132,16 @@ impl Problem {
 
         Ok(Problem {
             num_customers: num_nodes - 1,
-            num_days: num_days,
-            num_vehicles: num_vehicles,
-            capacity: capacity,
+            num_days,
+            num_vehicles,
+            capacity,
             depot: Depot {
                 position: Position::new(depot_x, depot_y),
                 start_level: depot_level,
                 daily_production: depot_production,
                 daily_cost: depot_cost,
             },
-            customers: customers,
+            customers,
         })
     }
 
@@ -183,9 +183,9 @@ impl Problem {
 
     fn daily_cost(&self, site: usize) -> f64 {
         if site == 0 {
-            self.depot.daily_cost.into()
+            self.depot.daily_cost
         } else {
-            self.customers[site - 1].daily_cost.into()
+            self.customers[site - 1].daily_cost
         }
     }
 
@@ -200,15 +200,16 @@ impl Problem {
 
 impl fmt::Display for Problem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
+        writeln!(
             f,
-            "Problem with {} customers for {} days with {} vehicles of capacity {}:\n",
+            "Problem with {} customers for {} days with {} vehicles of capacity {}:",
             self.num_customers, self.num_days, self.num_vehicles, self.capacity
         )?;
-        write!(f, "    {}\n", self.depot)?;
-        Ok(for customer in &self.customers {
-            write!(f, "    {}\n", customer)?
-        })
+        writeln!(f, "    {}", self.depot)?;
+        for customer in &self.customers {
+            writeln!(f, "    {}", customer)?
+        }
+        Ok(())
     }
 }
 

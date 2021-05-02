@@ -28,7 +28,7 @@ impl<'a> Variables<'a> {
                 vars.route[t].push(Vec::with_capacity(problem.num_customers));
                 for j in 0..=problem.num_customers {
                     if i != j {
-                        let name = String::from(format!("r_{}_{}_{}", t, i, j));
+                        let name = format!("r_{}_{}_{}", t, i, j);
                         let coeff = problem.distance(i, j).into();
                         let bounds = (0.0, 1.0);
                         //let var = grb::add_binvar!(lp, name: &name, obj: coeff).unwrap();
@@ -56,7 +56,7 @@ impl<'a> Variables<'a> {
                 vars.carry[t].push(Vec::with_capacity(problem.num_customers));
                 for j in 0..=problem.num_customers {
                     if i != j {
-                        let name = String::from(format!("c_{}_{}_{}", t, i, j));
+                        let name = format!("c_{}_{}_{}", t, i, j);
                         let coeff = 0.0;
                         let bounds = (0.0, problem.capacity.into());
                         let var = lp
@@ -80,7 +80,7 @@ impl<'a> Variables<'a> {
             vars.inventory
                 .push(Vec::with_capacity(problem.num_customers + 1));
             for i in 0..=problem.num_customers {
-                let name = String::from(format!("i_{}_{}", t, i));
+                let name = format!("i_{}_{}", t, i);
                 let coeff = problem.daily_cost(i);
                 let bounds = problem.level_bounds(i);
                 let var = lp
@@ -101,7 +101,7 @@ impl<'a> Variables<'a> {
         for t in 0..problem.num_days {
             vars.deliver.push(Vec::with_capacity(problem.num_customers));
             for i in 1..=problem.num_customers {
-                let name = String::from(format!("d_{}_{}", t, i));
+                let name = format!("d_{}_{}", t, i);
                 let coeff = 0.0;
                 let bounds = (0.0, problem.capacity.into());
                 let var = lp
@@ -486,7 +486,7 @@ impl<'a> Solver<'a> {
                                 visited[j] = true;
                                 routes[t][route].push(Delivery {
                                     quantity: delivered,
-                                    customer: j.into(),
+                                    customer: j,
                                 });
                                 found = true;
                                 found_something = true;
