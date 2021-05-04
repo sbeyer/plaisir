@@ -89,7 +89,7 @@ impl<'a> Variables<'a> {
                         gurobi::VarType::Continuous,
                         coeff,
                         bounds.0,
-                        bounds.1,
+                        bounds.1 + problem.daily_level_change(i),
                         std::iter::empty(),
                     )
                     .unwrap();
