@@ -4,28 +4,39 @@ use std::time;
 
 struct Variables<'a> {
     problem: &'a Problem,
-    route: Vec<Vec<Vec<gurobi::Var>>>,
-    carry: Vec<Vec<Vec<gurobi::Var>>>,
-    deliver: Vec<Vec<gurobi::Var>>,
-    inventory: Vec<Vec<gurobi::Var>>,
+    variables: Vec<gurobi::Var>,
+    route_range: (usize, usize),
+    deliver_range: (usize, usize),
+    carry_range: (usize, usize),
+    inventory_range: (usize, usize),
 }
 
 impl<'a> Variables<'a> {
     fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> Self {
+        let route: Vec<Vec<Vec<gurobi::Var>>> = Vec::with_capacity(problem.num_days);
+        let carry: Vec<Vec<Vec<gurobi::Var>>> = Vec::with_capacity(problem.num_days);
+        let deliver: Vec<Vec<gurobi::Var>> = Vec::with_capacity(problem.num_days);
+        let inventory: Vec<Vec<gurobi::Var>> = Vec::with_capacity(problem.num_days);
+        // Number of variables necessary for...
+        //  # route: problem.num_days * (problem.num_customers + 1) * problem.num_customers
+        //  # carry: problem.num_days * (problem.num_customers + 1) * problem.num_customers
+        //  # inventory: problem.num_days * (problem.num_customers + 1)
+        //  # deliver: problem.num_days * problem.num_customers
+        // This is in sum:
+        let num_variables =
+            ((2 * problem.num_customers + 4) * problem.num_customers + 1) * problem.num_days;
         let mut vars = Variables {
             problem: &problem,
-            route: Vec::with_capacity(problem.num_days),
-            carry: Vec::with_capacity(problem.num_days),
-            deliver: Vec::with_capacity(problem.num_days),
-            inventory: Vec::with_capacity(problem.num_days),
+            variables: Vec::with_capacity(num_variables),
+            route_range: (0, num_variables),
+            deliver_range: (0, num_variables),
+            carry_range: (0, num_variables),
+            inventory_range: (0, num_variables),
         };
 
         // route variables
         for t in 0..problem.num_days {
-            vars.route
-                .push(Vec::with_capacity(problem.num_customers + 1));
             for i in 0..=problem.num_customers {
-                vars.route[t].push(Vec::with_capacity(problem.num_customers));
                 for j in 0..=problem.num_customers {
                     if i != j {
                         let name = format!("r_{}_{}_{}", t, i, j);
@@ -42,18 +53,18 @@ impl<'a> Variables<'a> {
                                 std::iter::empty(),
                             )
                             .unwrap();
-                        vars.route[t][i].push(var);
+                        debug_assert!(vars.variables.len() == vars.route_index(t, i, j));
+                        vars.variables.push(var);
                     }
                 }
             }
         }
+        vars.route_range.1 = vars.variables.len();
 
         // carry variables
+        vars.carry_range.0 = vars.route_range.1;
         for t in 0..problem.num_days {
-            vars.carry
-                .push(Vec::with_capacity(problem.num_customers + 1));
             for i in 0..=problem.num_customers {
-                vars.carry[t].push(Vec::with_capacity(problem.num_customers));
                 for j in 0..=problem.num_customers {
                     if i != j {
                         let name = format!("c_{}_{}_{}", t, i, j);
@@ -69,16 +80,17 @@ impl<'a> Variables<'a> {
                                 std::iter::empty(),
                             )
                             .unwrap();
-                        vars.carry[t][i].push(var);
+                        debug_assert!(vars.variables.len() == vars.carry_index(t, i, j));
+                        vars.variables.push(var);
                     }
                 }
             }
         }
+        vars.carry_range.1 = vars.variables.len();
 
         // inventory variables
+        vars.inventory_range.0 = vars.carry_range.1;
         for t in 0..problem.num_days {
-            vars.inventory
-                .push(Vec::with_capacity(problem.num_customers + 1));
             for i in 0..=problem.num_customers {
                 let name = format!("i_{}_{}", t, i);
                 let coeff = problem.daily_cost(i);
@@ -93,13 +105,15 @@ impl<'a> Variables<'a> {
                         std::iter::empty(),
                     )
                     .unwrap();
-                vars.inventory[t].push(var);
+                debug_assert!(vars.variables.len() == vars.inventory_index(t, i));
+                vars.variables.push(var);
             }
         }
+        vars.inventory_range.1 = vars.variables.len();
 
         // deliver variables
+        vars.deliver_range.0 = vars.inventory_range.1;
         for t in 0..problem.num_days {
-            vars.deliver.push(Vec::with_capacity(problem.num_customers));
             for i in 1..=problem.num_customers {
                 let name = format!("d_{}_{}", t, i);
                 let coeff = 0.0;
@@ -114,44 +128,84 @@ impl<'a> Variables<'a> {
                         std::iter::empty(),
                     )
                     .unwrap();
-                vars.deliver[t].push(var);
+                debug_assert!(vars.variables.len() == vars.deliver_index(t, i));
+                vars.variables.push(var);
             }
         }
+        vars.deliver_range.1 = vars.variables.len();
 
         vars
     }
 
-    fn route(&self, t: usize, i: usize, j: usize) -> gurobi::Var {
+    fn route_index(&self, t: usize, i: usize, j: usize) -> usize {
         debug_assert!(t < self.problem.num_days);
         debug_assert!(i <= self.problem.num_customers);
         debug_assert!(j <= self.problem.num_customers);
         debug_assert!(i != j);
 
-        self.route[t][i][if j > i { j - 1 } else { j }]
+        let j_block_size = self.problem.num_customers;
+        let i_j_block_size = (self.problem.num_customers + 1) * j_block_size;
+        let offset = self.route_range.0 + t * i_j_block_size + i * j_block_size;
+        let result = offset + (if j > i { j - 1 } else { j });
+        debug_assert!(result < self.route_range.1);
+
+        result
+    }
+
+    fn route(&self, t: usize, i: usize, j: usize) -> gurobi::Var {
+        self.variables[self.route_index(t, i, j)]
+    }
+
+    fn carry_index(&self, t: usize, i: usize, j: usize) -> usize {
+        debug_assert!(t < self.problem.num_days);
+        debug_assert!(i <= self.problem.num_customers);
+        debug_assert!(j <= self.problem.num_customers);
+        debug_assert!(i != j);
+
+        let j_block_size = self.problem.num_customers;
+        let i_j_block_size = (self.problem.num_customers + 1) * j_block_size;
+        let offset = self.carry_range.0 + t * i_j_block_size + i * j_block_size;
+        let result = offset + (if j > i { j - 1 } else { j });
+        debug_assert!(result < self.carry_range.1);
+
+        result
     }
 
     fn carry(&self, t: usize, i: usize, j: usize) -> gurobi::Var {
+        self.variables[self.carry_index(t, i, j)]
+    }
+
+    fn inventory_index(&self, t: usize, i: usize) -> usize {
         debug_assert!(t < self.problem.num_days);
         debug_assert!(i <= self.problem.num_customers);
-        debug_assert!(j <= self.problem.num_customers);
-        debug_assert!(i != j);
 
-        self.carry[t][i][if j > i { j - 1 } else { j }]
+        let i_block_size = self.problem.num_customers + 1;
+        let offset = self.inventory_range.0 + t * i_block_size;
+        let result = offset + i;
+        debug_assert!(result < self.inventory_range.1);
+
+        result
     }
 
     fn inventory(&self, t: usize, i: usize) -> gurobi::Var {
-        debug_assert!(t < self.problem.num_days);
-        debug_assert!(i <= self.problem.num_customers);
-
-        self.inventory[t][i]
+        self.variables[self.inventory_index(t, i)]
     }
 
-    fn deliver(&self, t: usize, i: usize) -> gurobi::Var {
+    fn deliver_index(&self, t: usize, i: usize) -> usize {
         debug_assert!(t < self.problem.num_days);
         debug_assert!(i >= 1);
         debug_assert!(i <= self.problem.num_customers);
 
-        self.deliver[t][i - 1]
+        let i_block_size = self.problem.num_customers;
+        let offset = self.deliver_range.0 + t * i_block_size;
+        let result = offset + i - 1;
+        debug_assert!(result < self.deliver_range.1);
+
+        result
+    }
+
+    fn deliver(&self, t: usize, i: usize) -> gurobi::Var {
+        self.variables[self.deliver_index(t, i)]
     }
 }
 
