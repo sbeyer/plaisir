@@ -316,202 +316,50 @@ impl fmt::Display for Solution {
     }
 }
 
-struct Solver<'a> {
+struct SolverData<'a> {
     problem: &'a Problem,
     vars: Variables<'a>,
-    lp: gurobi::Model,
     start_time: time::Instant,
+    cpu: String,
+    ncalls: usize,
 }
 
-impl<'a> Solver<'a> {
-    fn solve(problem: &'a Problem) -> grb::Result<Self> {
+impl<'a> SolverData<'a> {
+    fn new(problem: &'a Problem, lp: &mut gurobi::Model, cpu: String) -> Self {
         let start_time = time::Instant::now();
-        let mut lp = gurobi::Model::new("irp")?;
-        lp.set_objective(0, gurobi::ModelSense::Minimize)?;
-        let vars = Variables::new(&problem, &mut lp);
-
-        // at most m vehicles for the routing
-        for t in 0..problem.num_days {
-            let mut lhs = grb::expr::LinExpr::new();
-            for j in 1..=problem.num_customers {
-                lhs.add_term(1.0, vars.route(t, 0, j));
-            }
-
-            lp.add_constr("Rmv", grb::c!(lhs <= problem.num_vehicles))?;
-        }
-
-        // route flow node-disjointness (at most one visit)
-        for t in 0..problem.num_days {
-            for i in 1..=problem.num_customers {
-                let mut lhs = grb::expr::LinExpr::new();
-                for j in 0..=problem.num_customers {
-                    if i != j {
-                        lhs.add_term(1.0, vars.route(t, j, i));
-                    }
-                }
-
-                lp.add_constr("Rnd", grb::c!(lhs <= 1.0))?;
-            }
-        }
-
-        // route flow conservation
-        for t in 0..problem.num_days {
-            for i in 1..=problem.num_customers {
-                let mut lhs = grb::expr::LinExpr::new();
-                for j in 0..=problem.num_customers {
-                    if i != j {
-                        lhs.add_term(1.0, vars.route(t, j, i));
-                        lhs.add_term(-1.0, vars.route(t, i, j));
-                    }
-                }
-
-                lp.add_constr("Rfc", grb::c!(lhs == 0.0))?;
-            }
-        }
-
-        // glue: disable carry flow if we have no route flow
-        for t in 0..problem.num_days {
-            for i in 0..=problem.num_customers {
-                for j in 0..=problem.num_customers {
-                    if j != i {
-                        let mut lhs = grb::expr::LinExpr::new();
-                        lhs.add_term(problem.capacity as f64, vars.route(t, i, j));
-                        lhs.add_term(-1.0, vars.carry(t, i, j));
-
-                        lp.add_constr("Gcr", grb::c!(lhs >= 0.0))?;
-                    }
-                }
-            }
-        }
-
-        // don't carry too much
-        let max_amount = problem.capacity as f64 * problem.num_vehicles as f64;
-        for t in 0..problem.num_days {
-            let mut lhs = grb::expr::LinExpr::new();
-            for j in 1..=problem.num_customers {
-                lhs.add_term(1.0, vars.carry(t, 0, j));
-            }
-            lp.add_constr("Clim", grb::c!(lhs <= max_amount))?;
-        }
-
-        // carry and deliver flow
-        for t in 0..problem.num_days {
-            for i in 1..=problem.num_customers {
-                let mut lhs = grb::expr::LinExpr::new();
-                for j in 0..=problem.num_customers {
-                    if j != i {
-                        lhs.add_term(1.0, vars.carry(t, j, i)); // incoming carry
-                    }
-                }
-                for j in 1..=problem.num_customers {
-                    if j != i {
-                        lhs.add_term(-1.0, vars.carry(t, i, j)); // outgoing carry
-                    }
-                }
-                lhs.add_term(-1.0, vars.deliver(t, i)); // deliver to customer
-
-                lp.add_constr("CDf", grb::c!(lhs == 0.0))?;
-            }
-        }
-
-        // inventory flow for depot
-        for t in 0..problem.num_days {
-            let mut lhs = grb::expr::LinExpr::new();
-            for j in 1..=problem.num_customers {
-                lhs.add_term(-1.0, vars.carry(t, 0, j)); // outgoing carry
-            }
-            lhs.add_term(-1.0, vars.inventory(t, 0)); // outgoing inventory
-            let mut value = -problem.daily_level_change(0);
-
-            if t == 0 {
-                value -= problem.start_level(0);
-            } else {
-                lhs.add_term(1.0, vars.inventory(t - 1, 0)); // incoming inventory
-            }
-
-            lp.add_constr("Ifd", grb::c!(lhs == value))?;
-        }
-
-        // inventory flow for customers
-        for t in 0..problem.num_days {
-            for i in 1..=problem.num_customers {
-                let mut lhs = grb::expr::LinExpr::new();
-                lhs.add_term(1.0, vars.deliver(t, i)); // delivered
-                lhs.add_term(-1.0, vars.inventory(t, i)); // outgoing inventory
-                let mut value = -problem.daily_level_change(i);
-
-                if t == 0 {
-                    value -= problem.start_level(i);
-                } else {
-                    lhs.add_term(1.0, vars.inventory(t - 1, i)); // incoming inventory
-                }
-
-                lp.add_constr("Ifc", grb::c!(lhs == value))?;
-            }
-        }
-
-        lp.optimize()?;
-
-        Ok(Self {
-            problem: &problem,
+        let vars = Variables::new(&problem, lp);
+        SolverData {
+            problem,
             vars,
-            lp,
             start_time,
-        })
-    }
-
-    fn print_raw_variable(&self, var: &gurobi::Var) -> grb::Result<()> {
-        let name = self.lp.get_obj_attr(grb::attr::VarName, &var)?;
-        let value = self.lp.get_obj_attr(grb::attr::X, &var)?;
-        if value > 0. {
-            println!("  - {}: {}", name, value);
+            cpu,
+            ncalls: 0,
         }
-        Ok(())
     }
 
-    fn print_raw_solution(&self) -> grb::Result<()> {
-        let status = self.lp.status()?;
-        println!("MIP solution status: {:?}", status);
-
-        let objective = self.lp.get_attr(gurobi::attr::ObjVal)?;
-        println!("MIP solution value: {}", objective);
-
-        // print raw solution:
-        for t in 0..self.problem.num_days {
-            for i in 0..=self.problem.num_customers {
-                for j in 0..=self.problem.num_customers {
-                    if i != j {
-                        self.print_raw_variable(&self.vars.route(t, i, j))?;
-                        self.print_raw_variable(&self.vars.carry(t, i, j))?;
-                    }
-                }
-            }
-
-            for i in 0..=self.problem.num_customers {
-                self.print_raw_variable(&self.vars.inventory(t, i))?;
-            }
-
-            for i in 1..=self.problem.num_customers {
-                self.print_raw_variable(&self.vars.deliver(t, i))?;
-            }
-        }
-
-        Ok(())
+    fn elapsed_time(&self) -> time::Duration {
+        self.start_time.elapsed()
     }
 
-    fn get_delivery_amount(&self, t: usize, source: usize, target: usize) -> grb::Result<usize> {
-        let var_route = self.vars.route(t, source, target);
-        let delivered = self.lp.get_obj_attr(grb::attr::X, &var_route)?;
+    fn get_delivery_amount(
+        &self,
+        solution: &[f64],
+        t: usize,
+        source: usize,
+        target: usize,
+    ) -> usize {
+        let var_route = self.vars.route_index(t, source, target);
+        let delivered = solution[var_route];
         if delivered > 0. {
-            let var_deliver = self.vars.deliver(t, target);
-            let quantity = self.lp.get_obj_attr(grb::attr::X, &var_deliver)?;
-            Ok(quantity.round() as usize)
+            let var_deliver = self.vars.deliver_index(t, target);
+            let quantity = solution[var_deliver];
+            quantity.round() as usize
         } else {
-            Ok(0)
+            0
         }
     }
 
-    fn get_solution_routes(&self) -> grb::Result<Routes> {
+    fn get_routes(&self, solution: Vec<f64>) -> Routes {
         let mut routes = Vec::with_capacity(self.problem.num_days);
 
         for t in 0..self.problem.num_days {
@@ -532,7 +380,7 @@ impl<'a> Solver<'a> {
                     let mut found = false;
                     for j in 1..=self.problem.num_customers {
                         if i != j && !visited[j] {
-                            let delivered = self.get_delivery_amount(t, i, j)?;
+                            let delivered = self.get_delivery_amount(&solution, t, i, j);
                             if delivered > 0 {
                                 visited[j] = true;
                                 routes[t][route].push(Delivery {
@@ -557,14 +405,188 @@ impl<'a> Solver<'a> {
             }
         }
 
-        Ok(routes)
+        routes
+    }
+}
+
+impl<'a> grb::callback::Callback for SolverData<'a> {
+    fn callback(&mut self, w: gurobi::Where) -> grb::callback::CbResult {
+        if let gurobi::Where::MIPSol(ctx) = w {
+            println!("Incumbent {}!", self.ncalls);
+            self.ncalls += 1;
+            let assignment = ctx.get_solution(&self.vars.variables)?;
+            let routes = self.get_routes(assignment);
+            let solution =
+                Solution::new(&self.problem, routes, self.elapsed_time(), self.cpu.clone());
+            println!("{}", solution);
+        }
+
+        Ok(())
+    }
+}
+
+struct Solver {}
+
+impl Solver {
+    fn solve(problem: &Problem, cpu: String) -> grb::Result<()> {
+        let mut lp = gurobi::Model::new("irp")?;
+        lp.set_objective(0, gurobi::ModelSense::Minimize)?;
+        let mut data = SolverData::new(&problem, &mut lp, cpu);
+
+        // at most m vehicles for the routing
+        for t in 0..problem.num_days {
+            let mut lhs = grb::expr::LinExpr::new();
+            for j in 1..=problem.num_customers {
+                lhs.add_term(1.0, data.vars.route(t, 0, j));
+            }
+
+            lp.add_constr("Rmv", grb::c!(lhs <= problem.num_vehicles))?;
+        }
+
+        // route flow node-disjointness (at most one visit)
+        for t in 0..problem.num_days {
+            for i in 1..=problem.num_customers {
+                let mut lhs = grb::expr::LinExpr::new();
+                for j in 0..=problem.num_customers {
+                    if i != j {
+                        lhs.add_term(1.0, data.vars.route(t, j, i));
+                    }
+                }
+
+                lp.add_constr("Rnd", grb::c!(lhs <= 1.0))?;
+            }
+        }
+
+        // route flow conservation
+        for t in 0..problem.num_days {
+            for i in 1..=problem.num_customers {
+                let mut lhs = grb::expr::LinExpr::new();
+                for j in 0..=problem.num_customers {
+                    if i != j {
+                        lhs.add_term(1.0, data.vars.route(t, j, i));
+                        lhs.add_term(-1.0, data.vars.route(t, i, j));
+                    }
+                }
+
+                lp.add_constr("Rfc", grb::c!(lhs == 0.0))?;
+            }
+        }
+
+        // glue: disable carry flow if we have no route flow
+        for t in 0..problem.num_days {
+            for i in 0..=problem.num_customers {
+                for j in 0..=problem.num_customers {
+                    if j != i {
+                        let mut lhs = grb::expr::LinExpr::new();
+                        lhs.add_term(problem.capacity as f64, data.vars.route(t, i, j));
+                        lhs.add_term(-1.0, data.vars.carry(t, i, j));
+
+                        lp.add_constr("Gcr", grb::c!(lhs >= 0.0))?;
+                    }
+                }
+            }
+        }
+
+        // don't carry too much
+        let max_amount = problem.capacity as f64 * problem.num_vehicles as f64;
+        for t in 0..problem.num_days {
+            let mut lhs = grb::expr::LinExpr::new();
+            for j in 1..=problem.num_customers {
+                lhs.add_term(1.0, data.vars.carry(t, 0, j));
+            }
+            lp.add_constr("Clim", grb::c!(lhs <= max_amount))?;
+        }
+
+        // carry and deliver flow
+        for t in 0..problem.num_days {
+            for i in 1..=problem.num_customers {
+                let mut lhs = grb::expr::LinExpr::new();
+                for j in 0..=problem.num_customers {
+                    if j != i {
+                        lhs.add_term(1.0, data.vars.carry(t, j, i)); // incoming carry
+                    }
+                }
+                for j in 1..=problem.num_customers {
+                    if j != i {
+                        lhs.add_term(-1.0, data.vars.carry(t, i, j)); // outgoing carry
+                    }
+                }
+                lhs.add_term(-1.0, data.vars.deliver(t, i)); // deliver to customer
+
+                lp.add_constr("CDf", grb::c!(lhs == 0.0))?;
+            }
+        }
+
+        // inventory flow for depot
+        for t in 0..problem.num_days {
+            let mut lhs = grb::expr::LinExpr::new();
+            for j in 1..=problem.num_customers {
+                lhs.add_term(-1.0, data.vars.carry(t, 0, j)); // outgoing carry
+            }
+            lhs.add_term(-1.0, data.vars.inventory(t, 0)); // outgoing inventory
+            let mut value = -problem.daily_level_change(0);
+
+            if t == 0 {
+                value -= problem.start_level(0);
+            } else {
+                lhs.add_term(1.0, data.vars.inventory(t - 1, 0)); // incoming inventory
+            }
+
+            lp.add_constr("Ifd", grb::c!(lhs == value))?;
+        }
+
+        // inventory flow for customers
+        for t in 0..problem.num_days {
+            for i in 1..=problem.num_customers {
+                let mut lhs = grb::expr::LinExpr::new();
+                lhs.add_term(1.0, data.vars.deliver(t, i)); // delivered
+                lhs.add_term(-1.0, data.vars.inventory(t, i)); // outgoing inventory
+                let mut value = -problem.daily_level_change(i);
+
+                if t == 0 {
+                    value -= problem.start_level(i);
+                } else {
+                    lhs.add_term(1.0, data.vars.inventory(t - 1, i)); // incoming inventory
+                }
+
+                lp.add_constr("Ifc", grb::c!(lhs == value))?;
+            }
+        }
+
+        //lp.write("/tmp/foo.lp")?;
+        lp.optimize_with_callback(&mut data)?;
+
+        Self::print_raw_solution(&data, &lp)?;
+
+        let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
+        let routes = data.get_routes(assignment);
+        let solution = Solution::new(&problem, routes, data.elapsed_time(), data.cpu);
+        println!("{}", solution);
+
+        Ok(())
+    }
+
+    fn print_raw_solution(data: &SolverData, lp: &gurobi::Model) -> grb::Result<()> {
+        let status = lp.status()?;
+        println!("MIP solution status: {:?}", status);
+
+        let objective = lp.get_attr(gurobi::attr::ObjVal)?;
+        println!("MIP solution value: {}", objective);
+
+        // print raw solution:
+        for var in data.vars.variables.iter() {
+            let name = lp.get_obj_attr(grb::attr::VarName, &var)?;
+            let value = lp.get_obj_attr(grb::attr::X, &var)?;
+            if value > 0. {
+                println!("  - {}: {}", name, value);
+            }
+        }
+        println!();
+
+        Ok(())
     }
 }
 
 pub fn solve(problem: Problem, cpu: String) {
-    let solver = Solver::solve(&problem).unwrap();
-    solver.print_raw_solution().unwrap();
-    let routes = solver.get_solution_routes().unwrap();
-    let solution = Solution::new(&problem, routes, solver.start_time.elapsed(), cpu);
-    println!("{}", solution);
+    Solver::solve(&problem, cpu).unwrap();
 }
