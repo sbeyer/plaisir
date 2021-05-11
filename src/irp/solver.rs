@@ -13,10 +13,6 @@ struct Variables<'a> {
 
 impl<'a> Variables<'a> {
     fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> Self {
-        let route: Vec<Vec<Vec<gurobi::Var>>> = Vec::with_capacity(problem.num_days);
-        let carry: Vec<Vec<Vec<gurobi::Var>>> = Vec::with_capacity(problem.num_days);
-        let deliver: Vec<Vec<gurobi::Var>> = Vec::with_capacity(problem.num_days);
-        let inventory: Vec<Vec<gurobi::Var>> = Vec::with_capacity(problem.num_days);
         // Number of variables necessary for...
         //  # route: problem.num_days * (problem.num_customers + 1) * problem.num_customers
         //  # carry: problem.num_days * (problem.num_customers + 1) * problem.num_customers
