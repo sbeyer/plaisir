@@ -319,6 +319,7 @@ impl fmt::Display for Solution {
 struct SolverData<'a> {
     problem: &'a Problem,
     vars: Variables<'a>,
+    varnames: Vec<String>,
     start_time: time::Instant,
     cpu: String,
     ncalls: usize,
@@ -328,9 +329,16 @@ impl<'a> SolverData<'a> {
     fn new(problem: &'a Problem, lp: &mut gurobi::Model, cpu: String) -> Self {
         let start_time = time::Instant::now();
         let vars = Variables::new(&problem, lp);
+        lp.update().unwrap(); // update to access variable names
+        let varnames = vars
+            .variables
+            .iter()
+            .map(|var| lp.get_obj_attr(grb::attr::VarName, &var).unwrap())
+            .collect();
         SolverData {
             problem,
             vars,
+            varnames,
             start_time,
             cpu,
             ncalls: 0,
@@ -359,7 +367,7 @@ impl<'a> SolverData<'a> {
         }
     }
 
-    fn get_routes(&self, solution: Vec<f64>) -> Routes {
+    fn get_routes(&self, solution: &Vec<f64>) -> Routes {
         let mut routes = Vec::with_capacity(self.problem.num_days);
 
         for t in 0..self.problem.num_days {
@@ -412,13 +420,22 @@ impl<'a> SolverData<'a> {
 impl<'a> grb::callback::Callback for SolverData<'a> {
     fn callback(&mut self, w: gurobi::Where) -> grb::callback::CbResult {
         if let gurobi::Where::MIPSol(ctx) = w {
-            println!("Incumbent {}!", self.ncalls);
             self.ncalls += 1;
             let assignment = ctx.get_solution(&self.vars.variables)?;
-            let routes = self.get_routes(assignment);
+            let routes = self.get_routes(&assignment);
             let solution =
                 Solution::new(&self.problem, routes, self.elapsed_time(), self.cpu.clone());
-            println!("{}", solution);
+            eprintln!("# Incumbent {}!", self.ncalls);
+            eprintln!("#    current obj: {}", ctx.obj()?);
+            eprintln!("#       best obj: {}", ctx.obj_best()?);
+
+            self.varnames
+                .iter()
+                .zip(assignment.iter())
+                .filter(|(_, &value)| value > 0.)
+                .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+
+            eprintln!("{}", solution);
         }
 
         Ok(())
@@ -559,29 +576,29 @@ impl Solver {
         Self::print_raw_solution(&data, &lp)?;
 
         let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
-        let routes = data.get_routes(assignment);
+        let routes = data.get_routes(&assignment);
         let solution = Solution::new(&problem, routes, data.elapsed_time(), data.cpu);
-        println!("{}", solution);
+        eprintln!("# Final solution");
+        eprintln!("{}", solution);
 
         Ok(())
     }
 
     fn print_raw_solution(data: &SolverData, lp: &gurobi::Model) -> grb::Result<()> {
         let status = lp.status()?;
-        println!("MIP solution status: {:?}", status);
+        eprintln!("# MIP solution status: {:?}", status);
 
         let objective = lp.get_attr(gurobi::attr::ObjVal)?;
-        println!("MIP solution value: {}", objective);
+        eprintln!("# MIP solution value: {}", objective);
 
         // print raw solution:
         for var in data.vars.variables.iter() {
             let name = lp.get_obj_attr(grb::attr::VarName, &var)?;
             let value = lp.get_obj_attr(grb::attr::X, &var)?;
             if value > 0. {
-                println!("  - {}: {}", name, value);
+                eprintln!("#   - {}: {}", name, value);
             }
         }
-        println!();
 
         Ok(())
     }
