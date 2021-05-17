@@ -310,7 +310,7 @@ impl fmt::Display for Solution {
 
         // Meta
         writeln!(f, "{}", self.processor)?;
-        writeln!(f, "{}", self.time.as_secs())?;
+        writeln!(f, "{}", self.time.as_millis() as f64 * 1e-3)?;
 
         Ok(())
     }
