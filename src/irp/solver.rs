@@ -375,21 +375,23 @@ impl<'a> SolverData<'a> {
             let mut visited = vec![false; self.problem.num_customers + 1];
             visited[0] = true;
             for route in 0..self.problem.num_vehicles {
-                let mut found_something = false;
+                let mut i = 0; // last visited location
                 loop {
-                    let i = routes[t][route].last().unwrap().customer;
                     let mut found = false;
                     for j in 1..=self.problem.num_customers {
                         if i != j && !visited[j] {
                             if self.is_delivered(&solution, t, i, j) {
                                 let quantity = self.get_delivery_amount(&solution, t, j);
                                 visited[j] = true;
-                                routes[t][route].push(Delivery {
-                                    quantity,
-                                    customer: j,
-                                });
+                                i = j;
                                 found = true;
-                                found_something = true;
+
+                                if quantity > 0 {
+                                    routes[t][route].push(Delivery {
+                                        quantity,
+                                        customer: j,
+                                    });
+                                }
                                 break;
                             }
                         }
@@ -400,7 +402,8 @@ impl<'a> SolverData<'a> {
                     }
                 }
 
-                if !found_something {
+                if i == 0 {
+                    // nothing found, no need to check further routes
                     break;
                 }
             }
