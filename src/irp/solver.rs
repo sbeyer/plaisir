@@ -349,22 +349,15 @@ impl<'a> SolverData<'a> {
         self.start_time.elapsed()
     }
 
-    fn get_delivery_amount(
-        &self,
-        solution: &[f64],
-        t: usize,
-        source: usize,
-        target: usize,
-    ) -> usize {
+    fn is_delivered(&self, solution: &[f64], t: usize, source: usize, target: usize) -> bool {
         let var_route = self.vars.route_index(t, source, target);
-        let delivered = solution[var_route];
-        if delivered > 0. {
-            let var_deliver = self.vars.deliver_index(t, target);
-            let quantity = solution[var_deliver];
-            quantity.round() as usize
-        } else {
-            0
-        }
+        solution[var_route] > 0.
+    }
+
+    fn get_delivery_amount(&self, solution: &[f64], t: usize, target: usize) -> usize {
+        let var_deliver = self.vars.deliver_index(t, target);
+        let quantity = solution[var_deliver];
+        quantity.round() as usize
     }
 
     fn get_routes(&self, solution: &Vec<f64>) -> Routes {
@@ -388,11 +381,11 @@ impl<'a> SolverData<'a> {
                     let mut found = false;
                     for j in 1..=self.problem.num_customers {
                         if i != j && !visited[j] {
-                            let delivered = self.get_delivery_amount(&solution, t, i, j);
-                            if delivered > 0 {
+                            if self.is_delivered(&solution, t, i, j) {
+                                let quantity = self.get_delivery_amount(&solution, t, j);
                                 visited[j] = true;
                                 routes[t][route].push(Delivery {
-                                    quantity: delivered,
+                                    quantity,
                                     customer: j,
                                 });
                                 found = true;
