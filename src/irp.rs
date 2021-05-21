@@ -146,6 +146,7 @@ impl Problem {
     }
 
     fn distance(&self, i: usize, j: usize) -> i32 {
+        #[allow(clippy::comparison_chain)]
         if i == j {
             0
         } else if i > j {

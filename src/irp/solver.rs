@@ -263,6 +263,7 @@ impl Solution {
             }
 
             // step two: daily change (production at depot, consumption at customers)
+            #[allow(clippy::needless_range_loop)]
             for i in 0..=problem.num_customers {
                 inventory[i] += problem.daily_level_change(i);
             }
@@ -380,6 +381,8 @@ impl<'a> SolverData<'a> {
                 let mut i = 0; // last visited location
                 loop {
                     let mut found = false;
+
+                    #[allow(clippy::needless_range_loop)]
                     for j in 1..=self.problem.num_customers {
                         if i != j && !visited[j] && self.is_delivered(&solution, t, i, j) {
                             let quantity = self.get_delivery_amount(&solution, t, j);
