@@ -362,7 +362,7 @@ impl<'a> SolverData<'a> {
         quantity.round() as usize
     }
 
-    fn get_routes(&self, solution: &Vec<f64>) -> Routes {
+    fn get_routes(&self, solution: &[f64]) -> Routes {
         let mut routes = Vec::with_capacity(self.problem.num_days);
 
         for t in 0..self.problem.num_days {
@@ -381,21 +381,19 @@ impl<'a> SolverData<'a> {
                 loop {
                     let mut found = false;
                     for j in 1..=self.problem.num_customers {
-                        if i != j && !visited[j] {
-                            if self.is_delivered(&solution, t, i, j) {
-                                let quantity = self.get_delivery_amount(&solution, t, j);
-                                visited[j] = true;
-                                i = j;
-                                found = true;
+                        if i != j && !visited[j] && self.is_delivered(&solution, t, i, j) {
+                            let quantity = self.get_delivery_amount(&solution, t, j);
+                            visited[j] = true;
+                            i = j;
+                            found = true;
 
-                                if quantity > 0 {
-                                    routes[t][route].push(Delivery {
-                                        quantity,
-                                        customer: j,
-                                    });
-                                }
-                                break;
+                            if quantity > 0 {
+                                routes[t][route].push(Delivery {
+                                    quantity,
+                                    customer: j,
+                                });
                             }
+                            break;
                         }
                     }
 
