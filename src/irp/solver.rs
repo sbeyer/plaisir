@@ -326,6 +326,8 @@ struct SolverData<'a> {
 }
 
 impl<'a> SolverData<'a> {
+    const EPSILON: f64 = 1e-7;
+
     fn new(problem: &'a Problem, lp: &mut gurobi::Model, cpu: String) -> Self {
         let start_time = time::Instant::now();
         let vars = Variables::new(&problem, lp);
@@ -351,7 +353,7 @@ impl<'a> SolverData<'a> {
 
     fn is_delivered(&self, solution: &[f64], t: usize, source: usize, target: usize) -> bool {
         let var_route = self.vars.route_index(t, source, target);
-        solution[var_route] > 0.
+        solution[var_route] > Self::EPSILON
     }
 
     fn get_delivery_amount(&self, solution: &[f64], t: usize, target: usize) -> usize {
@@ -428,7 +430,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
             self.varnames
                 .iter()
                 .zip(assignment.iter())
-                .filter(|(_, &value)| value > 0.)
+                .filter(|(_, &value)| value > Self::EPSILON)
                 .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
 
             eprintln!("{}", solution);
@@ -591,7 +593,7 @@ impl Solver {
         for var in data.vars.variables.iter() {
             let name = lp.get_obj_attr(grb::attr::VarName, &var)?;
             let value = lp.get_obj_attr(grb::attr::X, &var)?;
-            if value > 0. {
+            if value > SolverData::EPSILON {
                 eprintln!("#   - {}: {}", name, value);
             }
         }
