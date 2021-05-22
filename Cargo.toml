@@ -9,3 +9,7 @@ edition = "2018"
 [dependencies]
 grb = "1.0.3"
 thiserror = "1.0.24"
+
+[dev-dependencies.cargo-husky]
+version = "1"
+features = ["precommit-hook", "run-cargo-check", "run-cargo-clippy", "run-cargo-fmt"]
