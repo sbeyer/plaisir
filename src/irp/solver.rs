@@ -305,9 +305,9 @@ impl fmt::Display for Solution {
 
         // Costs
         writeln!(f, "{}", self.cost_transportation)?;
-        writeln!(f, "{}", self.cost_inventory_customers)?;
-        writeln!(f, "{}", self.cost_inventory_depot)?;
-        writeln!(f, "{}", self.cost_total)?;
+        writeln!(f, "{:.2}", self.cost_inventory_customers)?;
+        writeln!(f, "{:.2}", self.cost_inventory_depot)?;
+        writeln!(f, "{:.2}", self.cost_total)?;
 
         // Meta
         writeln!(f, "{}", self.processor)?;
