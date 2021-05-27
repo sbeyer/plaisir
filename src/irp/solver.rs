@@ -13,14 +13,16 @@ struct Variables<'a> {
 
 impl<'a> Variables<'a> {
     fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> Self {
-        // Number of variables necessary for...
-        //  # route: problem.num_days * (problem.num_customers + 1) * problem.num_customers
-        //  # carry: problem.num_days * (problem.num_customers + 1) * problem.num_customers
-        //  # inventory: problem.num_days * (problem.num_customers + 1)
-        //  # deliver: problem.num_days * problem.num_customers
-        // This is in sum:
-        let num_variables =
-            ((2 * problem.num_customers + 4) * problem.num_customers + 1) * problem.num_days;
+        let num_variables_route =
+            problem.num_days * (problem.num_customers + 1) * problem.num_customers;
+        let num_variables_carry =
+            problem.num_days * (problem.num_customers + 1) * problem.num_customers;
+        let num_variables_inventory = problem.num_days * (problem.num_customers + 1);
+        let num_variables_deliver = problem.num_days * problem.num_customers;
+        let num_variables = num_variables_route
+            + num_variables_carry
+            + num_variables_inventory
+            + num_variables_deliver;
         let mut vars = Variables {
             problem: &problem,
             variables: Vec::with_capacity(num_variables),
@@ -56,6 +58,7 @@ impl<'a> Variables<'a> {
             }
         }
         vars.route_range.1 = vars.variables.len();
+        debug_assert_eq!(num_variables_route, vars.route_range.1 - vars.route_range.0);
 
         // carry variables
         vars.carry_range.0 = vars.route_range.1;
@@ -83,6 +86,7 @@ impl<'a> Variables<'a> {
             }
         }
         vars.carry_range.1 = vars.variables.len();
+        debug_assert_eq!(num_variables_carry, vars.carry_range.1 - vars.carry_range.0);
 
         // inventory variables
         vars.inventory_range.0 = vars.carry_range.1;
@@ -106,6 +110,10 @@ impl<'a> Variables<'a> {
             }
         }
         vars.inventory_range.1 = vars.variables.len();
+        debug_assert_eq!(
+            num_variables_inventory,
+            vars.inventory_range.1 - vars.inventory_range.0
+        );
 
         // deliver variables
         vars.deliver_range.0 = vars.inventory_range.1;
@@ -129,6 +137,10 @@ impl<'a> Variables<'a> {
             }
         }
         vars.deliver_range.1 = vars.variables.len();
+        debug_assert_eq!(
+            num_variables_deliver,
+            vars.deliver_range.1 - vars.deliver_range.0
+        );
 
         vars
     }
