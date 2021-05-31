@@ -468,7 +468,7 @@ impl Solver {
                 lhs.add_term(1.0, data.vars.route(t, 0, j));
             }
 
-            lp.add_constr("Rmv", grb::c!(lhs <= problem.num_vehicles))?;
+            lp.add_constr(&format!("Rmv_{}", t), grb::c!(lhs <= problem.num_vehicles))?;
         }
 
         // route flow node-disjointness (at most one visit)
@@ -481,7 +481,7 @@ impl Solver {
                     }
                 }
 
-                lp.add_constr("Rnd", grb::c!(lhs <= 1.0))?;
+                lp.add_constr(&format!("Rnd_{}_{}", t, i), grb::c!(lhs <= 1.0))?;
             }
         }
 
@@ -496,7 +496,7 @@ impl Solver {
                     }
                 }
 
-                lp.add_constr("Rfc", grb::c!(lhs == 0.0))?;
+                lp.add_constr(&format!("Rfc_{}_{}", t, i), grb::c!(lhs == 0.0))?;
             }
         }
 
@@ -509,7 +509,7 @@ impl Solver {
                         lhs.add_term(problem.capacity as f64, data.vars.route(t, i, j));
                         lhs.add_term(-1.0, data.vars.carry(t, i, j));
 
-                        lp.add_constr("Gcr", grb::c!(lhs >= 0.0))?;
+                        lp.add_constr(&format!("Gcr_{}_{}_{}", t, i, j), grb::c!(lhs >= 0.0))?;
                     }
                 }
             }
@@ -522,7 +522,7 @@ impl Solver {
             for j in 1..=problem.num_customers {
                 lhs.add_term(1.0, data.vars.carry(t, 0, j));
             }
-            lp.add_constr("Clim", grb::c!(lhs <= max_amount))?;
+            lp.add_constr(&format!("Clim_{}", t), grb::c!(lhs <= max_amount))?;
         }
 
         // carry and deliver flow
@@ -541,7 +541,7 @@ impl Solver {
                 }
                 lhs.add_term(-1.0, data.vars.deliver(t, i)); // deliver to customer
 
-                lp.add_constr("CDf", grb::c!(lhs == 0.0))?;
+                lp.add_constr(&format!("CDf_{}_{}", t, i), grb::c!(lhs == 0.0))?;
             }
         }
 
@@ -560,7 +560,7 @@ impl Solver {
                 lhs.add_term(1.0, data.vars.inventory(t - 1, 0)); // incoming inventory
             }
 
-            lp.add_constr("Ifd", grb::c!(lhs == value))?;
+            lp.add_constr(&format!("Ifd_{}", t), grb::c!(lhs == value))?;
         }
 
         // inventory flow for customers
@@ -577,7 +577,7 @@ impl Solver {
                     lhs.add_term(1.0, data.vars.inventory(t - 1, i)); // incoming inventory
                 }
 
-                lp.add_constr("Ifc", grb::c!(lhs == value))?;
+                lp.add_constr(&format!("Ifc_{}_{}", t, i), grb::c!(lhs == value))?;
             }
         }
 
