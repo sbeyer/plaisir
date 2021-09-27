@@ -457,8 +457,12 @@ struct Solver {}
 
 impl Solver {
     fn solve(problem: &Problem, cpu: String) -> grb::Result<()> {
-        let mut lp = gurobi::Model::new("irp")?;
+        let mut env = gurobi::Env::new("")?;
+        env.set(grb::param::Threads, 1)?;
+
+        let mut lp = gurobi::Model::with_env("irp", &env)?;
         lp.set_objective(0, gurobi::ModelSense::Minimize)?;
+
         let mut data = SolverData::new(&problem, &mut lp, cpu);
 
         // at most m vehicles for the routing
