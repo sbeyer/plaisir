@@ -13,8 +13,9 @@ struct Variables<'a> {
 
 impl<'a> Variables<'a> {
     fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> Self {
-        let num_variables_route =
-            problem.num_days * (problem.num_customers + 1) * problem.num_customers;
+        let num_variables_route = problem.num_days
+            * problem.num_vehicles
+            * ((problem.num_customers + 1) * problem.num_customers / 2);
         let num_variables_visit =
             problem.num_days * problem.num_vehicles * (problem.num_customers + 1);
         let num_variables_inventory = problem.num_days * (problem.num_customers + 1);
@@ -34,10 +35,10 @@ impl<'a> Variables<'a> {
 
         // route variables
         for t in 0..problem.num_days {
-            for i in 0..=problem.num_customers {
-                for j in 0..=problem.num_customers {
-                    if i != j {
-                        let name = format!("r_{}_{}_{}", t, i, j);
+            for v in 0..problem.num_vehicles {
+                for i in 0..=problem.num_customers {
+                    for j in i + 1..=problem.num_customers {
+                        let name = format!("r_{}_{}_{}_{}", t, v, i, j);
                         let coeff = problem.distance(i, j).into();
                         let bounds = (0.0, 1.0);
                         //let var = grb::add_binvar!(lp, name: &name, obj: coeff).unwrap();
@@ -51,7 +52,7 @@ impl<'a> Variables<'a> {
                                 std::iter::empty(),
                             )
                             .unwrap();
-                        debug_assert_eq!(vars.variables.len(), vars.route_index(t, i, j));
+                        debug_assert_eq!(vars.variables.len(), vars.route_index(t, v, i, j));
                         vars.variables.push(var);
                     }
                 }
@@ -145,23 +146,32 @@ impl<'a> Variables<'a> {
         vars
     }
 
-    fn route_index(&self, t: usize, i: usize, j: usize) -> usize {
+    fn route_index(&self, t: usize, v: usize, i: usize, j: usize) -> usize {
         debug_assert!(t < self.problem.num_days);
-        debug_assert!(i <= self.problem.num_customers);
-        debug_assert!(j <= self.problem.num_customers);
-        debug_assert!(i != j);
+        debug_assert!(v < self.problem.num_vehicles);
+        debug_assert!(i < j);
+        let n = self.problem.num_customers;
+        debug_assert!(j <= n);
 
-        let j_block_size = self.problem.num_customers;
-        let i_j_block_size = (self.problem.num_customers + 1) * j_block_size;
-        let offset = self.route_range.0 + t * i_j_block_size + i * j_block_size;
-        let result = offset + (if j > i { j - 1 } else { j });
+        let i_j_block_size = n * (n + 1) / 2;
+        let v_i_j_block_size = self.problem.num_vehicles * i_j_block_size;
+        let offset = self.route_range.0 + t * v_i_j_block_size + v * i_j_block_size;
+        let i_offset = i * (2 * n - i + 1) / 2;
+        let i_j_offset = i_offset + j - i - 1;
+
+        let result = offset + i_j_offset;
         debug_assert!(result < self.route_range.1);
 
         result
     }
 
-    fn route(&self, t: usize, i: usize, j: usize) -> gurobi::Var {
-        self.variables[self.route_index(t, i, j)]
+    fn route(&self, t: usize, v: usize, i: usize, j: usize) -> gurobi::Var {
+        let index = if i < j {
+            self.route_index(t, v, i, j)
+        } else {
+            self.route_index(t, v, j, i)
+        };
+        self.variables[index]
     }
 
     fn visit_index(&self, t: usize, v: usize, i: usize) -> usize {
@@ -365,8 +375,15 @@ impl<'a> SolverData<'a> {
         self.start_time.elapsed()
     }
 
-    fn is_delivered(&self, solution: &[f64], t: usize, source: usize, target: usize) -> bool {
-        let var_route = self.vars.route_index(t, source, target);
+    fn is_delivered(
+        &self,
+        solution: &[f64],
+        t: usize,
+        v: usize,
+        source: usize,
+        target: usize,
+    ) -> bool {
+        let var_route = self.vars.route_index(t, v, source, target);
         solution[var_route] > Self::EPSILON
     }
 
@@ -379,6 +396,7 @@ impl<'a> SolverData<'a> {
         result.round() as usize
     }
 
+    /*
     fn get_routes(&self, solution: &[f64]) -> Routes {
         let mut routes = Vec::with_capacity(self.problem.num_days);
 
@@ -430,6 +448,7 @@ impl<'a> SolverData<'a> {
 
         routes
     }
+    */
 }
 
 impl<'a> grb::callback::Callback for SolverData<'a> {
@@ -437,9 +456,11 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
         if let gurobi::Where::MIPSol(ctx) = w {
             self.ncalls += 1;
             let assignment = ctx.get_solution(&self.vars.variables)?;
+            /*
             let routes = self.get_routes(&assignment);
             let solution =
                 Solution::new(&self.problem, routes, self.elapsed_time(), self.cpu.clone());
+            */
             eprintln!("# Incumbent {}!", self.ncalls);
             eprintln!("#    current obj: {}", ctx.obj()?);
             eprintln!("#       best obj: {}", ctx.obj_best()?);
@@ -450,7 +471,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                 .filter(|(_, &value)| value > Self::EPSILON)
                 .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
 
-            eprintln!("{}", solution);
+            //eprintln!("{}", solution);
         }
 
         Ok(())
@@ -469,42 +490,21 @@ impl Solver {
 
         let mut data = SolverData::new(&problem, &mut lp, cpu);
 
-        // at most m vehicles for the routing
+        // route degree constraints
         for t in 0..problem.num_days {
-            let mut lhs = grb::expr::LinExpr::new();
-            for j in 1..=problem.num_customers {
-                lhs.add_term(1.0, data.vars.route(t, 0, j));
-            }
+            for v in 0..problem.num_vehicles {
+                for i in 0..=problem.num_customers {
+                    let mut lhs = grb::expr::LinExpr::new();
 
-            lp.add_constr(&format!("Rmv_{}", t), grb::c!(lhs <= problem.num_vehicles))?;
-        }
-
-        // route flow node-disjointness (at most one visit)
-        for t in 0..problem.num_days {
-            for i in 1..=problem.num_customers {
-                let mut lhs = grb::expr::LinExpr::new();
-                for j in 0..=problem.num_customers {
-                    if i != j {
-                        lhs.add_term(1.0, data.vars.route(t, j, i));
+                    lhs.add_term(-2.0, data.vars.visit(t, v, i));
+                    for j in 0..=problem.num_customers {
+                        if i != j {
+                            lhs.add_term(1.0, data.vars.route(t, v, i, j));
+                        }
                     }
+
+                    lp.add_constr(&format!("Rd_{}_{}_{}", t, v, i), grb::c!(lhs == 0.0))?;
                 }
-
-                lp.add_constr(&format!("Rnd_{}_{}", t, i), grb::c!(lhs <= 1.0))?;
-            }
-        }
-
-        // route flow conservation
-        for t in 0..problem.num_days {
-            for i in 1..=problem.num_customers {
-                let mut lhs = grb::expr::LinExpr::new();
-                for j in 0..=problem.num_customers {
-                    if i != j {
-                        lhs.add_term(1.0, data.vars.route(t, j, i));
-                        lhs.add_term(-1.0, data.vars.route(t, i, j));
-                    }
-                }
-
-                lp.add_constr(&format!("Rfc_{}_{}", t, i), grb::c!(lhs == 0.0))?;
             }
         }
 
@@ -579,11 +579,13 @@ impl Solver {
 
         Self::print_raw_solution(&data, &lp)?;
 
+        /*
         let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
         let routes = data.get_routes(&assignment);
         let solution = Solution::new(&problem, routes, data.elapsed_time(), data.cpu);
         eprintln!("# Final solution");
         eprintln!("{}", solution);
+        */
 
         Ok(())
     }
