@@ -116,7 +116,7 @@ impl<'a> Variables<'a> {
         // deliver variables
         vars.deliver_range.0 = vars.inventory_range.1;
         for t in 0..problem.num_days {
-            for v in 0..problem.num_days {
+            for v in 0..problem.num_vehicles {
                 for i in 1..=problem.num_customers {
                     let name = format!("d_{}_{}_{}", t, v, i);
                     let coeff = 0.0;
@@ -200,6 +200,7 @@ impl<'a> Variables<'a> {
 
     fn deliver_index(&self, t: usize, v: usize, i: usize) -> usize {
         debug_assert!(t < self.problem.num_days);
+        debug_assert!(v < self.problem.num_vehicles);
         debug_assert!(i >= 1);
         debug_assert!(i <= self.problem.num_customers);
 
