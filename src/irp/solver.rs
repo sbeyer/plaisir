@@ -51,7 +51,7 @@ impl<'a> Variables<'a> {
                                 std::iter::empty(),
                             )
                             .unwrap();
-                        debug_assert!(vars.variables.len() == vars.route_index(t, i, j));
+                        debug_assert_eq!(vars.variables.len(), vars.route_index(t, i, j));
                         vars.variables.push(var);
                     }
                 }
@@ -78,7 +78,7 @@ impl<'a> Variables<'a> {
                             std::iter::empty(),
                         )
                         .unwrap();
-                    debug_assert!(vars.variables.len() == vars.visit_index(t, v, i));
+                    debug_assert_eq!(vars.variables.len(), vars.visit_index(t, v, i));
                     vars.variables.push(var);
                 }
             }
@@ -103,7 +103,7 @@ impl<'a> Variables<'a> {
                         std::iter::empty(),
                     )
                     .unwrap();
-                debug_assert!(vars.variables.len() == vars.inventory_index(t, i));
+                debug_assert_eq!(vars.variables.len(), vars.inventory_index(t, i));
                 vars.variables.push(var);
             }
         }
@@ -131,7 +131,7 @@ impl<'a> Variables<'a> {
                             std::iter::empty(),
                         )
                         .unwrap();
-                    debug_assert!(vars.variables.len() == vars.deliver_index(t, v, i));
+                    debug_assert_eq!(vars.variables.len(), vars.deliver_index(t, v, i));
                     vars.variables.push(var);
                 }
             }
