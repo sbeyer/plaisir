@@ -453,25 +453,48 @@ impl<'a> SolverData<'a> {
 
 impl<'a> grb::callback::Callback for SolverData<'a> {
     fn callback(&mut self, w: gurobi::Where) -> grb::callback::CbResult {
-        if let gurobi::Where::MIPSol(ctx) = w {
-            self.ncalls += 1;
-            let assignment = ctx.get_solution(&self.vars.variables)?;
-            /*
-            let routes = self.get_routes(&assignment);
-            let solution =
-                Solution::new(&self.problem, routes, self.elapsed_time(), self.cpu.clone());
-            */
-            eprintln!("# Incumbent {}!", self.ncalls);
-            eprintln!("#    current obj: {}", ctx.obj()?);
-            eprintln!("#       best obj: {}", ctx.obj_best()?);
+        match w {
+            gurobi::Where::MIPSol(ctx) => {
+                self.ncalls += 1;
+                let assignment = ctx.get_solution(&self.vars.variables)?;
+                /*
+                let routes = self.get_routes(&assignment);
+                let solution =
+                    Solution::new(&self.problem, routes, self.elapsed_time(), self.cpu.clone());
+                */
+                eprintln!("# Incumbent {}!", self.ncalls);
+                eprintln!("#    current obj: {}", ctx.obj()?);
+                eprintln!("#       best obj: {}", ctx.obj_best()?);
 
-            self.varnames
-                .iter()
-                .zip(assignment.iter())
-                .filter(|(_, &value)| value > Self::EPSILON)
-                .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+                self.varnames
+                    .iter()
+                    .zip(assignment.iter())
+                    .filter(|(_, &value)| value > Self::EPSILON)
+                    .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
 
-            //eprintln!("{}", solution);
+                //eprintln!("{}", solution);
+            }
+            gurobi::Where::MIPNode(ctx) => {
+                let status = ctx.status()?;
+                eprintln!(
+                    "# MIPNode {} {} {:?}",
+                    ctx.sol_cnt()?,
+                    ctx.node_cnt()?,
+                    status
+                );
+                eprintln!("#       best objective: {}", ctx.obj_best()?);
+                eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
+
+                if status == grb::Status::Optimal {
+                    let assignment = ctx.get_solution(&self.vars.variables)?;
+                    self.varnames
+                        .iter()
+                        .zip(assignment.iter())
+                        .filter(|(_, &value)| value > Self::EPSILON)
+                        .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+                }
+            }
+            _ => (),
         }
 
         Ok(())
