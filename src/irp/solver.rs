@@ -498,7 +498,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         for v in 0..self.problem.num_vehicles {
                             for k in 1..=self.problem.num_customers {
                                 let mut lp = gurobi::Model::new(&format!("sep_{}_{}_{}", t, v, k))?;
-                                lp.set_objective(0, gurobi::ModelSense::Minimize)?;
+                                lp.set_objective(0, gurobi::ModelSense::Maximize)?;
 
                                 // generate variables
                                 let mut z_vars = Vec::<gurobi::Var>::with_capacity(
@@ -509,10 +509,15 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                 );
                                 for i in 0..=self.problem.num_customers {
                                     let name = format!("z_{}", i);
+                                    let coeff = if i != k {
+                                        -assignment[self.vars.visit_index(t, v, i)]
+                                    } else {
+                                        0.0
+                                    };
                                     let var = lp.add_var(
                                         &name,
                                         gurobi::VarType::Continuous,
-                                        assignment[self.vars.visit_index(t, v, i)],
+                                        coeff,
                                         0.0,
                                         1.0,
                                         std::iter::empty(),
@@ -525,10 +530,11 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
 
                                     for j in i + 1..=self.problem.num_customers {
                                         let name = format!("y_{}_{}", i, j);
+                                        let coeff = assignment[self.vars.route_index(t, v, i, j)];
                                         let var = lp.add_var(
                                             &name,
                                             gurobi::VarType::Continuous,
-                                            assignment[self.vars.route_index(t, v, i, j)],
+                                            coeff,
                                             0.0,
                                             1.0,
                                             std::iter::empty(),
@@ -584,13 +590,40 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                     t, v, k, objective
                                 );
 
-                                // print raw solution:
-                                for var in z_vars.iter() {
-                                    let name = lp.get_obj_attr(grb::attr::VarName, &var)?;
-                                    let value = lp.get_obj_attr(grb::attr::X, &var)?;
-                                    if value > SolverData::EPSILON {
-                                        eprintln!("#   - {}: {}", name, value);
+                                if objective > SolverData::EPSILON {
+                                    let mut lhs = grb::expr::LinExpr::new();
+
+                                    for i in 0..=self.problem.num_customers {
+                                        for j in i + 1..=self.problem.num_customers {
+                                            let var = y_var(i, j);
+                                            let var_name =
+                                                lp.get_obj_attr(grb::attr::VarName, &var)?;
+                                            let var_value = lp.get_obj_attr(grb::attr::X, &var)?;
+                                            if var_value > SolverData::EPSILON {
+                                                eprintln!("#   - {}: {}", var_name, var_value);
+                                                debug_assert!(
+                                                    var_value > 1.0 - SolverData::EPSILON
+                                                );
+                                                lhs.add_term(1.0, self.vars.route(t, v, i, j));
+                                            }
+                                        }
+
+                                        if i != k {
+                                            let var = z_var(i);
+                                            let var_name =
+                                                lp.get_obj_attr(grb::attr::VarName, &var)?;
+                                            let var_value = lp.get_obj_attr(grb::attr::X, &var)?;
+                                            if var_value > SolverData::EPSILON {
+                                                eprintln!("#   - {}: {}", var_name, var_value);
+                                                debug_assert!(
+                                                    var_value > 1.0 - SolverData::EPSILON
+                                                );
+                                                lhs.add_term(-1.0, self.vars.visit(t, v, i));
+                                            }
+                                        }
                                     }
+
+                                    ctx.add_lazy(grb::c!(lhs <= 0))?;
                                 }
                             }
                         }
