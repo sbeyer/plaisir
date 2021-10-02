@@ -492,6 +492,54 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         .zip(assignment.iter())
                         .filter(|(_, &value)| value > Self::EPSILON)
                         .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+
+                    // build auxiliary LPs based on model
+                    for t in 0..self.problem.num_days {
+                        for v in 0..self.problem.num_vehicles {
+                            for k in 1..=self.problem.num_customers {
+                                let mut lp = gurobi::Model::new(&format!("sep_{}_{}_{}", t, v, k))?;
+                                lp.set_objective(0, gurobi::ModelSense::Minimize)?;
+
+                                let mut z_vars = Vec::<gurobi::Var>::with_capacity(
+                                    self.problem.num_customers + 1,
+                                );
+                                let mut y_vars = Vec::<Vec<gurobi::Var>>::with_capacity(
+                                    self.problem.num_customers,
+                                );
+                                for i in 0..=self.problem.num_customers {
+                                    let name = format!("z_{}", i);
+                                    let var = lp.add_var(
+                                        &name,
+                                        gurobi::VarType::Continuous,
+                                        assignment[self.vars.visit_index(t, v, i)],
+                                        0.0,
+                                        1.0,
+                                        std::iter::empty(),
+                                    )?;
+                                    z_vars.push(var);
+
+                                    let mut y_i_vars = Vec::<gurobi::Var>::with_capacity(
+                                        self.problem.num_customers - i,
+                                    );
+
+                                    for j in i + 1..=self.problem.num_customers {
+                                        let name = format!("y_{}_{}", i, j);
+                                        let var = lp.add_var(
+                                            &name,
+                                            gurobi::VarType::Continuous,
+                                            assignment[self.vars.route_index(t, v, i, j)],
+                                            0.0,
+                                            1.0,
+                                            std::iter::empty(),
+                                        )?;
+                                        y_i_vars.push(var);
+                                    }
+
+                                    y_vars.push(y_i_vars);
+                                }
+                            }
+                        }
+                    }
                 }
             }
             _ => (),
@@ -506,6 +554,7 @@ struct Solver {}
 impl Solver {
     fn solve(problem: &Problem, cpu: String) -> grb::Result<()> {
         let mut env = gurobi::Env::new("")?;
+        env.set(grb::param::LazyConstraints, 1)?;
         env.set(grb::param::Threads, 1)?;
 
         let mut lp = gurobi::Model::with_env("irp", &env)?;
