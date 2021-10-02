@@ -500,6 +500,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                 let mut lp = gurobi::Model::new(&format!("sep_{}_{}_{}", t, v, k))?;
                                 lp.set_objective(0, gurobi::ModelSense::Minimize)?;
 
+                                // generate variables
                                 let mut z_vars = Vec::<gurobi::Var>::with_capacity(
                                     self.problem.num_customers + 1,
                                 );
@@ -536,6 +537,60 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                     }
 
                                     y_vars.push(y_i_vars);
+                                }
+
+                                let z_var = |i: usize| z_vars[i];
+                                let y_var = |i: usize, j: usize| y_vars[i][j - i - 1];
+
+                                // add constraint: k is contained
+                                lp.add_constr("K", grb::c!(z_var(k) == 1.0))?;
+
+                                // add optional constraint: multiplication bound
+                                for i in 0..=self.problem.num_customers {
+                                    for j in i + 1..=self.problem.num_customers {
+                                        lp.add_constr(
+                                            &format!("M_{}_{}", i, j),
+                                            grb::c!(z_var(i) + z_var(j) - y_var(i, j) <= 1),
+                                        )?;
+                                    }
+                                }
+
+                                // add constraint: i and j bounds
+                                for i in 0..=self.problem.num_customers {
+                                    for j in i + 1..=self.problem.num_customers {
+                                        lp.add_constr(
+                                            &format!("I_{}_{}", i, j),
+                                            grb::c!(z_var(i) - y_var(i, j) >= 0),
+                                        )?;
+                                        lp.add_constr(
+                                            &format!("J_{}_{}", i, j),
+                                            grb::c!(z_var(j) - y_var(i, j) >= 0),
+                                        )?;
+                                    }
+                                }
+
+                                // solve separation problem
+                                lp.optimize()?;
+
+                                let status = lp.status()?;
+                                eprintln!(
+                                    "# Sep({}, {}, {}) solution status: {:?}",
+                                    t, v, k, status
+                                );
+
+                                let objective = lp.get_attr(gurobi::attr::ObjVal)?;
+                                eprintln!(
+                                    "# Sep({}, {}, {}) solution value: {}",
+                                    t, v, k, objective
+                                );
+
+                                // print raw solution:
+                                for var in z_vars.iter() {
+                                    let name = lp.get_obj_attr(grb::attr::VarName, &var)?;
+                                    let value = lp.get_obj_attr(grb::attr::X, &var)?;
+                                    if value > SolverData::EPSILON {
+                                        eprintln!("#   - {}: {}", name, value);
+                                    }
                                 }
                             }
                         }
