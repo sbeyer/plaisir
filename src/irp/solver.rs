@@ -498,6 +498,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         for v in 0..self.problem.num_vehicles {
                             for k in 1..=self.problem.num_customers {
                                 let mut lp = gurobi::Model::new(&format!("sep_{}_{}_{}", t, v, k))?;
+                                lp.set_param(grb::param::Threads, 1)?;
                                 lp.set_objective(0, gurobi::ModelSense::Maximize)?;
 
                                 // generate variables
@@ -641,11 +642,9 @@ struct Solver {}
 
 impl Solver {
     fn solve(problem: &Problem, cpu: String) -> grb::Result<()> {
-        let mut env = gurobi::Env::new("")?;
-        env.set(grb::param::LazyConstraints, 1)?;
-        env.set(grb::param::Threads, 1)?;
-
-        let mut lp = gurobi::Model::with_env("irp", &env)?;
+        let mut lp = gurobi::Model::new("irp")?;
+        lp.set_param(grb::param::LazyConstraints, 1)?;
+        lp.set_param(grb::param::Threads, 1)?;
         lp.set_objective(0, gurobi::ModelSense::Minimize)?;
 
         let mut data = SolverData::new(&problem, &mut lp, cpu);
