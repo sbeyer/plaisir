@@ -371,6 +371,141 @@ impl<'a> SolverData<'a> {
         }
     }
 
+    fn subtour_elimination<F>(&self, assignment: Vec<f64>, add: F) -> grb::Result<()>
+    where
+        F: Fn(grb::constr::IneqExpr) -> grb::Result<()>,
+    {
+        self.varnames
+            .iter()
+            .zip(assignment.iter())
+            .filter(|(_, &value)| value > Self::EPSILON)
+            .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+
+        // build auxiliary LPs based on model
+        for t in 0..self.problem.num_days {
+            for v in 0..self.problem.num_vehicles {
+                for k in 1..=self.problem.num_customers {
+                    let mut lp = gurobi::Model::new(&format!("sep_{}_{}_{}", t, v, k))?;
+                    lp.set_param(grb::param::Threads, 1)?;
+                    lp.set_objective(0, gurobi::ModelSense::Maximize)?;
+
+                    // generate variables
+                    let mut z_vars =
+                        Vec::<gurobi::Var>::with_capacity(self.problem.num_customers + 1);
+                    let mut y_vars =
+                        Vec::<Vec<gurobi::Var>>::with_capacity(self.problem.num_customers);
+                    for i in 0..=self.problem.num_customers {
+                        let name = format!("z_{}", i);
+                        let coeff = if i != k {
+                            -assignment[self.vars.visit_index(t, v, i)]
+                        } else {
+                            0.0
+                        };
+                        let var = lp.add_var(
+                            &name,
+                            gurobi::VarType::Continuous,
+                            coeff,
+                            0.0,
+                            1.0,
+                            std::iter::empty(),
+                        )?;
+                        z_vars.push(var);
+
+                        let mut y_i_vars =
+                            Vec::<gurobi::Var>::with_capacity(self.problem.num_customers - i);
+
+                        for j in i + 1..=self.problem.num_customers {
+                            let name = format!("y_{}_{}", i, j);
+                            let coeff = assignment[self.vars.route_index(t, v, i, j)];
+                            let var = lp.add_var(
+                                &name,
+                                gurobi::VarType::Continuous,
+                                coeff,
+                                0.0,
+                                1.0,
+                                std::iter::empty(),
+                            )?;
+                            y_i_vars.push(var);
+                        }
+
+                        y_vars.push(y_i_vars);
+                    }
+
+                    let z_var = |i: usize| z_vars[i];
+                    let y_var = |i: usize, j: usize| y_vars[i][j - i - 1];
+
+                    // add constraint: k is contained
+                    lp.add_constr("K", grb::c!(z_var(k) == 1.0))?;
+
+                    // add optional constraint: multiplication bound
+                    for i in 0..=self.problem.num_customers {
+                        for j in i + 1..=self.problem.num_customers {
+                            lp.add_constr(
+                                &format!("M_{}_{}", i, j),
+                                grb::c!(z_var(i) + z_var(j) - y_var(i, j) <= 1),
+                            )?;
+                        }
+                    }
+
+                    // add constraint: i and j bounds
+                    for i in 0..=self.problem.num_customers {
+                        for j in i + 1..=self.problem.num_customers {
+                            lp.add_constr(
+                                &format!("I_{}_{}", i, j),
+                                grb::c!(z_var(i) - y_var(i, j) >= 0),
+                            )?;
+                            lp.add_constr(
+                                &format!("J_{}_{}", i, j),
+                                grb::c!(z_var(j) - y_var(i, j) >= 0),
+                            )?;
+                        }
+                    }
+
+                    // solve separation problem
+                    lp.optimize()?;
+
+                    let status = lp.status()?;
+                    eprintln!("# Sep({}, {}, {}) solution status: {:?}", t, v, k, status);
+
+                    let objective = lp.get_attr(gurobi::attr::ObjVal)?;
+                    eprintln!("# Sep({}, {}, {}) solution value: {}", t, v, k, objective);
+
+                    if objective > SolverData::EPSILON {
+                        let mut lhs = grb::expr::LinExpr::new();
+
+                        for i in 0..=self.problem.num_customers {
+                            for j in i + 1..=self.problem.num_customers {
+                                let var = y_var(i, j);
+                                let var_name = lp.get_obj_attr(grb::attr::VarName, &var)?;
+                                let var_value = lp.get_obj_attr(grb::attr::X, &var)?;
+                                if var_value > SolverData::EPSILON {
+                                    eprintln!("#   - {}: {}", var_name, var_value);
+                                    debug_assert!(var_value > 1.0 - SolverData::EPSILON);
+                                    lhs.add_term(1.0, self.vars.route(t, v, i, j));
+                                }
+                            }
+
+                            if i != k {
+                                let var = z_var(i);
+                                let var_name = lp.get_obj_attr(grb::attr::VarName, &var)?;
+                                let var_value = lp.get_obj_attr(grb::attr::X, &var)?;
+                                if var_value > SolverData::EPSILON {
+                                    eprintln!("#   - {}: {}", var_name, var_value);
+                                    debug_assert!(var_value > 1.0 - SolverData::EPSILON);
+                                    lhs.add_term(-1.0, self.vars.visit(t, v, i));
+                                }
+                            }
+                        }
+
+                        add(grb::c!(lhs <= 0))?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn elapsed_time(&self) -> time::Duration {
         self.start_time.elapsed()
     }
@@ -473,6 +608,8 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
 
                 //eprintln!("{}", solution);
+
+                self.subtour_elimination(assignment, |constr| ctx.add_lazy(constr))?;
             }
             gurobi::Where::MIPNode(ctx) => {
                 let status = ctx.status()?;
@@ -487,148 +624,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
 
                 if status == grb::Status::Optimal {
                     let assignment = ctx.get_solution(&self.vars.variables)?;
-                    self.varnames
-                        .iter()
-                        .zip(assignment.iter())
-                        .filter(|(_, &value)| value > Self::EPSILON)
-                        .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
-
-                    // build auxiliary LPs based on model
-                    for t in 0..self.problem.num_days {
-                        for v in 0..self.problem.num_vehicles {
-                            for k in 1..=self.problem.num_customers {
-                                let mut lp = gurobi::Model::new(&format!("sep_{}_{}_{}", t, v, k))?;
-                                lp.set_param(grb::param::Threads, 1)?;
-                                lp.set_objective(0, gurobi::ModelSense::Maximize)?;
-
-                                // generate variables
-                                let mut z_vars = Vec::<gurobi::Var>::with_capacity(
-                                    self.problem.num_customers + 1,
-                                );
-                                let mut y_vars = Vec::<Vec<gurobi::Var>>::with_capacity(
-                                    self.problem.num_customers,
-                                );
-                                for i in 0..=self.problem.num_customers {
-                                    let name = format!("z_{}", i);
-                                    let coeff = if i != k {
-                                        -assignment[self.vars.visit_index(t, v, i)]
-                                    } else {
-                                        0.0
-                                    };
-                                    let var = lp.add_var(
-                                        &name,
-                                        gurobi::VarType::Continuous,
-                                        coeff,
-                                        0.0,
-                                        1.0,
-                                        std::iter::empty(),
-                                    )?;
-                                    z_vars.push(var);
-
-                                    let mut y_i_vars = Vec::<gurobi::Var>::with_capacity(
-                                        self.problem.num_customers - i,
-                                    );
-
-                                    for j in i + 1..=self.problem.num_customers {
-                                        let name = format!("y_{}_{}", i, j);
-                                        let coeff = assignment[self.vars.route_index(t, v, i, j)];
-                                        let var = lp.add_var(
-                                            &name,
-                                            gurobi::VarType::Continuous,
-                                            coeff,
-                                            0.0,
-                                            1.0,
-                                            std::iter::empty(),
-                                        )?;
-                                        y_i_vars.push(var);
-                                    }
-
-                                    y_vars.push(y_i_vars);
-                                }
-
-                                let z_var = |i: usize| z_vars[i];
-                                let y_var = |i: usize, j: usize| y_vars[i][j - i - 1];
-
-                                // add constraint: k is contained
-                                lp.add_constr("K", grb::c!(z_var(k) == 1.0))?;
-
-                                // add optional constraint: multiplication bound
-                                for i in 0..=self.problem.num_customers {
-                                    for j in i + 1..=self.problem.num_customers {
-                                        lp.add_constr(
-                                            &format!("M_{}_{}", i, j),
-                                            grb::c!(z_var(i) + z_var(j) - y_var(i, j) <= 1),
-                                        )?;
-                                    }
-                                }
-
-                                // add constraint: i and j bounds
-                                for i in 0..=self.problem.num_customers {
-                                    for j in i + 1..=self.problem.num_customers {
-                                        lp.add_constr(
-                                            &format!("I_{}_{}", i, j),
-                                            grb::c!(z_var(i) - y_var(i, j) >= 0),
-                                        )?;
-                                        lp.add_constr(
-                                            &format!("J_{}_{}", i, j),
-                                            grb::c!(z_var(j) - y_var(i, j) >= 0),
-                                        )?;
-                                    }
-                                }
-
-                                // solve separation problem
-                                lp.optimize()?;
-
-                                let status = lp.status()?;
-                                eprintln!(
-                                    "# Sep({}, {}, {}) solution status: {:?}",
-                                    t, v, k, status
-                                );
-
-                                let objective = lp.get_attr(gurobi::attr::ObjVal)?;
-                                eprintln!(
-                                    "# Sep({}, {}, {}) solution value: {}",
-                                    t, v, k, objective
-                                );
-
-                                if objective > SolverData::EPSILON {
-                                    let mut lhs = grb::expr::LinExpr::new();
-
-                                    for i in 0..=self.problem.num_customers {
-                                        for j in i + 1..=self.problem.num_customers {
-                                            let var = y_var(i, j);
-                                            let var_name =
-                                                lp.get_obj_attr(grb::attr::VarName, &var)?;
-                                            let var_value = lp.get_obj_attr(grb::attr::X, &var)?;
-                                            if var_value > SolverData::EPSILON {
-                                                eprintln!("#   - {}: {}", var_name, var_value);
-                                                debug_assert!(
-                                                    var_value > 1.0 - SolverData::EPSILON
-                                                );
-                                                lhs.add_term(1.0, self.vars.route(t, v, i, j));
-                                            }
-                                        }
-
-                                        if i != k {
-                                            let var = z_var(i);
-                                            let var_name =
-                                                lp.get_obj_attr(grb::attr::VarName, &var)?;
-                                            let var_value = lp.get_obj_attr(grb::attr::X, &var)?;
-                                            if var_value > SolverData::EPSILON {
-                                                eprintln!("#   - {}: {}", var_name, var_value);
-                                                debug_assert!(
-                                                    var_value > 1.0 - SolverData::EPSILON
-                                                );
-                                                lhs.add_term(-1.0, self.vars.visit(t, v, i));
-                                            }
-                                        }
-                                    }
-
-                                    ctx.add_lazy(grb::c!(lhs <= 0))?;
-                                }
-                            }
-                        }
-                    }
+                    self.subtour_elimination(assignment, |constr| ctx.add_lazy(constr))?;
                 }
             }
             _ => (),
