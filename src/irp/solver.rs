@@ -15,7 +15,8 @@ impl<'a> Variables<'a> {
     fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> Self {
         let num_variables_route = problem.num_days
             * problem.num_vehicles
-            * ((problem.num_customers + 1) * problem.num_customers / 2);
+            * (problem.num_customers + 1)
+            * problem.num_customers;
         let num_variables_visit =
             problem.num_days * problem.num_vehicles * (problem.num_customers + 1);
         let num_variables_inventory = problem.num_days * (problem.num_customers + 1);
@@ -37,23 +38,25 @@ impl<'a> Variables<'a> {
         for t in 0..problem.num_days {
             for v in 0..problem.num_vehicles {
                 for i in 0..=problem.num_customers {
-                    for j in i + 1..=problem.num_customers {
-                        let name = format!("r_{}_{}_{}_{}", t, v, i, j);
-                        let coeff = problem.distance(i, j).into();
-                        let bounds = (0.0, 1.0);
-                        //let var = grb::add_binvar!(lp, name: &name, obj: coeff).unwrap();
-                        let var = lp
-                            .add_var(
-                                &name,
-                                gurobi::VarType::Binary,
-                                coeff,
-                                bounds.0,
-                                bounds.1,
-                                std::iter::empty(),
-                            )
-                            .unwrap();
-                        debug_assert_eq!(vars.variables.len(), vars.route_index(t, v, i, j));
-                        vars.variables.push(var);
+                    for j in 0..=problem.num_customers {
+                        if i != j {
+                            let name = format!("r_{}_{}_{}_{}", t, v, i, j);
+                            let coeff = problem.distance(i, j).into();
+                            let bounds = (0.0, 1.0);
+                            //let var = grb::add_binvar!(lp, name: &name, obj: coeff).unwrap();
+                            let var = lp
+                                .add_var(
+                                    &name,
+                                    gurobi::VarType::Binary,
+                                    coeff,
+                                    bounds.0,
+                                    bounds.1,
+                                    std::iter::empty(),
+                                )
+                                .unwrap();
+                            debug_assert_eq!(vars.variables.len(), vars.route_index(t, v, i, j));
+                            vars.variables.push(var);
+                        }
                     }
                 }
             }
@@ -72,7 +75,7 @@ impl<'a> Variables<'a> {
                     let var = lp
                         .add_var(
                             &name,
-                            gurobi::VarType::Binary,
+                            gurobi::VarType::Continuous,
                             coeff,
                             bounds.0,
                             bounds.1,
@@ -149,29 +152,24 @@ impl<'a> Variables<'a> {
     fn route_index(&self, t: usize, v: usize, i: usize, j: usize) -> usize {
         debug_assert!(t < self.problem.num_days);
         debug_assert!(v < self.problem.num_vehicles);
-        debug_assert!(i < j);
         let n = self.problem.num_customers;
+        debug_assert!(i <= n);
         debug_assert!(j <= n);
+        debug_assert!(i != j);
 
-        let i_j_block_size = n * (n + 1) / 2;
+        let j_block_size = n;
+        let i_j_block_size = (n + 1) * j_block_size;
         let v_i_j_block_size = self.problem.num_vehicles * i_j_block_size;
-        let offset = self.route_range.0 + t * v_i_j_block_size + v * i_j_block_size;
-        let i_offset = i * (2 * n - i + 1) / 2;
-        let i_j_offset = i_offset + j - i - 1;
-
-        let result = offset + i_j_offset;
+        let offset =
+            self.route_range.0 + t * v_i_j_block_size + v * i_j_block_size + i * j_block_size;
+        let result = offset + (if j > i { j - 1 } else { j });
         debug_assert!(result < self.route_range.1);
 
         result
     }
 
     fn route(&self, t: usize, v: usize, i: usize, j: usize) -> gurobi::Var {
-        let index = if i < j {
-            self.route_index(t, v, i, j)
-        } else {
-            self.route_index(t, v, j, i)
-        };
-        self.variables[index]
+        self.variables[self.route_index(t, v, i, j)]
     }
 
     fn visit_index(&self, t: usize, v: usize, i: usize) -> usize {
@@ -414,50 +412,56 @@ impl<'a> SolverData<'a> {
                         let mut y_i_vars =
                             Vec::<gurobi::Var>::with_capacity(self.problem.num_customers - i);
 
-                        for j in i + 1..=self.problem.num_customers {
-                            let name = format!("y_{}_{}", i, j);
-                            let coeff = assignment[self.vars.route_index(t, v, i, j)];
-                            let var = lp.add_var(
-                                &name,
-                                gurobi::VarType::Continuous,
-                                coeff,
-                                0.0,
-                                1.0,
-                                std::iter::empty(),
-                            )?;
-                            y_i_vars.push(var);
+                        for j in 0..=self.problem.num_customers {
+                            if i != j {
+                                let name = format!("y_{}_{}", i, j);
+                                let coeff = assignment[self.vars.route_index(t, v, i, j)];
+                                let var = lp.add_var(
+                                    &name,
+                                    gurobi::VarType::Continuous,
+                                    coeff,
+                                    0.0,
+                                    1.0,
+                                    std::iter::empty(),
+                                )?;
+                                y_i_vars.push(var);
+                            }
                         }
 
                         y_vars.push(y_i_vars);
                     }
 
                     let z_var = |i: usize| z_vars[i];
-                    let y_var = |i: usize, j: usize| y_vars[i][j - i - 1];
+                    let y_var = |i: usize, j: usize| y_vars[i][if j < i { j } else { j - 1 }];
 
                     // add constraint: k is contained
                     lp.add_constr("K", grb::c!(z_var(k) == 1.0))?;
 
                     // add optional constraint: multiplication bound
                     for i in 0..=self.problem.num_customers {
-                        for j in i + 1..=self.problem.num_customers {
-                            lp.add_constr(
-                                &format!("M_{}_{}", i, j),
-                                grb::c!(z_var(i) + z_var(j) - y_var(i, j) <= 1),
-                            )?;
+                        for j in 0..=self.problem.num_customers {
+                            if i != j {
+                                lp.add_constr(
+                                    &format!("M_{}_{}", i, j),
+                                    grb::c!(z_var(i) + z_var(j) - y_var(i, j) <= 1),
+                                )?;
+                            }
                         }
                     }
 
                     // add constraint: i and j bounds
                     for i in 0..=self.problem.num_customers {
-                        for j in i + 1..=self.problem.num_customers {
-                            lp.add_constr(
-                                &format!("I_{}_{}", i, j),
-                                grb::c!(z_var(i) - y_var(i, j) >= 0),
-                            )?;
-                            lp.add_constr(
-                                &format!("J_{}_{}", i, j),
-                                grb::c!(z_var(j) - y_var(i, j) >= 0),
-                            )?;
+                        for j in 0..=self.problem.num_customers {
+                            if i != j {
+                                lp.add_constr(
+                                    &format!("I_{}_{}", i, j),
+                                    grb::c!(z_var(i) - y_var(i, j) >= 0),
+                                )?;
+                                lp.add_constr(
+                                    &format!("J_{}_{}", i, j),
+                                    grb::c!(z_var(j) - y_var(i, j) >= 0),
+                                )?;
+                            }
                         }
                     }
 
@@ -474,14 +478,16 @@ impl<'a> SolverData<'a> {
                         let mut lhs = grb::expr::LinExpr::new();
 
                         for i in 0..=self.problem.num_customers {
-                            for j in i + 1..=self.problem.num_customers {
-                                let var = y_var(i, j);
-                                let var_name = lp.get_obj_attr(grb::attr::VarName, &var)?;
-                                let var_value = lp.get_obj_attr(grb::attr::X, &var)?;
-                                if var_value > SolverData::EPSILON {
-                                    eprintln!("#   - {}: {}", var_name, var_value);
-                                    debug_assert!(var_value > 1.0 - SolverData::EPSILON);
-                                    lhs.add_term(1.0, self.vars.route(t, v, i, j));
+                            for j in 0..=self.problem.num_customers {
+                                if i != j {
+                                    let var = y_var(i, j);
+                                    let var_name = lp.get_obj_attr(grb::attr::VarName, &var)?;
+                                    let var_value = lp.get_obj_attr(grb::attr::X, &var)?;
+                                    if var_value > SolverData::EPSILON {
+                                        eprintln!("#   - {}: {}", var_name, var_value);
+                                        debug_assert!(var_value > 1.0 - SolverData::EPSILON);
+                                        lhs.add_term(1.0, self.vars.route(t, v, i, j));
+                                    }
                                 }
                             }
 
@@ -645,20 +651,38 @@ impl Solver {
 
         let mut data = SolverData::new(&problem, &mut lp, cpu);
 
-        // route degree constraints
+        // route in-degree constraints
         for t in 0..problem.num_days {
             for v in 0..problem.num_vehicles {
                 for i in 0..=problem.num_customers {
                     let mut lhs = grb::expr::LinExpr::new();
 
-                    lhs.add_term(-2.0, data.vars.visit(t, v, i));
+                    lhs.add_term(-1.0, data.vars.visit(t, v, i));
+                    for j in 0..=problem.num_customers {
+                        if i != j {
+                            lhs.add_term(1.0, data.vars.route(t, v, j, i));
+                        }
+                    }
+
+                    lp.add_constr(&format!("Ri_{}_{}_{}", t, v, i), grb::c!(lhs == 0.0))?;
+                }
+            }
+        }
+
+        // route out-degree constraints
+        for t in 0..problem.num_days {
+            for v in 0..problem.num_vehicles {
+                for i in 0..=problem.num_customers {
+                    let mut lhs = grb::expr::LinExpr::new();
+
+                    lhs.add_term(-1.0, data.vars.visit(t, v, i));
                     for j in 0..=problem.num_customers {
                         if i != j {
                             lhs.add_term(1.0, data.vars.route(t, v, i, j));
                         }
                     }
 
-                    lp.add_constr(&format!("Rd_{}_{}_{}", t, v, i), grb::c!(lhs == 0.0))?;
+                    lp.add_constr(&format!("Ro_{}_{}_{}", t, v, i), grb::c!(lhs == 0.0))?;
                 }
             }
         }
