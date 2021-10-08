@@ -662,7 +662,7 @@ impl Solver {
             }
         }
 
-        // glue: visit depot if customer is visited
+        // visit depot if customer is visited
         for t in 0..problem.num_days {
             for v in 0..problem.num_vehicles {
                 for i in 1..=problem.num_customers {
@@ -670,7 +670,7 @@ impl Solver {
                     lhs.add_term(1.0, data.vars.visit(t, v, 0));
                     lhs.add_term(-1.0, data.vars.visit(t, v, i));
 
-                    lp.add_constr(&format!("Gdc_{}_{}_{}", t, v, i), grb::c!(lhs >= 0.0))?;
+                    lp.add_constr(&format!("DC_{}_{}_{}", t, v, i), grb::c!(lhs >= 0.0))?;
                 }
             }
         }
@@ -685,6 +685,21 @@ impl Solver {
 
                     lp.add_constr(&format!("Gdv_{}_{}_{}", t, v, i), grb::c!(lhs >= 0.0))?;
                 }
+            }
+        }
+
+        // ensure vehicle capacity is not exceeded
+        for t in 0..problem.num_days {
+            for v in 0..problem.num_vehicles {
+                let mut lhs = grb::expr::LinExpr::new();
+                for i in 1..=problem.num_customers {
+                    lhs.add_term(1.0, data.vars.deliver(t, v, i));
+                }
+
+                lp.add_constr(
+                    &format!("VC_{}_{}", t, v),
+                    grb::c!(lhs <= problem.capacity as f64),
+                )?;
             }
         }
 
