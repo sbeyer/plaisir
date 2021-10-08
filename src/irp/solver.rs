@@ -477,8 +477,8 @@ impl<'a> SolverData<'a> {
                     if objective > SolverData::EPSILON {
                         let mut lhs = grb::expr::LinExpr::new();
 
-                        for i in 0..=self.problem.num_customers {
-                            for j in 0..=self.problem.num_customers {
+                        for i in 1..=self.problem.num_customers {
+                            for j in 1..=self.problem.num_customers {
                                 if i != j {
                                     let var = y_var(i, j);
                                     let var_name = lp.get_obj_attr(grb::attr::VarName, &var)?;
