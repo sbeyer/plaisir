@@ -369,10 +369,12 @@ impl<'a> SolverData<'a> {
         }
     }
 
-    fn subtour_elimination<F>(&self, assignment: Vec<f64>, add: F) -> grb::Result<()>
+    fn subtour_elimination<F>(&self, assignment: &Vec<f64>, add: F) -> grb::Result<bool>
     where
         F: Fn(grb::constr::IneqExpr) -> grb::Result<()>,
     {
+        let mut added = false;
+
         self.varnames
             .iter()
             .zip(assignment.iter())
@@ -504,92 +506,73 @@ impl<'a> SolverData<'a> {
                         }
 
                         add(grb::c!(lhs <= 0))?;
+                        added = true;
                     }
                 }
             }
         }
 
-        Ok(())
+        Ok(added)
     }
 
     fn elapsed_time(&self) -> time::Duration {
         self.start_time.elapsed()
     }
 
-    fn is_delivered(
-        &self,
-        solution: &[f64],
-        t: usize,
-        v: usize,
-        source: usize,
-        target: usize,
-    ) -> bool {
-        let var_route = self.vars.route_index(t, v, source, target);
-        solution[var_route] > Self::EPSILON
-    }
-
-    fn get_delivery_amount(&self, solution: &[f64], t: usize, target: usize) -> usize {
-        let mut result = 0.;
-        for v in 0..self.problem.num_vehicles {
-            let var_deliver = self.vars.deliver_index(t, v, target);
-            result += solution[var_deliver];
+    fn find_next_site(&self, solution: &[f64], t: usize, v: usize, i: usize) -> Option<usize> {
+        for j in 0..=self.problem.num_customers {
+            if i != j {
+                let var_route = self.vars.route_index(t, v, i, j);
+                if solution[var_route] > Self::EPSILON {
+                    return Some(j);
+                }
+            }
         }
-        result.round() as usize
+
+        None
     }
 
-    /*
+    fn get_delivery_amount(&self, solution: &[f64], t: usize, v: usize, target: usize) -> usize {
+        let var_deliver = self.vars.deliver_index(t, v, target);
+        solution[var_deliver].round() as usize
+    }
+
     fn get_routes(&self, solution: &[f64]) -> Routes {
         let mut routes = Vec::with_capacity(self.problem.num_days);
 
         for t in 0..self.problem.num_days {
             routes.push(Vec::new());
-            for _ in 0..self.problem.num_vehicles {
+
+            for v in 0..self.problem.num_vehicles {
                 routes[t].push(vec![Delivery {
                     quantity: 0,
                     customer: 0,
                 }]);
-            }
 
-            let mut visited = vec![false; self.problem.num_customers + 1];
-            visited[0] = true;
-            for route in 0..self.problem.num_vehicles {
-                let mut i = 0; // last visited location
+                let mut i = 0; // last visited site
                 loop {
-                    let mut found = false;
-
-                    #[allow(clippy::needless_range_loop)]
-                    for j in 1..=self.problem.num_customers {
-                        if i != j && !visited[j] && self.is_delivered(&solution, t, i, j) {
-                            let quantity = self.get_delivery_amount(&solution, t, j);
-                            visited[j] = true;
-                            i = j;
-                            found = true;
-
-                            if quantity > 0 {
-                                routes[t][route].push(Delivery {
-                                    quantity,
-                                    customer: j,
-                                });
+                    match self.find_next_site(&solution, t, v, i) {
+                        Some(j) => {
+                            if j == 0 {
+                                break;
                             }
-                            break;
+
+                            let quantity = self.get_delivery_amount(&solution, t, v, j);
+                            routes[t][v].push(Delivery {
+                                quantity,
+                                customer: j,
+                            });
+
+                            i = j
                         }
+                        None => break,
                     }
-
-                    if !found {
-                        break;
-                    }
-                }
-
-                if i == 0 {
-                    // nothing found, no need to check further routes
-                    break;
                 }
             }
         }
 
         routes
     }
-    */
 }
 
 impl<'a> grb::callback::Callback for SolverData<'a> {
@@ -598,24 +581,20 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
             gurobi::Where::MIPSol(ctx) => {
                 self.ncalls += 1;
                 let assignment = ctx.get_solution(&self.vars.variables)?;
-                /*
-                let routes = self.get_routes(&assignment);
-                let solution =
-                    Solution::new(&self.problem, routes, self.elapsed_time(), self.cpu.clone());
-                */
                 eprintln!("# Incumbent {}!", self.ncalls);
                 eprintln!("#    current obj: {}", ctx.obj()?);
                 eprintln!("#       best obj: {}", ctx.obj_best()?);
 
-                self.varnames
-                    .iter()
-                    .zip(assignment.iter())
-                    .filter(|(_, &value)| value > Self::EPSILON)
-                    .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+                let new_subtour_constraints =
+                    self.subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
 
-                //eprintln!("{}", solution);
+                if !new_subtour_constraints {
+                    let routes = self.get_routes(&assignment);
+                    let solution =
+                        Solution::new(&self.problem, routes, self.elapsed_time(), self.cpu.clone());
 
-                self.subtour_elimination(assignment, |constr| ctx.add_lazy(constr))?;
+                    eprintln!("{}", solution);
+                }
             }
             gurobi::Where::MIPNode(ctx) => {
                 let status = ctx.status()?;
@@ -630,7 +609,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
 
                 if status == grb::Status::Optimal {
                     let assignment = ctx.get_solution(&self.vars.variables)?;
-                    self.subtour_elimination(assignment, |constr| ctx.add_lazy(constr))?;
+                    self.subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
                 }
             }
             _ => (),
@@ -758,13 +737,11 @@ impl Solver {
 
         Self::print_raw_solution(&data, &lp)?;
 
-        /*
         let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
         let routes = data.get_routes(&assignment);
         let solution = Solution::new(&problem, routes, data.elapsed_time(), data.cpu);
         eprintln!("# Final solution");
         eprintln!("{}", solution);
-        */
 
         Ok(())
     }
