@@ -470,13 +470,9 @@ impl<'a> SolverData<'a> {
                     // solve separation problem
                     lp.optimize()?;
 
-                    let status = lp.status()?;
-                    eprintln!("# Sep({}, {}, {}) solution status: {:?}", t, v, k, status);
-
                     let objective = lp.get_attr(gurobi::attr::ObjVal)?;
-                    eprintln!("# Sep({}, {}, {}) solution value: {}", t, v, k, objective);
-
                     if objective > SolverData::EPSILON {
+                        eprintln!("# Sep({}, {}, {}) solution value: {}", t, v, k, objective);
                         let mut lhs = grb::expr::LinExpr::new();
 
                         for i in 1..=self.problem.num_customers {
