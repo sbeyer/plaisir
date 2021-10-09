@@ -555,10 +555,14 @@ impl<'a> SolverData<'a> {
                             }
 
                             let quantity = self.get_delivery_amount(&solution, t, v, j);
-                            routes[t][v].push(Delivery {
-                                quantity,
-                                customer: j,
-                            });
+                            if quantity > 0 {
+                                routes[t][v].push(Delivery {
+                                    quantity,
+                                    customer: j,
+                                });
+                            }
+                            // note that results may deviate from intermediate MIP results
+                            // because of the "if"
 
                             i = j
                         }
