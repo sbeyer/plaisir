@@ -394,7 +394,7 @@ impl<'a> SolverData<'a> {
                         Vec::<gurobi::Var>::with_capacity(self.problem.num_customers + 1);
                     let mut y_vars =
                         Vec::<Vec<gurobi::Var>>::with_capacity(self.problem.num_customers);
-                    for i in 0..=self.problem.num_customers {
+                    for i in 1..=self.problem.num_customers {
                         let name = format!("z_{}", i);
                         let coeff = if i != k {
                             -assignment[self.vars.visit_index(t, v, i)]
@@ -412,9 +412,9 @@ impl<'a> SolverData<'a> {
                         z_vars.push(var);
 
                         let mut y_i_vars =
-                            Vec::<gurobi::Var>::with_capacity(self.problem.num_customers - i);
+                            Vec::<gurobi::Var>::with_capacity(self.problem.num_customers);
 
-                        for j in 0..=self.problem.num_customers {
+                        for j in 1..=self.problem.num_customers {
                             if i != j {
                                 let name = format!("y_{}_{}", i, j);
                                 let coeff = assignment[self.vars.route_index(t, v, i, j)];
@@ -433,15 +433,16 @@ impl<'a> SolverData<'a> {
                         y_vars.push(y_i_vars);
                     }
 
-                    let z_var = |i: usize| z_vars[i];
-                    let y_var = |i: usize, j: usize| y_vars[i][if j < i { j } else { j - 1 }];
+                    let z_var = |i: usize| z_vars[i - 1];
+                    let y_var =
+                        |i: usize, j: usize| y_vars[i - 1][if j < i { j - 1 } else { j - 2 }];
 
                     // add constraint: k is contained
                     lp.add_constr("K", grb::c!(z_var(k) == 1.0))?;
 
                     // add optional constraint: multiplication bound
-                    for i in 0..=self.problem.num_customers {
-                        for j in 0..=self.problem.num_customers {
+                    for i in 1..=self.problem.num_customers {
+                        for j in 1..=self.problem.num_customers {
                             if i != j {
                                 lp.add_constr(
                                     &format!("M_{}_{}", i, j),
@@ -452,8 +453,8 @@ impl<'a> SolverData<'a> {
                     }
 
                     // add constraint: i and j bounds
-                    for i in 0..=self.problem.num_customers {
-                        for j in 0..=self.problem.num_customers {
+                    for i in 1..=self.problem.num_customers {
+                        for j in 1..=self.problem.num_customers {
                             if i != j {
                                 lp.add_constr(
                                     &format!("I_{}_{}", i, j),
