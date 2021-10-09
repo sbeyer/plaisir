@@ -675,6 +675,17 @@ impl Solver {
             }
         }
 
+        // at most one visit per day
+        for t in 0..problem.num_days {
+            for i in 1..=problem.num_customers {
+                let mut lhs = grb::expr::LinExpr::new();
+                for v in 0..problem.num_vehicles {
+                    lhs.add_term(1.0, data.vars.visit(t, v, i));
+                }
+                lp.add_constr(&format!("V1d_{}_{}", t, i), grb::c!(lhs <= 1.0))?;
+            }
+        }
+
         // glue: disable delivery if we do not visit
         for t in 0..problem.num_days {
             for v in 0..problem.num_vehicles {
