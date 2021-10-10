@@ -345,12 +345,18 @@ struct SolverData<'a> {
     start_time: time::Instant,
     cpu: String,
     ncalls: usize,
+    env: &'a gurobi::Env,
 }
 
 impl<'a> SolverData<'a> {
     const EPSILON: f64 = 1e-7;
 
-    fn new(problem: &'a Problem, lp: &mut gurobi::Model, cpu: String) -> Self {
+    fn new(
+        problem: &'a Problem,
+        lp: &mut gurobi::Model,
+        env: &'a gurobi::Env,
+        cpu: String,
+    ) -> Self {
         let start_time = time::Instant::now();
         let vars = Variables::new(&problem, lp);
         lp.update().unwrap(); // update to access variable names
@@ -366,6 +372,7 @@ impl<'a> SolverData<'a> {
             start_time,
             cpu,
             ncalls: 0,
+            env,
         }
     }
 
@@ -385,7 +392,8 @@ impl<'a> SolverData<'a> {
         for t in 0..self.problem.num_days {
             for v in 0..self.problem.num_vehicles {
                 for k in 1..=self.problem.num_customers {
-                    let mut lp = gurobi::Model::new(&format!("sep_{}_{}_{}", t, v, k))?;
+                    let mut lp =
+                        gurobi::Model::with_env(&format!("sep_{}_{}_{}", t, v, k), self.env)?;
                     lp.set_param(grb::param::Threads, 1)?;
                     lp.set_objective(0, gurobi::ModelSense::Maximize)?;
 
@@ -624,12 +632,14 @@ struct Solver {}
 
 impl Solver {
     fn solve(problem: &Problem, cpu: String) -> grb::Result<()> {
-        let mut lp = gurobi::Model::new("irp")?;
+        let mut env = gurobi::Env::new("")?;
+        env.set(grb::param::Threads, 1)?;
+
+        let mut lp = gurobi::Model::with_env("irp", &env)?;
         lp.set_param(grb::param::LazyConstraints, 1)?;
-        lp.set_param(grb::param::Threads, 1)?;
         lp.set_objective(0, gurobi::ModelSense::Minimize)?;
 
-        let mut data = SolverData::new(&problem, &mut lp, cpu);
+        let mut data = SolverData::new(&problem, &mut lp, &env, cpu);
 
         // route in-degree constraints
         for t in 0..problem.num_days {
