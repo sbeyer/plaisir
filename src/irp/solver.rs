@@ -339,6 +339,9 @@ impl fmt::Display for Solution {
 }
 
 struct SubtourEliminationModel {
+    t: usize,
+    v: usize,
+    k: usize,
     model: gurobi::Model,
     z_vars: Vec<gurobi::Var>,
     y_vars: Vec<Vec<gurobi::Var>>,
@@ -350,6 +353,9 @@ impl SubtourEliminationModel {
         let z_vars = Vec::<gurobi::Var>::with_capacity(data.problem.num_customers + 1);
         let y_vars = Vec::<Vec<gurobi::Var>>::with_capacity(data.problem.num_customers);
         let mut sem = Self {
+            t,
+            v,
+            k,
             model,
             z_vars,
             y_vars,
@@ -438,7 +444,7 @@ struct SolverData<'a> {
     cpu: String,
     ncalls: usize,
     env: &'a gurobi::Env,
-    subtour_elimination_models: Vec<Vec<Vec<SubtourEliminationModel>>>,
+    subtour_elimination_models: Vec<SubtourEliminationModel>,
 }
 
 impl<'a> SolverData<'a> {
@@ -460,8 +466,9 @@ impl<'a> SolverData<'a> {
             .collect();
 
         // empty models, have to be populated first by calling init_subtour_elimination_models()
-        let subtour_elimination_models =
-            Vec::<Vec<Vec<SubtourEliminationModel>>>::with_capacity(problem.num_days);
+        let subtour_elimination_models = Vec::<SubtourEliminationModel>::with_capacity(
+            problem.num_days * problem.num_vehicles * problem.num_customers,
+        );
 
         SolverData {
             problem,
@@ -478,16 +485,10 @@ impl<'a> SolverData<'a> {
     // build auxiliary LPs for subtour elimination based on model
     fn init_subtour_elimination_models(&mut self) -> grb::Result<()> {
         for t in 0..self.problem.num_days {
-            self.subtour_elimination_models.push(
-                Vec::<Vec<SubtourEliminationModel>>::with_capacity(self.problem.num_vehicles),
-            );
             for v in 0..self.problem.num_vehicles {
-                self.subtour_elimination_models[t].push(
-                    Vec::<SubtourEliminationModel>::with_capacity(self.problem.num_customers),
-                );
                 for k in 1..=self.problem.num_customers {
                     let model = SubtourEliminationModel::new(self, t, v, k)?;
-                    self.subtour_elimination_models[t][v].push(model);
+                    self.subtour_elimination_models.push(model);
                 }
             }
         }
@@ -508,69 +509,66 @@ impl<'a> SolverData<'a> {
             .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
 
         // build auxiliary LPs based on model
-        for t in 0..self.problem.num_days {
-            for v in 0..self.problem.num_vehicles {
-                for k in 1..=self.problem.num_customers {
-                    let sem = &mut self.subtour_elimination_models[t][v][k - 1];
+        for sem in self.subtour_elimination_models.iter_mut() {
+            let t = sem.t;
+            let v = sem.v;
+            let k = sem.k;
 
-                    // update objective
-                    let mut obj = grb::expr::LinExpr::new();
-                    for i in 1..=self.problem.num_customers {
-                        let z_coeff = if i != k {
-                            -assignment[self.vars.visit_index(t, v, i)]
-                        } else {
-                            0.0
-                        };
-                        obj.add_term(z_coeff, sem.z_var(i));
+            // update objective
+            let mut obj = grb::expr::LinExpr::new();
+            for i in 1..=self.problem.num_customers {
+                let z_coeff = if i != k {
+                    -assignment[self.vars.visit_index(t, v, i)]
+                } else {
+                    0.0
+                };
+                obj.add_term(z_coeff, sem.z_var(i));
 
-                        for j in 1..=self.problem.num_customers {
-                            if i != j {
-                                let y_coeff = assignment[self.vars.route_index(t, v, i, j)];
-                                obj.add_term(y_coeff, sem.y_var(i, j));
-                            }
-                        }
-                    }
-                    sem.model.set_objective(obj, gurobi::ModelSense::Maximize)?;
-
-                    // solve separation problem
-                    sem.model.optimize()?;
-
-                    let objective = sem.model.get_attr(gurobi::attr::ObjVal)?;
-                    if objective > SolverData::EPSILON {
-                        eprintln!("# Sep({}, {}, {}) solution value: {}", t, v, k, objective);
-                        let mut lhs = grb::expr::LinExpr::new();
-
-                        for i in 1..=self.problem.num_customers {
-                            for j in 1..=self.problem.num_customers {
-                                if i != j {
-                                    let var = sem.y_var(i, j);
-                                    let var_name =
-                                        sem.model.get_obj_attr(grb::attr::VarName, &var)?;
-                                    let var_value = sem.model.get_obj_attr(grb::attr::X, &var)?;
-                                    if var_value > SolverData::EPSILON {
-                                        eprintln!("#   - {}: {}", var_name, var_value);
-                                        debug_assert!(var_value > 1.0 - SolverData::EPSILON);
-                                        lhs.add_term(1.0, self.vars.route(t, v, i, j));
-                                    }
-                                }
-                            }
-
-                            if i != k {
-                                let var = sem.z_var(i);
-                                let var_name = sem.model.get_obj_attr(grb::attr::VarName, &var)?;
-                                let var_value = sem.model.get_obj_attr(grb::attr::X, &var)?;
-                                if var_value > SolverData::EPSILON {
-                                    eprintln!("#   - {}: {}", var_name, var_value);
-                                    debug_assert!(var_value > 1.0 - SolverData::EPSILON);
-                                    lhs.add_term(-1.0, self.vars.visit(t, v, i));
-                                }
-                            }
-                        }
-
-                        add(grb::c!(lhs <= 0))?;
-                        added = true;
+                for j in 1..=self.problem.num_customers {
+                    if i != j {
+                        let y_coeff = assignment[self.vars.route_index(t, v, i, j)];
+                        obj.add_term(y_coeff, sem.y_var(i, j));
                     }
                 }
+            }
+            sem.model.set_objective(obj, gurobi::ModelSense::Maximize)?;
+
+            // solve separation problem
+            sem.model.optimize()?;
+
+            let objective = sem.model.get_attr(gurobi::attr::ObjVal)?;
+            if objective > SolverData::EPSILON {
+                eprintln!("# Sep({}, {}, {}) solution value: {}", t, v, k, objective);
+                let mut lhs = grb::expr::LinExpr::new();
+
+                for i in 1..=self.problem.num_customers {
+                    for j in 1..=self.problem.num_customers {
+                        if i != j {
+                            let var = sem.y_var(i, j);
+                            let var_name = sem.model.get_obj_attr(grb::attr::VarName, &var)?;
+                            let var_value = sem.model.get_obj_attr(grb::attr::X, &var)?;
+                            if var_value > SolverData::EPSILON {
+                                eprintln!("#   - {}: {}", var_name, var_value);
+                                debug_assert!(var_value > 1.0 - SolverData::EPSILON);
+                                lhs.add_term(1.0, self.vars.route(t, v, i, j));
+                            }
+                        }
+                    }
+
+                    if i != k {
+                        let var = sem.z_var(i);
+                        let var_name = sem.model.get_obj_attr(grb::attr::VarName, &var)?;
+                        let var_value = sem.model.get_obj_attr(grb::attr::X, &var)?;
+                        if var_value > SolverData::EPSILON {
+                            eprintln!("#   - {}: {}", var_name, var_value);
+                            debug_assert!(var_value > 1.0 - SolverData::EPSILON);
+                            lhs.add_term(-1.0, self.vars.visit(t, v, i));
+                        }
+                    }
+                }
+
+                add(grb::c!(lhs <= 0))?;
+                added = true;
             }
         }
 
