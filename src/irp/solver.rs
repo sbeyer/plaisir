@@ -338,6 +338,98 @@ impl fmt::Display for Solution {
     }
 }
 
+struct SubtourEliminationModel {
+    model: gurobi::Model,
+    z_vars: Vec<gurobi::Var>,
+    y_vars: Vec<Vec<gurobi::Var>>,
+}
+
+impl SubtourEliminationModel {
+    fn new(data: &SolverData, t: usize, v: usize, k: usize) -> grb::Result<Self> {
+        let model = gurobi::Model::with_env(&format!("sep_{}_{}_{}", t, v, k), data.env)?;
+        let z_vars = Vec::<gurobi::Var>::with_capacity(data.problem.num_customers + 1);
+        let y_vars = Vec::<Vec<gurobi::Var>>::with_capacity(data.problem.num_customers);
+        let mut sem = Self {
+            model,
+            z_vars,
+            y_vars,
+        };
+
+        for i in 1..=data.problem.num_customers {
+            let name = format!("z_{}", i);
+            let var = sem.model.add_var(
+                &name,
+                gurobi::VarType::Continuous,
+                0.0,
+                0.0,
+                1.0,
+                std::iter::empty(),
+            )?;
+            sem.z_vars.push(var);
+
+            let mut y_i_vars = Vec::<gurobi::Var>::with_capacity(data.problem.num_customers);
+
+            for j in 1..=data.problem.num_customers {
+                if i != j {
+                    let name = format!("y_{}_{}", i, j);
+                    let var = sem.model.add_var(
+                        &name,
+                        gurobi::VarType::Continuous,
+                        0.0,
+                        0.0,
+                        1.0,
+                        std::iter::empty(),
+                    )?;
+                    y_i_vars.push(var);
+                }
+            }
+
+            sem.y_vars.push(y_i_vars);
+        }
+
+        // add constraint: k is contained
+        sem.model.add_constr("K", grb::c!(sem.z_var(k) == 1.0))?;
+
+        // add optional constraint: multiplication bound
+        for i in 1..=data.problem.num_customers {
+            for j in 1..=data.problem.num_customers {
+                if i != j {
+                    sem.model.add_constr(
+                        &format!("M_{}_{}", i, j),
+                        grb::c!(sem.z_var(i) + sem.z_var(j) - sem.y_var(i, j) <= 1),
+                    )?;
+                }
+            }
+        }
+
+        // add constraint: i and j bounds
+        for i in 1..=data.problem.num_customers {
+            for j in 1..=data.problem.num_customers {
+                if i != j {
+                    sem.model.add_constr(
+                        &format!("I_{}_{}", i, j),
+                        grb::c!(sem.z_var(i) - sem.y_var(i, j) >= 0),
+                    )?;
+                    sem.model.add_constr(
+                        &format!("J_{}_{}", i, j),
+                        grb::c!(sem.z_var(j) - sem.y_var(i, j) >= 0),
+                    )?;
+                }
+            }
+        }
+
+        Ok(sem)
+    }
+
+    fn z_var(&self, i: usize) -> grb::Var {
+        self.z_vars[i - 1]
+    }
+
+    fn y_var(&self, i: usize, j: usize) -> grb::Var {
+        self.y_vars[i - 1][if j < i { j - 1 } else { j - 2 }]
+    }
+}
+
 struct SolverData<'a> {
     problem: &'a Problem,
     vars: Variables<'a>,
@@ -346,6 +438,7 @@ struct SolverData<'a> {
     cpu: String,
     ncalls: usize,
     env: &'a gurobi::Env,
+    subtour_elimination_models: Vec<Vec<Vec<SubtourEliminationModel>>>,
 }
 
 impl<'a> SolverData<'a> {
@@ -365,6 +458,11 @@ impl<'a> SolverData<'a> {
             .iter()
             .map(|var| lp.get_obj_attr(grb::attr::VarName, &var).unwrap())
             .collect();
+
+        // empty models, have to be populated first by calling init_subtour_elimination_models()
+        let subtour_elimination_models =
+            Vec::<Vec<Vec<SubtourEliminationModel>>>::with_capacity(problem.num_days);
+
         SolverData {
             problem,
             vars,
@@ -373,10 +471,31 @@ impl<'a> SolverData<'a> {
             cpu,
             ncalls: 0,
             env,
+            subtour_elimination_models,
         }
     }
 
-    fn subtour_elimination<F>(&self, assignment: &Vec<f64>, add: F) -> grb::Result<bool>
+    // build auxiliary LPs for subtour elimination based on model
+    fn init_subtour_elimination_models(&mut self) -> grb::Result<()> {
+        for t in 0..self.problem.num_days {
+            self.subtour_elimination_models.push(
+                Vec::<Vec<SubtourEliminationModel>>::with_capacity(self.problem.num_vehicles),
+            );
+            for v in 0..self.problem.num_vehicles {
+                self.subtour_elimination_models[t].push(
+                    Vec::<SubtourEliminationModel>::with_capacity(self.problem.num_customers),
+                );
+                for k in 1..=self.problem.num_customers {
+                    let model = SubtourEliminationModel::new(self, t, v, k)?;
+                    self.subtour_elimination_models[t][v].push(model);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn subtour_elimination<F>(&mut self, assignment: &Vec<f64>, add: F) -> grb::Result<bool>
     where
         F: Fn(grb::constr::IneqExpr) -> grb::Result<()>,
     {
@@ -392,94 +511,31 @@ impl<'a> SolverData<'a> {
         for t in 0..self.problem.num_days {
             for v in 0..self.problem.num_vehicles {
                 for k in 1..=self.problem.num_customers {
-                    let mut lp =
-                        gurobi::Model::with_env(&format!("sep_{}_{}_{}", t, v, k), self.env)?;
-                    lp.set_param(grb::param::Threads, 1)?;
-                    lp.set_objective(0, gurobi::ModelSense::Maximize)?;
+                    let sem = &mut self.subtour_elimination_models[t][v][k - 1];
 
-                    // generate variables
-                    let mut z_vars =
-                        Vec::<gurobi::Var>::with_capacity(self.problem.num_customers + 1);
-                    let mut y_vars =
-                        Vec::<Vec<gurobi::Var>>::with_capacity(self.problem.num_customers);
+                    // update objective
+                    let mut obj = grb::expr::LinExpr::new();
                     for i in 1..=self.problem.num_customers {
-                        let name = format!("z_{}", i);
-                        let coeff = if i != k {
+                        let z_coeff = if i != k {
                             -assignment[self.vars.visit_index(t, v, i)]
                         } else {
                             0.0
                         };
-                        let var = lp.add_var(
-                            &name,
-                            gurobi::VarType::Continuous,
-                            coeff,
-                            0.0,
-                            1.0,
-                            std::iter::empty(),
-                        )?;
-                        z_vars.push(var);
-
-                        let mut y_i_vars =
-                            Vec::<gurobi::Var>::with_capacity(self.problem.num_customers);
+                        obj.add_term(z_coeff, sem.z_var(i));
 
                         for j in 1..=self.problem.num_customers {
                             if i != j {
-                                let name = format!("y_{}_{}", i, j);
-                                let coeff = assignment[self.vars.route_index(t, v, i, j)];
-                                let var = lp.add_var(
-                                    &name,
-                                    gurobi::VarType::Continuous,
-                                    coeff,
-                                    0.0,
-                                    1.0,
-                                    std::iter::empty(),
-                                )?;
-                                y_i_vars.push(var);
-                            }
-                        }
-
-                        y_vars.push(y_i_vars);
-                    }
-
-                    let z_var = |i: usize| z_vars[i - 1];
-                    let y_var =
-                        |i: usize, j: usize| y_vars[i - 1][if j < i { j - 1 } else { j - 2 }];
-
-                    // add constraint: k is contained
-                    lp.add_constr("K", grb::c!(z_var(k) == 1.0))?;
-
-                    // add optional constraint: multiplication bound
-                    for i in 1..=self.problem.num_customers {
-                        for j in 1..=self.problem.num_customers {
-                            if i != j {
-                                lp.add_constr(
-                                    &format!("M_{}_{}", i, j),
-                                    grb::c!(z_var(i) + z_var(j) - y_var(i, j) <= 1),
-                                )?;
+                                let y_coeff = assignment[self.vars.route_index(t, v, i, j)];
+                                obj.add_term(y_coeff, sem.y_var(i, j));
                             }
                         }
                     }
-
-                    // add constraint: i and j bounds
-                    for i in 1..=self.problem.num_customers {
-                        for j in 1..=self.problem.num_customers {
-                            if i != j {
-                                lp.add_constr(
-                                    &format!("I_{}_{}", i, j),
-                                    grb::c!(z_var(i) - y_var(i, j) >= 0),
-                                )?;
-                                lp.add_constr(
-                                    &format!("J_{}_{}", i, j),
-                                    grb::c!(z_var(j) - y_var(i, j) >= 0),
-                                )?;
-                            }
-                        }
-                    }
+                    sem.model.set_objective(obj, gurobi::ModelSense::Maximize)?;
 
                     // solve separation problem
-                    lp.optimize()?;
+                    sem.model.optimize()?;
 
-                    let objective = lp.get_attr(gurobi::attr::ObjVal)?;
+                    let objective = sem.model.get_attr(gurobi::attr::ObjVal)?;
                     if objective > SolverData::EPSILON {
                         eprintln!("# Sep({}, {}, {}) solution value: {}", t, v, k, objective);
                         let mut lhs = grb::expr::LinExpr::new();
@@ -487,9 +543,10 @@ impl<'a> SolverData<'a> {
                         for i in 1..=self.problem.num_customers {
                             for j in 1..=self.problem.num_customers {
                                 if i != j {
-                                    let var = y_var(i, j);
-                                    let var_name = lp.get_obj_attr(grb::attr::VarName, &var)?;
-                                    let var_value = lp.get_obj_attr(grb::attr::X, &var)?;
+                                    let var = sem.y_var(i, j);
+                                    let var_name =
+                                        sem.model.get_obj_attr(grb::attr::VarName, &var)?;
+                                    let var_value = sem.model.get_obj_attr(grb::attr::X, &var)?;
                                     if var_value > SolverData::EPSILON {
                                         eprintln!("#   - {}: {}", var_name, var_value);
                                         debug_assert!(var_value > 1.0 - SolverData::EPSILON);
@@ -499,9 +556,9 @@ impl<'a> SolverData<'a> {
                             }
 
                             if i != k {
-                                let var = z_var(i);
-                                let var_name = lp.get_obj_attr(grb::attr::VarName, &var)?;
-                                let var_value = lp.get_obj_attr(grb::attr::X, &var)?;
+                                let var = sem.z_var(i);
+                                let var_name = sem.model.get_obj_attr(grb::attr::VarName, &var)?;
+                                let var_value = sem.model.get_obj_attr(grb::attr::X, &var)?;
                                 if var_value > SolverData::EPSILON {
                                     eprintln!("#   - {}: {}", var_name, var_value);
                                     debug_assert!(var_value > 1.0 - SolverData::EPSILON);
@@ -640,6 +697,7 @@ impl Solver {
         lp.set_objective(0, gurobi::ModelSense::Minimize)?;
 
         let mut data = SolverData::new(&problem, &mut lp, &env, cpu);
+        data.init_subtour_elimination_models()?;
 
         // route in-degree constraints
         for t in 0..problem.num_days {
