@@ -11,6 +11,7 @@ struct Variables<'a> {
     inventory_range: (usize, usize),
 }
 
+#[allow(clippy::many_single_char_names)]
 impl<'a> Variables<'a> {
     fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> Self {
         let num_variables_route = problem.num_days
