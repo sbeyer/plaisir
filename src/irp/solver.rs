@@ -496,7 +496,7 @@ impl<'a> SolverData<'a> {
         Ok(())
     }
 
-    fn subtour_elimination<F>(&mut self, assignment: &Vec<f64>, add: F) -> grb::Result<bool>
+    fn subtour_elimination<F>(&mut self, assignment: &[f64], add: F) -> grb::Result<bool>
     where
         F: Fn(grb::constr::IneqExpr) -> grb::Result<()>,
     {
