@@ -26,7 +26,7 @@ impl<'a> Variables<'a> {
             + num_variables_inventory
             + num_variables_deliver;
         let mut vars = Variables {
-            problem: &problem,
+            problem,
             variables: Vec::with_capacity(num_variables),
             route_range: (0, num_variables),
             deliver_range: (0, num_variables),
@@ -457,12 +457,12 @@ impl<'a> SolverData<'a> {
         cpu: String,
     ) -> Self {
         let start_time = time::Instant::now();
-        let vars = Variables::new(&problem, lp);
+        let vars = Variables::new(problem, lp);
         lp.update().unwrap(); // update to access variable names
         let varnames = vars
             .variables
             .iter()
-            .map(|var| lp.get_obj_attr(grb::attr::VarName, &var).unwrap())
+            .map(|var| lp.get_obj_attr(grb::attr::VarName, var).unwrap())
             .collect();
 
         // empty models, have to be populated first by calling init_subtour_elimination_models()
@@ -611,13 +611,13 @@ impl<'a> SolverData<'a> {
 
                 let mut i = 0; // last visited site
                 loop {
-                    match self.find_next_site(&solution, t, v, i) {
+                    match self.find_next_site(solution, t, v, i) {
                         Some(j) => {
                             if j == 0 {
                                 break;
                             }
 
-                            let quantity = self.get_delivery_amount(&solution, t, v, j);
+                            let quantity = self.get_delivery_amount(solution, t, v, j);
                             if quantity > 0 {
                                 routes[t][v].push(Delivery {
                                     quantity,
@@ -655,7 +655,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                 if !new_subtour_constraints {
                     let routes = self.get_routes(&assignment);
                     let solution =
-                        Solution::new(&self.problem, routes, self.elapsed_time(), self.cpu.clone());
+                        Solution::new(self.problem, routes, self.elapsed_time(), self.cpu.clone());
 
                     eprintln!("{}", solution);
                 }
@@ -696,7 +696,7 @@ impl Solver {
         lp.set_param(grb::param::LazyConstraints, 1)?;
         lp.set_objective(0, gurobi::ModelSense::Minimize)?;
 
-        let mut data = SolverData::new(&problem, &mut lp, &env, cpu);
+        let mut data = SolverData::new(problem, &mut lp, &env, cpu);
         data.init_subtour_elimination_models()?;
 
         // route in-degree constraints
@@ -834,7 +834,7 @@ impl Solver {
 
         let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
         let routes = data.get_routes(&assignment);
-        let solution = Solution::new(&problem, routes, data.elapsed_time(), data.cpu);
+        let solution = Solution::new(problem, routes, data.elapsed_time(), data.cpu);
         eprintln!("# Final solution");
         eprintln!("{}", solution);
 
@@ -850,8 +850,8 @@ impl Solver {
 
         // print raw solution:
         for var in data.vars.variables.iter() {
-            let name = lp.get_obj_attr(grb::attr::VarName, &var)?;
-            let value = lp.get_obj_attr(grb::attr::X, &var)?;
+            let name = lp.get_obj_attr(grb::attr::VarName, var)?;
+            let value = lp.get_obj_attr(grb::attr::X, var)?;
             if value > SolverData::EPSILON {
                 eprintln!("#   - {}: {}", name, value);
             }

@@ -22,7 +22,7 @@ impl Position {
     }
 
     pub fn distance(&self, other: &Self) -> i32 {
-        self.real_distance(&other).round() as i32
+        self.real_distance(other).round() as i32
     }
 }
 
