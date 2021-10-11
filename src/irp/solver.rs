@@ -610,27 +610,22 @@ impl<'a> SolverData<'a> {
                 }]);
 
                 let mut i = 0; // last visited site
-                loop {
-                    match self.find_next_site(solution, t, v, i) {
-                        Some(j) => {
-                            if j == 0 {
-                                break;
-                            }
-
-                            let quantity = self.get_delivery_amount(solution, t, v, j);
-                            if quantity > 0 {
-                                routes[t][v].push(Delivery {
-                                    quantity,
-                                    customer: j,
-                                });
-                            }
-                            // note that results may deviate from intermediate MIP results
-                            // because of the "if"
-
-                            i = j
-                        }
-                        None => break,
+                while let Some(j) = self.find_next_site(solution, t, v, i) {
+                    if j == 0 {
+                        break;
                     }
+
+                    let quantity = self.get_delivery_amount(solution, t, v, j);
+                    if quantity > 0 {
+                        routes[t][v].push(Delivery {
+                            quantity,
+                            customer: j,
+                        });
+                    }
+                    // note that results may deviate from intermediate MIP results
+                    // because of the "if"
+
+                    i = j
                 }
             }
         }
