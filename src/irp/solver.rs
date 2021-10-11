@@ -399,6 +399,7 @@ impl SubtourEliminationModel {
         // add optional constraint: multiplication bound
         for i in 1..=data.problem.num_customers {
             for j in 1..=data.problem.num_customers {
+                #[allow(clippy::useless_conversion)]
                 if i != j {
                     sem.model.add_constr(
                         &format!("M_{}_{}", i, j),
@@ -411,6 +412,7 @@ impl SubtourEliminationModel {
         // add constraint: i and j bounds
         for i in 1..=data.problem.num_customers {
             for j in 1..=data.problem.num_customers {
+                #[allow(clippy::useless_conversion)]
                 if i != j {
                     sem.model.add_constr(
                         &format!("I_{}_{}", i, j),
