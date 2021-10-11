@@ -583,7 +583,7 @@ impl<'a> SolverData<'a> {
         for j in 0..=self.problem.num_customers {
             if i != j {
                 let var_route = self.vars.route_index(t, v, i, j);
-                if solution[var_route] > Self::EPSILON {
+                if solution[var_route] > 0.5 {
                     return Some(j);
                 }
             }
