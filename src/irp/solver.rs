@@ -655,7 +655,6 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     eprintln!("{}", solution);
                 }
             }
-            /*
             gurobi::Where::MIPNode(ctx) => {
                 let status = ctx.status()?;
                 eprintln!(
@@ -667,12 +666,13 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                 eprintln!("#       best objective: {}", ctx.obj_best()?);
                 eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
 
+                /*
                 if status == grb::Status::Optimal {
                     let assignment = ctx.get_solution(&self.vars.variables)?;
                     self.subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
                 }
+                */
             }
-            */
             _ => (),
         }
 
