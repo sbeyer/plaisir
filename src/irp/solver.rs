@@ -7,20 +7,22 @@ struct Variables<'a> {
     variables: Vec<gurobi::Var>,
     route_range: (usize, usize),
     deliver_range: (usize, usize),
-    carry_range: (usize, usize),
+    visit_range: (usize, usize),
     inventory_range: (usize, usize),
 }
 
 impl<'a> Variables<'a> {
     fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> Self {
-        let num_variables_route =
-            problem.num_days * (problem.num_customers + 1) * problem.num_customers;
-        let num_variables_carry =
-            problem.num_days * (problem.num_customers + 1) * problem.num_customers;
+        let num_variables_route = problem.num_days
+            * problem.num_vehicles
+            * (problem.num_customers + 1)
+            * problem.num_customers;
+        let num_variables_visit =
+            problem.num_days * problem.num_vehicles * (problem.num_customers + 1);
         let num_variables_inventory = problem.num_days * (problem.num_customers + 1);
-        let num_variables_deliver = problem.num_days * problem.num_customers;
+        let num_variables_deliver = problem.num_days * problem.num_vehicles * problem.num_customers;
         let num_variables = num_variables_route
-            + num_variables_carry
+            + num_variables_visit
             + num_variables_inventory
             + num_variables_deliver;
         let mut vars = Variables {
@@ -28,31 +30,33 @@ impl<'a> Variables<'a> {
             variables: Vec::with_capacity(num_variables),
             route_range: (0, num_variables),
             deliver_range: (0, num_variables),
-            carry_range: (0, num_variables),
+            visit_range: (0, num_variables),
             inventory_range: (0, num_variables),
         };
 
         // route variables
         for t in 0..problem.num_days {
-            for i in 0..=problem.num_customers {
-                for j in 0..=problem.num_customers {
-                    if i != j {
-                        let name = format!("r_{}_{}_{}", t, i, j);
-                        let coeff = problem.distance(i, j).into();
-                        let bounds = (0.0, 1.0);
-                        //let var = grb::add_binvar!(lp, name: &name, obj: coeff).unwrap();
-                        let var = lp
-                            .add_var(
-                                &name,
-                                gurobi::VarType::Binary,
-                                coeff,
-                                bounds.0,
-                                bounds.1,
-                                std::iter::empty(),
-                            )
-                            .unwrap();
-                        debug_assert!(vars.variables.len() == vars.route_index(t, i, j));
-                        vars.variables.push(var);
+            for v in 0..problem.num_vehicles {
+                for i in 0..=problem.num_customers {
+                    for j in 0..=problem.num_customers {
+                        if i != j {
+                            let name = format!("r_{}_{}_{}_{}", t, v, i, j);
+                            let coeff = problem.distance(i, j).into();
+                            let bounds = (0.0, 1.0);
+                            //let var = grb::add_binvar!(lp, name: &name, obj: coeff).unwrap();
+                            let var = lp
+                                .add_var(
+                                    &name,
+                                    gurobi::VarType::Binary,
+                                    coeff,
+                                    bounds.0,
+                                    bounds.1,
+                                    std::iter::empty(),
+                                )
+                                .unwrap();
+                            debug_assert_eq!(vars.variables.len(), vars.route_index(t, v, i, j));
+                            vars.variables.push(var);
+                        }
                     }
                 }
             }
@@ -60,36 +64,34 @@ impl<'a> Variables<'a> {
         vars.route_range.1 = vars.variables.len();
         debug_assert_eq!(num_variables_route, vars.route_range.1 - vars.route_range.0);
 
-        // carry variables
-        vars.carry_range.0 = vars.route_range.1;
+        // visit variables
+        vars.visit_range.0 = vars.route_range.1;
         for t in 0..problem.num_days {
-            for i in 0..=problem.num_customers {
-                for j in 0..=problem.num_customers {
-                    if i != j {
-                        let name = format!("c_{}_{}_{}", t, i, j);
-                        let coeff = 0.0;
-                        let bounds = (0.0, problem.capacity.into());
-                        let var = lp
-                            .add_var(
-                                &name,
-                                gurobi::VarType::Continuous,
-                                coeff,
-                                bounds.0,
-                                bounds.1,
-                                std::iter::empty(),
-                            )
-                            .unwrap();
-                        debug_assert!(vars.variables.len() == vars.carry_index(t, i, j));
-                        vars.variables.push(var);
-                    }
+            for v in 0..problem.num_vehicles {
+                for i in 0..=problem.num_customers {
+                    let name = format!("v_{}_{}_{}", t, v, i);
+                    let coeff = 0.0;
+                    let bounds = (0.0, 1.0);
+                    let var = lp
+                        .add_var(
+                            &name,
+                            gurobi::VarType::Continuous,
+                            coeff,
+                            bounds.0,
+                            bounds.1,
+                            std::iter::empty(),
+                        )
+                        .unwrap();
+                    debug_assert_eq!(vars.variables.len(), vars.visit_index(t, v, i));
+                    vars.variables.push(var);
                 }
             }
         }
-        vars.carry_range.1 = vars.variables.len();
-        debug_assert_eq!(num_variables_carry, vars.carry_range.1 - vars.carry_range.0);
+        vars.visit_range.1 = vars.variables.len();
+        debug_assert_eq!(num_variables_visit, vars.visit_range.1 - vars.visit_range.0);
 
         // inventory variables
-        vars.inventory_range.0 = vars.carry_range.1;
+        vars.inventory_range.0 = vars.visit_range.1;
         for t in 0..problem.num_days {
             for i in 0..=problem.num_customers {
                 let name = format!("i_{}_{}", t, i);
@@ -105,7 +107,7 @@ impl<'a> Variables<'a> {
                         std::iter::empty(),
                     )
                     .unwrap();
-                debug_assert!(vars.variables.len() == vars.inventory_index(t, i));
+                debug_assert_eq!(vars.variables.len(), vars.inventory_index(t, i));
                 vars.variables.push(var);
             }
         }
@@ -118,22 +120,24 @@ impl<'a> Variables<'a> {
         // deliver variables
         vars.deliver_range.0 = vars.inventory_range.1;
         for t in 0..problem.num_days {
-            for i in 1..=problem.num_customers {
-                let name = format!("d_{}_{}", t, i);
-                let coeff = 0.0;
-                let bounds = (0.0, problem.capacity.into());
-                let var = lp
-                    .add_var(
-                        &name,
-                        gurobi::VarType::Continuous,
-                        coeff,
-                        bounds.0,
-                        bounds.1,
-                        std::iter::empty(),
-                    )
-                    .unwrap();
-                debug_assert!(vars.variables.len() == vars.deliver_index(t, i));
-                vars.variables.push(var);
+            for v in 0..problem.num_vehicles {
+                for i in 1..=problem.num_customers {
+                    let name = format!("d_{}_{}_{}", t, v, i);
+                    let coeff = 0.0;
+                    let bounds = (0.0, problem.capacity.into());
+                    let var = lp
+                        .add_var(
+                            &name,
+                            gurobi::VarType::Continuous,
+                            coeff,
+                            bounds.0,
+                            bounds.1,
+                            std::iter::empty(),
+                        )
+                        .unwrap();
+                    debug_assert_eq!(vars.variables.len(), vars.deliver_index(t, v, i));
+                    vars.variables.push(var);
+                }
             }
         }
         vars.deliver_range.1 = vars.variables.len();
@@ -145,42 +149,45 @@ impl<'a> Variables<'a> {
         vars
     }
 
-    fn route_index(&self, t: usize, i: usize, j: usize) -> usize {
+    fn route_index(&self, t: usize, v: usize, i: usize, j: usize) -> usize {
         debug_assert!(t < self.problem.num_days);
-        debug_assert!(i <= self.problem.num_customers);
-        debug_assert!(j <= self.problem.num_customers);
+        debug_assert!(v < self.problem.num_vehicles);
+        let n = self.problem.num_customers;
+        debug_assert!(i <= n);
+        debug_assert!(j <= n);
         debug_assert!(i != j);
 
-        let j_block_size = self.problem.num_customers;
-        let i_j_block_size = (self.problem.num_customers + 1) * j_block_size;
-        let offset = self.route_range.0 + t * i_j_block_size + i * j_block_size;
+        let j_block_size = n;
+        let i_j_block_size = (n + 1) * j_block_size;
+        let v_i_j_block_size = self.problem.num_vehicles * i_j_block_size;
+        let offset =
+            self.route_range.0 + t * v_i_j_block_size + v * i_j_block_size + i * j_block_size;
         let result = offset + (if j > i { j - 1 } else { j });
         debug_assert!(result < self.route_range.1);
 
         result
     }
 
-    fn route(&self, t: usize, i: usize, j: usize) -> gurobi::Var {
-        self.variables[self.route_index(t, i, j)]
+    fn route(&self, t: usize, v: usize, i: usize, j: usize) -> gurobi::Var {
+        self.variables[self.route_index(t, v, i, j)]
     }
 
-    fn carry_index(&self, t: usize, i: usize, j: usize) -> usize {
+    fn visit_index(&self, t: usize, v: usize, i: usize) -> usize {
         debug_assert!(t < self.problem.num_days);
+        debug_assert!(v < self.problem.num_vehicles);
         debug_assert!(i <= self.problem.num_customers);
-        debug_assert!(j <= self.problem.num_customers);
-        debug_assert!(i != j);
 
-        let j_block_size = self.problem.num_customers;
-        let i_j_block_size = (self.problem.num_customers + 1) * j_block_size;
-        let offset = self.carry_range.0 + t * i_j_block_size + i * j_block_size;
-        let result = offset + (if j > i { j - 1 } else { j });
-        debug_assert!(result < self.carry_range.1);
+        let i_block_size = self.problem.num_customers + 1;
+        let v_i_block_size = self.problem.num_vehicles * i_block_size;
+        let offset = self.visit_range.0 + t * v_i_block_size + v * i_block_size;
+        let result = offset + i;
+        debug_assert!(result < self.visit_range.1);
 
         result
     }
 
-    fn carry(&self, t: usize, i: usize, j: usize) -> gurobi::Var {
-        self.variables[self.carry_index(t, i, j)]
+    fn visit(&self, t: usize, v: usize, i: usize) -> gurobi::Var {
+        self.variables[self.visit_index(t, v, i)]
     }
 
     fn inventory_index(&self, t: usize, i: usize) -> usize {
@@ -199,21 +206,23 @@ impl<'a> Variables<'a> {
         self.variables[self.inventory_index(t, i)]
     }
 
-    fn deliver_index(&self, t: usize, i: usize) -> usize {
+    fn deliver_index(&self, t: usize, v: usize, i: usize) -> usize {
         debug_assert!(t < self.problem.num_days);
+        debug_assert!(v < self.problem.num_vehicles);
         debug_assert!(i >= 1);
         debug_assert!(i <= self.problem.num_customers);
 
         let i_block_size = self.problem.num_customers;
-        let offset = self.deliver_range.0 + t * i_block_size;
+        let v_i_block_size = self.problem.num_vehicles * i_block_size;
+        let offset = self.deliver_range.0 + t * v_i_block_size + v * i_block_size;
         let result = offset + i - 1;
         debug_assert!(result < self.deliver_range.1);
 
         result
     }
 
-    fn deliver(&self, t: usize, i: usize) -> gurobi::Var {
-        self.variables[self.deliver_index(t, i)]
+    fn deliver(&self, t: usize, v: usize, i: usize) -> gurobi::Var {
+        self.variables[self.deliver_index(t, v, i)]
     }
 }
 
@@ -329,6 +338,104 @@ impl fmt::Display for Solution {
     }
 }
 
+struct SubtourEliminationModel {
+    t: usize,
+    v: usize,
+    k: usize,
+    model: gurobi::Model,
+    z_vars: Vec<gurobi::Var>,
+    y_vars: Vec<Vec<gurobi::Var>>,
+}
+
+impl SubtourEliminationModel {
+    fn new(data: &SolverData, t: usize, v: usize, k: usize) -> grb::Result<Self> {
+        let model = gurobi::Model::with_env(&format!("sep_{}_{}_{}", t, v, k), data.env)?;
+        let z_vars = Vec::<gurobi::Var>::with_capacity(data.problem.num_customers + 1);
+        let y_vars = Vec::<Vec<gurobi::Var>>::with_capacity(data.problem.num_customers);
+        let mut sem = Self {
+            t,
+            v,
+            k,
+            model,
+            z_vars,
+            y_vars,
+        };
+
+        for i in 1..=data.problem.num_customers {
+            let name = format!("z_{}", i);
+            let var = sem.model.add_var(
+                &name,
+                gurobi::VarType::Continuous,
+                0.0,
+                0.0,
+                1.0,
+                std::iter::empty(),
+            )?;
+            sem.z_vars.push(var);
+
+            let mut y_i_vars = Vec::<gurobi::Var>::with_capacity(data.problem.num_customers);
+
+            for j in 1..=data.problem.num_customers {
+                if i != j {
+                    let name = format!("y_{}_{}", i, j);
+                    let var = sem.model.add_var(
+                        &name,
+                        gurobi::VarType::Continuous,
+                        0.0,
+                        0.0,
+                        1.0,
+                        std::iter::empty(),
+                    )?;
+                    y_i_vars.push(var);
+                }
+            }
+
+            sem.y_vars.push(y_i_vars);
+        }
+
+        // add constraint: k is contained
+        sem.model.add_constr("K", grb::c!(sem.z_var(k) == 1.0))?;
+
+        // add optional constraint: multiplication bound
+        for i in 1..=data.problem.num_customers {
+            for j in 1..=data.problem.num_customers {
+                if i != j {
+                    sem.model.add_constr(
+                        &format!("M_{}_{}", i, j),
+                        grb::c!(sem.z_var(i) + sem.z_var(j) - sem.y_var(i, j) <= 1),
+                    )?;
+                }
+            }
+        }
+
+        // add constraint: i and j bounds
+        for i in 1..=data.problem.num_customers {
+            for j in 1..=data.problem.num_customers {
+                if i != j {
+                    sem.model.add_constr(
+                        &format!("I_{}_{}", i, j),
+                        grb::c!(sem.z_var(i) - sem.y_var(i, j) >= 0),
+                    )?;
+                    sem.model.add_constr(
+                        &format!("J_{}_{}", i, j),
+                        grb::c!(sem.z_var(j) - sem.y_var(i, j) >= 0),
+                    )?;
+                }
+            }
+        }
+
+        Ok(sem)
+    }
+
+    fn z_var(&self, i: usize) -> grb::Var {
+        self.z_vars[i - 1]
+    }
+
+    fn y_var(&self, i: usize, j: usize) -> grb::Var {
+        self.y_vars[i - 1][if j < i { j - 1 } else { j - 2 }]
+    }
+}
+
 struct SolverData<'a> {
     problem: &'a Problem,
     vars: Variables<'a>,
@@ -336,12 +443,19 @@ struct SolverData<'a> {
     start_time: time::Instant,
     cpu: String,
     ncalls: usize,
+    env: &'a gurobi::Env,
+    subtour_elimination_models: Vec<SubtourEliminationModel>,
 }
 
 impl<'a> SolverData<'a> {
     const EPSILON: f64 = 1e-7;
 
-    fn new(problem: &'a Problem, lp: &mut gurobi::Model, cpu: String) -> Self {
+    fn new(
+        problem: &'a Problem,
+        lp: &mut gurobi::Model,
+        env: &'a gurobi::Env,
+        cpu: String,
+    ) -> Self {
         let start_time = time::Instant::now();
         let vars = Variables::new(&problem, lp);
         lp.update().unwrap(); // update to access variable names
@@ -350,6 +464,12 @@ impl<'a> SolverData<'a> {
             .iter()
             .map(|var| lp.get_obj_attr(grb::attr::VarName, &var).unwrap())
             .collect();
+
+        // empty models, have to be populated first by calling init_subtour_elimination_models()
+        let subtour_elimination_models = Vec::<SubtourEliminationModel>::with_capacity(
+            problem.num_days * problem.num_vehicles * problem.num_customers,
+        );
+
         SolverData {
             problem,
             vars,
@@ -357,22 +477,124 @@ impl<'a> SolverData<'a> {
             start_time,
             cpu,
             ncalls: 0,
+            env,
+            subtour_elimination_models,
         }
+    }
+
+    // build auxiliary LPs for subtour elimination based on model
+    fn init_subtour_elimination_models(&mut self) -> grb::Result<()> {
+        for t in 0..self.problem.num_days {
+            for v in 0..self.problem.num_vehicles {
+                for k in 1..=self.problem.num_customers {
+                    let model = SubtourEliminationModel::new(self, t, v, k)?;
+                    self.subtour_elimination_models.push(model);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn subtour_elimination<F>(&mut self, assignment: &Vec<f64>, add: F) -> grb::Result<bool>
+    where
+        F: Fn(grb::constr::IneqExpr) -> grb::Result<()>,
+    {
+        let mut added = false;
+
+        self.varnames
+            .iter()
+            .zip(assignment.iter())
+            .filter(|(_, &value)| value > Self::EPSILON)
+            .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+
+        // build auxiliary LPs based on model
+        for sem in self.subtour_elimination_models.iter_mut() {
+            let t = sem.t;
+            let v = sem.v;
+            let k = sem.k;
+
+            // update objective
+            let mut obj = grb::expr::LinExpr::new();
+            for i in 1..=self.problem.num_customers {
+                let z_coeff = if i != k {
+                    -assignment[self.vars.visit_index(t, v, i)]
+                } else {
+                    0.0
+                };
+                obj.add_term(z_coeff, sem.z_var(i));
+
+                for j in 1..=self.problem.num_customers {
+                    if i != j {
+                        let y_coeff = assignment[self.vars.route_index(t, v, i, j)];
+                        obj.add_term(y_coeff, sem.y_var(i, j));
+                    }
+                }
+            }
+            sem.model.set_objective(obj, gurobi::ModelSense::Maximize)?;
+
+            // solve separation problem
+            sem.model.optimize()?;
+
+            let objective = sem.model.get_attr(gurobi::attr::ObjVal)?;
+            if objective > SolverData::EPSILON {
+                eprintln!("# Sep({}, {}, {}) solution value: {}", t, v, k, objective);
+                let mut lhs = grb::expr::LinExpr::new();
+
+                for i in 1..=self.problem.num_customers {
+                    for j in 1..=self.problem.num_customers {
+                        if i != j {
+                            let var = sem.y_var(i, j);
+                            let var_name = sem.model.get_obj_attr(grb::attr::VarName, &var)?;
+                            let var_value = sem.model.get_obj_attr(grb::attr::X, &var)?;
+                            if var_value > SolverData::EPSILON {
+                                eprintln!("#   - {}: {}", var_name, var_value);
+                                debug_assert!(var_value > 1.0 - SolverData::EPSILON);
+                                lhs.add_term(1.0, self.vars.route(t, v, i, j));
+                            }
+                        }
+                    }
+
+                    if i != k {
+                        let var = sem.z_var(i);
+                        let var_name = sem.model.get_obj_attr(grb::attr::VarName, &var)?;
+                        let var_value = sem.model.get_obj_attr(grb::attr::X, &var)?;
+                        if var_value > SolverData::EPSILON {
+                            eprintln!("#   - {}: {}", var_name, var_value);
+                            debug_assert!(var_value > 1.0 - SolverData::EPSILON);
+                            lhs.add_term(-1.0, self.vars.visit(t, v, i));
+                        }
+                    }
+                }
+
+                add(grb::c!(lhs <= 0))?;
+                added = true;
+            }
+        }
+
+        Ok(added)
     }
 
     fn elapsed_time(&self) -> time::Duration {
         self.start_time.elapsed()
     }
 
-    fn is_delivered(&self, solution: &[f64], t: usize, source: usize, target: usize) -> bool {
-        let var_route = self.vars.route_index(t, source, target);
-        solution[var_route] > Self::EPSILON
+    fn find_next_site(&self, solution: &[f64], t: usize, v: usize, i: usize) -> Option<usize> {
+        for j in 0..=self.problem.num_customers {
+            if i != j {
+                let var_route = self.vars.route_index(t, v, i, j);
+                if solution[var_route] > 0.5 {
+                    return Some(j);
+                }
+            }
+        }
+
+        None
     }
 
-    fn get_delivery_amount(&self, solution: &[f64], t: usize, target: usize) -> usize {
-        let var_deliver = self.vars.deliver_index(t, target);
-        let quantity = solution[var_deliver];
-        quantity.round() as usize
+    fn get_delivery_amount(&self, solution: &[f64], t: usize, v: usize, target: usize) -> usize {
+        let var_deliver = self.vars.deliver_index(t, v, target);
+        solution[var_deliver].round() as usize
     }
 
     fn get_routes(&self, solution: &[f64]) -> Routes {
@@ -380,46 +602,35 @@ impl<'a> SolverData<'a> {
 
         for t in 0..self.problem.num_days {
             routes.push(Vec::new());
-            for _ in 0..self.problem.num_vehicles {
+
+            for v in 0..self.problem.num_vehicles {
                 routes[t].push(vec![Delivery {
                     quantity: 0,
                     customer: 0,
                 }]);
-            }
 
-            let mut visited = vec![false; self.problem.num_customers + 1];
-            visited[0] = true;
-            for route in 0..self.problem.num_vehicles {
-                let mut i = 0; // last visited location
+                let mut i = 0; // last visited site
                 loop {
-                    let mut found = false;
+                    match self.find_next_site(&solution, t, v, i) {
+                        Some(j) => {
+                            if j == 0 {
+                                break;
+                            }
 
-                    #[allow(clippy::needless_range_loop)]
-                    for j in 1..=self.problem.num_customers {
-                        if i != j && !visited[j] && self.is_delivered(&solution, t, i, j) {
-                            let quantity = self.get_delivery_amount(&solution, t, j);
-                            visited[j] = true;
-                            i = j;
-                            found = true;
-
+                            let quantity = self.get_delivery_amount(&solution, t, v, j);
                             if quantity > 0 {
-                                routes[t][route].push(Delivery {
+                                routes[t][v].push(Delivery {
                                     quantity,
                                     customer: j,
                                 });
                             }
-                            break;
+                            // note that results may deviate from intermediate MIP results
+                            // because of the "if"
+
+                            i = j
                         }
+                        None => break,
                     }
-
-                    if !found {
-                        break;
-                    }
-                }
-
-                if i == 0 {
-                    // nothing found, no need to check further routes
-                    break;
                 }
             }
         }
@@ -430,23 +641,44 @@ impl<'a> SolverData<'a> {
 
 impl<'a> grb::callback::Callback for SolverData<'a> {
     fn callback(&mut self, w: gurobi::Where) -> grb::callback::CbResult {
-        if let gurobi::Where::MIPSol(ctx) = w {
-            self.ncalls += 1;
-            let assignment = ctx.get_solution(&self.vars.variables)?;
-            let routes = self.get_routes(&assignment);
-            let solution =
-                Solution::new(&self.problem, routes, self.elapsed_time(), self.cpu.clone());
-            eprintln!("# Incumbent {}!", self.ncalls);
-            eprintln!("#    current obj: {}", ctx.obj()?);
-            eprintln!("#       best obj: {}", ctx.obj_best()?);
+        match w {
+            gurobi::Where::MIPSol(ctx) => {
+                self.ncalls += 1;
+                let assignment = ctx.get_solution(&self.vars.variables)?;
+                eprintln!("# Incumbent {}!", self.ncalls);
+                eprintln!("#    current obj: {}", ctx.obj()?);
+                eprintln!("#       best obj: {}", ctx.obj_best()?);
 
-            self.varnames
-                .iter()
-                .zip(assignment.iter())
-                .filter(|(_, &value)| value > Self::EPSILON)
-                .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+                let new_subtour_constraints =
+                    self.subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
 
-            eprintln!("{}", solution);
+                if !new_subtour_constraints {
+                    let routes = self.get_routes(&assignment);
+                    let solution =
+                        Solution::new(&self.problem, routes, self.elapsed_time(), self.cpu.clone());
+
+                    eprintln!("{}", solution);
+                }
+            }
+            /*
+            gurobi::Where::MIPNode(ctx) => {
+                let status = ctx.status()?;
+                eprintln!(
+                    "# MIPNode {} {} {:?}",
+                    ctx.sol_cnt()?,
+                    ctx.node_cnt()?,
+                    status
+                );
+                eprintln!("#       best objective: {}", ctx.obj_best()?);
+                eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
+
+                if status == grb::Status::Optimal {
+                    let assignment = ctx.get_solution(&self.vars.variables)?;
+                    self.subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
+                }
+            }
+            */
+            _ => (),
         }
 
         Ok(())
@@ -461,99 +693,107 @@ impl Solver {
         env.set(grb::param::Threads, 1)?;
 
         let mut lp = gurobi::Model::with_env("irp", &env)?;
+        lp.set_param(grb::param::LazyConstraints, 1)?;
         lp.set_objective(0, gurobi::ModelSense::Minimize)?;
 
-        let mut data = SolverData::new(&problem, &mut lp, cpu);
+        let mut data = SolverData::new(&problem, &mut lp, &env, cpu);
+        data.init_subtour_elimination_models()?;
 
-        // at most m vehicles for the routing
+        // route in-degree constraints
         for t in 0..problem.num_days {
-            let mut lhs = grb::expr::LinExpr::new();
-            for j in 1..=problem.num_customers {
-                lhs.add_term(1.0, data.vars.route(t, 0, j));
-            }
+            for v in 0..problem.num_vehicles {
+                for i in 0..=problem.num_customers {
+                    let mut lhs = grb::expr::LinExpr::new();
 
-            lp.add_constr(&format!("Rmv_{}", t), grb::c!(lhs <= problem.num_vehicles))?;
+                    lhs.add_term(-1.0, data.vars.visit(t, v, i));
+                    for j in 0..=problem.num_customers {
+                        if i != j {
+                            lhs.add_term(1.0, data.vars.route(t, v, j, i));
+                        }
+                    }
+
+                    lp.add_constr(&format!("Ri_{}_{}_{}", t, v, i), grb::c!(lhs == 0.0))?;
+                }
+            }
         }
 
-        // route flow node-disjointness (at most one visit)
+        // route out-degree constraints
+        for t in 0..problem.num_days {
+            for v in 0..problem.num_vehicles {
+                for i in 0..=problem.num_customers {
+                    let mut lhs = grb::expr::LinExpr::new();
+
+                    lhs.add_term(-1.0, data.vars.visit(t, v, i));
+                    for j in 0..=problem.num_customers {
+                        if i != j {
+                            lhs.add_term(1.0, data.vars.route(t, v, i, j));
+                        }
+                    }
+
+                    lp.add_constr(&format!("Ro_{}_{}_{}", t, v, i), grb::c!(lhs == 0.0))?;
+                }
+            }
+        }
+
+        // visit depot if customer is visited
+        for t in 0..problem.num_days {
+            for v in 0..problem.num_vehicles {
+                for i in 1..=problem.num_customers {
+                    let mut lhs = grb::expr::LinExpr::new();
+                    lhs.add_term(1.0, data.vars.visit(t, v, 0));
+                    lhs.add_term(-1.0, data.vars.visit(t, v, i));
+
+                    lp.add_constr(&format!("DC_{}_{}_{}", t, v, i), grb::c!(lhs >= 0.0))?;
+                }
+            }
+        }
+
+        // at most one visit per day
         for t in 0..problem.num_days {
             for i in 1..=problem.num_customers {
                 let mut lhs = grb::expr::LinExpr::new();
-                for j in 0..=problem.num_customers {
-                    if i != j {
-                        lhs.add_term(1.0, data.vars.route(t, j, i));
-                    }
+                for v in 0..problem.num_vehicles {
+                    lhs.add_term(1.0, data.vars.visit(t, v, i));
                 }
-
-                lp.add_constr(&format!("Rnd_{}_{}", t, i), grb::c!(lhs <= 1.0))?;
+                lp.add_constr(&format!("V1d_{}_{}", t, i), grb::c!(lhs <= 1.0))?;
             }
         }
 
-        // route flow conservation
+        // glue: disable delivery if we do not visit
         for t in 0..problem.num_days {
-            for i in 1..=problem.num_customers {
+            for v in 0..problem.num_vehicles {
+                for i in 1..=problem.num_customers {
+                    let mut lhs = grb::expr::LinExpr::new();
+                    lhs.add_term(problem.capacity as f64, data.vars.visit(t, v, i));
+                    lhs.add_term(-1.0, data.vars.deliver(t, v, i));
+
+                    lp.add_constr(&format!("Gdv_{}_{}_{}", t, v, i), grb::c!(lhs >= 0.0))?;
+                }
+            }
+        }
+
+        // ensure vehicle capacity is not exceeded
+        for t in 0..problem.num_days {
+            for v in 0..problem.num_vehicles {
                 let mut lhs = grb::expr::LinExpr::new();
-                for j in 0..=problem.num_customers {
-                    if i != j {
-                        lhs.add_term(1.0, data.vars.route(t, j, i));
-                        lhs.add_term(-1.0, data.vars.route(t, i, j));
-                    }
+                for i in 1..=problem.num_customers {
+                    lhs.add_term(1.0, data.vars.deliver(t, v, i));
                 }
 
-                lp.add_constr(&format!("Rfc_{}_{}", t, i), grb::c!(lhs == 0.0))?;
-            }
-        }
-
-        // glue: disable carry flow if we have no route flow
-        for t in 0..problem.num_days {
-            for i in 0..=problem.num_customers {
-                for j in 0..=problem.num_customers {
-                    if j != i {
-                        let mut lhs = grb::expr::LinExpr::new();
-                        lhs.add_term(problem.capacity as f64, data.vars.route(t, i, j));
-                        lhs.add_term(-1.0, data.vars.carry(t, i, j));
-
-                        lp.add_constr(&format!("Gcr_{}_{}_{}", t, i, j), grb::c!(lhs >= 0.0))?;
-                    }
-                }
-            }
-        }
-
-        // don't carry too much
-        let max_amount = problem.capacity as f64 * problem.num_vehicles as f64;
-        for t in 0..problem.num_days {
-            let mut lhs = grb::expr::LinExpr::new();
-            for j in 1..=problem.num_customers {
-                lhs.add_term(1.0, data.vars.carry(t, 0, j));
-            }
-            lp.add_constr(&format!("Clim_{}", t), grb::c!(lhs <= max_amount))?;
-        }
-
-        // carry and deliver flow
-        for t in 0..problem.num_days {
-            for i in 1..=problem.num_customers {
-                let mut lhs = grb::expr::LinExpr::new();
-                for j in 0..=problem.num_customers {
-                    if j != i {
-                        lhs.add_term(1.0, data.vars.carry(t, j, i)); // incoming carry
-                    }
-                }
-                for j in 1..=problem.num_customers {
-                    if j != i {
-                        lhs.add_term(-1.0, data.vars.carry(t, i, j)); // outgoing carry
-                    }
-                }
-                lhs.add_term(-1.0, data.vars.deliver(t, i)); // deliver to customer
-
-                lp.add_constr(&format!("CDf_{}_{}", t, i), grb::c!(lhs == 0.0))?;
+                lp.add_constr(
+                    &format!("VC_{}_{}", t, v),
+                    grb::c!(lhs <= problem.capacity as f64),
+                )?;
             }
         }
 
         // inventory flow for depot
         for t in 0..problem.num_days {
             let mut lhs = grb::expr::LinExpr::new();
-            for j in 1..=problem.num_customers {
-                lhs.add_term(-1.0, data.vars.carry(t, 0, j)); // outgoing carry
+            for v in 0..problem.num_vehicles {
+                for j in 1..=problem.num_customers {
+                    lhs.add_term(-1.0, data.vars.deliver(t, v, j));
+                }
             }
             lhs.add_term(-1.0, data.vars.inventory(t, 0)); // outgoing inventory
             let mut value = -problem.daily_level_change(0);
@@ -571,7 +811,9 @@ impl Solver {
         for t in 0..problem.num_days {
             for i in 1..=problem.num_customers {
                 let mut lhs = grb::expr::LinExpr::new();
-                lhs.add_term(1.0, data.vars.deliver(t, i)); // delivered
+                for v in 0..problem.num_vehicles {
+                    lhs.add_term(1.0, data.vars.deliver(t, v, i)); // delivered
+                }
                 lhs.add_term(-1.0, data.vars.inventory(t, i)); // outgoing inventory
                 let mut value = -problem.daily_level_change(i);
 
