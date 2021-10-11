@@ -660,6 +660,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     eprintln!("{}", solution);
                 }
             }
+            /*
             gurobi::Where::MIPNode(ctx) => {
                 let status = ctx.status()?;
                 eprintln!(
@@ -676,6 +677,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     self.subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
                 }
             }
+            */
             _ => (),
         }
 
