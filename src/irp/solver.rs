@@ -660,21 +660,21 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
             }
             gurobi::Where::MIPNode(ctx) => {
                 let status = ctx.status()?;
-                eprintln!(
-                    "# MIPNode {} {} {:?}",
-                    ctx.sol_cnt()?,
-                    ctx.node_cnt()?,
-                    status
-                );
-                eprintln!("#       best objective: {}", ctx.obj_best()?);
-                eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
-
-                /*
                 if status == grb::Status::Optimal {
+                    eprintln!(
+                        "# MIPNode {} {} {:?}",
+                        ctx.sol_cnt()?,
+                        ctx.node_cnt()?,
+                        status
+                    );
+                    eprintln!("#       best objective: {}", ctx.obj_best()?);
+                    eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
+
+                    /*
                     let assignment = ctx.get_solution(&self.vars.variables)?;
                     self.subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
+                    */
                 }
-                */
             }
             _ => (),
         }
