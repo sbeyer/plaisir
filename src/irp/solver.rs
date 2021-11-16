@@ -499,6 +499,81 @@ impl<'a> SolverData<'a> {
         Ok(())
     }
 
+    fn integral_subtour_elimination<F>(&mut self, assignment: &[f64], add: F) -> grb::Result<bool>
+    where
+        F: Fn(grb::constr::IneqExpr) -> grb::Result<()>,
+    {
+        let mut added = false;
+
+        self.varnames
+            .iter()
+            .zip(assignment.iter())
+            .filter(|(_, &value)| value > Self::EPSILON)
+            .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+
+        for t in 0..self.problem.num_days {
+            for v in 0..self.problem.num_vehicles {
+                // initialize union-find data structure
+                let mut uf =
+                    partitions::PartitionVec::with_capacity(self.problem.num_customers + 1);
+                for i in 0..=self.problem.num_customers {
+                    uf.push(i);
+                }
+                // find connected components with union-find data structure
+                for i in 0..=self.problem.num_customers {
+                    for j in 0..=self.problem.num_customers {
+                        if i != j {
+                            let idx = self.vars.route_index(t, v, i, j);
+                            if assignment[idx] > 0.5 {
+                                uf.union(i, j);
+                            }
+                        }
+                    }
+                }
+
+                // collect sets
+                let mut sets: Vec<Vec<usize>> = Vec::new();
+                for set in uf.all_sets() {
+                    let mut set_vec = Vec::new();
+                    for (index, _) in set {
+                        set_vec.push(index);
+                    }
+                    if set_vec.len() > 1 {
+                        sets.push(set_vec);
+                    }
+                }
+
+                // add subtour elimination constraints if necessary
+                if sets.len() > 1 {
+                    added = true;
+
+                    for set in sets {
+                        for k in set.iter() {
+                            let mut lhs = grb::expr::LinExpr::new();
+
+                            for i in set.iter() {
+                                for j in set.iter() {
+                                    if i != j {
+                                        lhs.add_term(1.0, self.vars.route(t, v, *i, *j));
+                                    }
+                                }
+                            }
+                            for i in set.iter() {
+                                if i != k {
+                                    lhs.add_term(-1.0, self.vars.visit(t, v, *i));
+                                }
+                            }
+
+                            add(grb::c!(lhs <= 0))?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(added)
+    }
+
     fn subtour_elimination<F>(&mut self, assignment: &[f64], add: F) -> grb::Result<bool>
     where
         F: Fn(grb::constr::IneqExpr) -> grb::Result<()>,
@@ -648,7 +723,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                 eprintln!("#       best obj: {}", ctx.obj_best()?);
 
                 let new_subtour_constraints =
-                    self.subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
+                    self.integral_subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
 
                 if !new_subtour_constraints {
                     let routes = self.get_routes(&assignment);

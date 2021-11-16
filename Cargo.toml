@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 grb = "1.2"
 thiserror = "1.0"
+partitions = "0.2"
 
 [dev-dependencies.cargo-husky]
 version = "1"
