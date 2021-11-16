@@ -670,10 +670,10 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     eprintln!("#       best objective: {}", ctx.obj_best()?);
                     eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
 
-                    /*
-                    let assignment = ctx.get_solution(&self.vars.variables)?;
-                    self.subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
-                    */
+                    if false {
+                        let assignment = ctx.get_solution(&self.vars.variables)?;
+                        self.subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
+                    }
                 }
             }
             _ => (),
