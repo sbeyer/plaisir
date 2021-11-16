@@ -2,6 +2,8 @@ use super::*;
 use grb::prelude as gurobi;
 use std::time;
 
+extern crate partitions;
+
 struct Variables<'a> {
     problem: &'a Problem,
     variables: Vec<gurobi::Var>,
@@ -513,13 +515,8 @@ impl<'a> SolverData<'a> {
 
         for t in 0..self.problem.num_days {
             for v in 0..self.problem.num_vehicles {
-                // initialize union-find data structure
-                let mut uf =
-                    partitions::PartitionVec::with_capacity(self.problem.num_customers + 1);
-                for i in 0..=self.problem.num_customers {
-                    uf.push(i);
-                }
                 // find connected components with union-find data structure
+                let mut uf = partitions::partition_vec![(); self.problem.num_customers + 1];
                 for i in 0..=self.problem.num_customers {
                     for j in 0..=self.problem.num_customers {
                         if i != j {
