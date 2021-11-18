@@ -513,6 +513,8 @@ impl<'a> SolverData<'a> {
             .filter(|(_, &value)| value > Self::EPSILON)
             .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
 
+        // collect node sets of connected components for every day and every vehicle
+        let mut sets: Vec<Vec<usize>> = Vec::new();
         for t in 0..self.problem.num_days {
             for v in 0..self.problem.num_vehicles {
                 // find connected components with union-find data structure
@@ -529,7 +531,7 @@ impl<'a> SolverData<'a> {
                 }
 
                 // collect sets
-                let mut sets: Vec<Vec<usize>> = Vec::new();
+                let mut component_count = 0;
                 for set in uf.all_sets() {
                     let mut set_vec = Vec::new();
                     for (index, _) in set {
@@ -537,14 +539,32 @@ impl<'a> SolverData<'a> {
                     }
                     if set_vec.len() > 1 && !set_vec.contains(&0) {
                         sets.push(set_vec);
+                        component_count += 1;
                     }
                 }
 
-                // add subtour elimination constraints if necessary
-                if !sets.is_empty() {
+                if component_count > 0 {
+                    // we have a violated constraint
                     added = true;
+                }
+            }
+        }
 
-                    for set in sets {
+        if true {
+            for set in sets.iter() {
+                eprintln!("# Add node set for all days and vehicles:");
+                for i in set.iter() {
+                    eprintln!("#  * {}", i);
+                }
+            }
+        }
+
+        // now add all sets (whether violated or not) to all days and vehicles
+        if added {
+            for t in 0..self.problem.num_days {
+                for v in 0..self.problem.num_vehicles {
+                    // add subtour elimination constraints if necessary
+                    for set in sets.iter() {
                         for k in set.iter() {
                             let mut lhs = grb::expr::LinExpr::new();
 
