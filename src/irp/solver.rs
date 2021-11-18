@@ -535,13 +535,13 @@ impl<'a> SolverData<'a> {
                     for (index, _) in set {
                         set_vec.push(index);
                     }
-                    if set_vec.len() > 1 {
+                    if set_vec.len() > 1 && !set_vec.contains(&0) {
                         sets.push(set_vec);
                     }
                 }
 
                 // add subtour elimination constraints if necessary
-                if sets.len() > 1 {
+                if !sets.is_empty() {
                     added = true;
 
                     for set in sets {
