@@ -79,10 +79,18 @@ for filepath in args:
 
     row = results.loc[results.instance == instance].squeeze()
 
+    if best_cost != row.bestsol or best_time != row.time or optimum != row.optimal:
+        print(f"NEW: {instance}\t{best_cost}\t{commit}\t{best_time}\t{optimum}")
+        print(
+            f"OLD: {instance}\t{row.bestsol}\t{row.commit}\t{row.time}\t{row.optimal}"
+        )
+
     if best_cost < row.bestsol or (best_cost == row.bestsol and best_time < row.time):
-        print(f"{instance}\t{best_cost}\t{commit}\t{best_time}\t{optimum}")
+        print(f" `-> IMPROVED!")
         results.loc[
             results.instance == instance, ("commit", "bestsol", "time", "optimal")
         ] = (commit, best_cost, best_time, optimum)
+
+    print()
 
 results.to_csv("results2.csv", index=False, float_format="%.14g")
