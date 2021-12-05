@@ -422,7 +422,7 @@ impl<'a> SolverData<'a> {
             }
         }
 
-        if true {
+        if false {
             for set in sets.iter() {
                 eprintln!("# Add node set for all days and vehicles:");
                 for i in set.iter() {
