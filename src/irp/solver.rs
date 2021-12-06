@@ -571,9 +571,28 @@ impl Solver {
         env.set(grb::param::Threads, 1)?;
 
         let mut lp = gurobi::Model::with_env("irp", &env)?;
+
         lp.set_param(grb::param::LazyConstraints, 1)?;
         lp.set_param(grb::param::Method, 1)?; // use dual simplex
         lp.set_param(grb::param::Sifting, 0)?; // disable sifting
+
+        // 2 = Devex ... partially very good ... needs more experiments on big instances
+        //lp.set_param(grb::param::SimplexPricing, 2)?; // use Devex algorithm
+        //lp.set_param(grb::param::NormAdjust, 1)?; // ... idk, this was good for devrun
+        // maybe with NormAdjust setting?
+
+        // The following parameters do not seem to have a notable effect:
+        /*
+        lp.set_param(grb::param::Quad, 0)?; // disable Quad precision for Simplex
+
+        // precision used in DIMACS instances is 1e-2, so we use 9e-3 as absolute MIP gap
+        lp.set_param(grb::param::MIPGapAbs, 9e-3)?;
+
+        lp.set_param(grb::param::IntegralityFocus, 1)?;
+        */
+
+        lp.set_param(grb::param::Presolve, 2)?;
+
         lp.set_objective(0, gurobi::ModelSense::Minimize)?;
 
         let mut data = SolverData::new(problem, &mut lp, cpu);
