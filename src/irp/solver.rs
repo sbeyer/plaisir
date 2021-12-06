@@ -573,6 +573,7 @@ impl Solver {
         let mut lp = gurobi::Model::with_env("irp", &env)?;
         lp.set_param(grb::param::LazyConstraints, 1)?;
         lp.set_param(grb::param::Method, 1)?; // use dual simplex
+        lp.set_param(grb::param::Sifting, 0)?; // disable sifting
         lp.set_objective(0, gurobi::ModelSense::Minimize)?;
 
         let mut data = SolverData::new(problem, &mut lp, cpu);
