@@ -44,7 +44,7 @@ impl<'a> Variables<'a> {
                     for j in 0..=problem.num_customers {
                         if i != j {
                             let name = format!("r_{}_{}_{}_{}", t, v, i, j);
-                            let coeff = problem.distance(i, j).into();
+                            let coeff = 0.0;
                             let bounds = (0.0, 1.0);
                             //let var = grb::add_binvar!(lp, name: &name, obj: coeff).unwrap();
                             let var = lp
@@ -468,12 +468,10 @@ impl<'a> SolverData<'a> {
     }
 
     fn find_next_site(&self, solution: &[f64], t: usize, v: usize, i: usize) -> Option<usize> {
-        for j in 0..=self.problem.num_customers {
-            if i != j {
-                let var_route = self.vars.route_index(t, v, i, j);
-                if solution[var_route] > 0.5 {
-                    return Some(j);
-                }
+        for j in (i + 1)..=self.problem.num_customers {
+            let var_deliver = self.vars.deliver_index(t, v, j);
+            if solution[var_deliver] > 0.5 {
+                return Some(j);
             }
         }
 
@@ -595,7 +593,7 @@ impl Solver {
 
         lp.set_objective(0, gurobi::ModelSense::Minimize)?;
 
-        let mut data = SolverData::new(problem, &mut lp, cpu);
+        let data = SolverData::new(problem, &mut lp, cpu);
 
         // route in-degree constraints
         for t in 0..problem.num_days {
@@ -726,7 +724,7 @@ impl Solver {
         }
 
         //lp.write("/tmp/foo.lp")?;
-        lp.optimize_with_callback(&mut data)?;
+        lp.optimize()?;
 
         Self::print_raw_solution(&data, &lp)?;
 
