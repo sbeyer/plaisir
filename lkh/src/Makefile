@@ -61,8 +61,8 @@ $(ODIR):
 	all clean
 
 LKH: $(ODIR) $(OBJ) $(DEPS)
-	$(CC) -o ../LKH $(OBJ) $(CFLAGS) -lm
+	ar rcs ../libLKH.a $(OBJ)
 
 clean:
-	rm -rf $(ODIR) ../LKH *~ ._* $(IDIR)/*~ $(IDIR)/._*
+	rm -rf $(ODIR) ../libLKH.a *~ ._* $(IDIR)/*~ $(IDIR)/._*
 

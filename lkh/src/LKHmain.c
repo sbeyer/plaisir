@@ -2,10 +2,10 @@
 #include "Genetic.h"
 
 /*
- * This file contains the main function of the program.
+ * This file contains the interface functions
  */
 
-int main(int argc, char *argv[])
+int run(int argc, char *argv[])
 {
     GainType Cost, OldOptimum;
     double Time, LastTime;
