@@ -190,15 +190,6 @@
  * associated coordinates. The contents of this section, however, has no
  * significance in the current implementation.
  *
- * TOUR_SECTION :
- * A tour is specified in this section. The tour is given by a list of
- * integers giving the sequence in which the nodes are visited in the tour.
- * The tour is terminated by a -1. Note: In contrast to the TSPLIB format,
- * only one tour can be given in this section. The tour is used to limit
- * the search (the last edge to be excluded in a non-gainful move must not
- * belong to the tour). In addition, the Alpha field of its edges is set to
- * -1.
- *
  * EDGE_WEIGHT_SECTION :
  * The edge weights are given in the format specifies by the EDGE_WEIGHT_FORMAT
  * entry. At present, all explicit data are integral and is given in one of the
@@ -223,20 +214,22 @@ static void Read_GRID_SIZE(void);
 static void Read_NAME(void);
 static void Read_NODE_COORD_SECTION(void);
 static void Read_NODE_COORD_TYPE(void);
-static void Read_TOUR_SECTION(FILE ** File);
 static void Read_TYPE(void);
 static int TwoDWeightType(void);
 static int ThreeDWeightType(void);
+
+static FILE *ProblemFile;
 
 void ReadProblem()
 {
     int i, K;
     char *Line, *Keyword;
 
-    if (!(ProblemFile = fopen(ProblemFileName, "r")))
-        eprintf("Cannot open PROBLEM_FILE: \"%s\"", ProblemFileName);
-    if (TraceLevel >= 1)
-        printff("Reading PROBLEM_FILE: \"%s\" ... ", ProblemFileName);
+    ProblemFile = 0;
+
+    if (!(ProblemFile = fopen("input", "r")))
+        eprintf("Cannot open PROBLEM_FILE: \"input\"");
+
     FreeStructures();
     FirstNode = 0;
     WeightType = WeightFormat = ProblemType = -1;
@@ -254,10 +247,6 @@ void ReadProblem()
         for (i = 0; i < (int) strlen(Keyword); i++)
             Keyword[i] = (char) toupper(Keyword[i]);
         if (!strcmp(Keyword, "COMMENT"));
-        else if (!strcmp(Keyword, "DEMAND_SECTION"))
-            eprintf("Not implemented: %s", Keyword);
-        else if (!strcmp(Keyword, "DEPOT_SECTION"))
-            eprintf("Not implemented: %s", Keyword);
         else if (!strcmp(Keyword, "DIMENSION"))
             Read_DIMENSION();
         else if (!strcmp(Keyword, "DISPLAY_DATA_SECTION"))
@@ -286,8 +275,6 @@ void ReadProblem()
             Read_NODE_COORD_SECTION();
         else if (!strcmp(Keyword, "NODE_COORD_TYPE"))
             Read_NODE_COORD_TYPE();
-        else if (!strcmp(Keyword, "TOUR_SECTION"))
-            Read_TOUR_SECTION(&ProblemFile);
         else if (!strcmp(Keyword, "TYPE"))
             Read_TYPE();
         else
@@ -312,32 +299,28 @@ void ReadProblem()
         MaxCandidates = Dimension - 1;
     if (ExtraCandidates > Dimension - 1)
         ExtraCandidates = Dimension - 1;
-    if (SubproblemSize >= Dimension)
-        SubproblemSize = Dimension;
-    else if (SubproblemSize == 0) {
-        if (AscentCandidates > Dimension - 1)
-            AscentCandidates = Dimension - 1;
-        if (InitialPeriod < 0) {
-            InitialPeriod = Dimension / 2;
-            if (InitialPeriod < 100)
-                InitialPeriod = 100;
-        }
-        if (Excess < 0)
-            Excess = 1.0 / Dimension;
-        if (MaxTrials == -1)
-            MaxTrials = Dimension;
-        MakeHeap(Dimension);
+    if (AscentCandidates > Dimension - 1)
+        AscentCandidates = Dimension - 1;
+    if (InitialPeriod < 0) {
+        InitialPeriod = Dimension / 2;
+        if (InitialPeriod < 100)
+            InitialPeriod = 100;
     }
+    if (Excess < 0)
+        Excess = 1.0 / Dimension;
+    if (MaxTrials == -1)
+        MaxTrials = Dimension;
+    MakeHeap(Dimension);
     if (POPMUSIC_MaxNeighbors > Dimension - 1)
         POPMUSIC_MaxNeighbors = Dimension - 1;
     if (POPMUSIC_SampleSize > Dimension)
         POPMUSIC_SampleSize = Dimension;
     if (CostMatrix == 0 && Dimension <= MaxMatrixDimension &&
-        Distance != 0 && Distance != Distance_1 && Distance != Distance_LARGE &&
-        Distance != Distance_ATSP && Distance != Distance_SPECIAL) {
+            Distance != 0 && Distance != Distance_1 && Distance != Distance_LARGE &&
+            Distance != Distance_ATSP && Distance != Distance_SPECIAL) {
         Node *Ni, *Nj;
         CostMatrix = (int *) calloc((size_t) Dimension * (Dimension - 1) / 2,
-                                    sizeof(int));
+                sizeof(int));
         Ni = FirstNode->Suc;
         do {
             Ni->C =
@@ -373,13 +356,13 @@ void ReadProblem()
     if (PatchingA > 1 && PatchingA >= PatchingC)
         PatchingA = PatchingC > 2 ? PatchingC - 1 : 1;
     if (NonsequentialMoveType == -1 ||
-        NonsequentialMoveType > K + PatchingC + PatchingA - 1)
+            NonsequentialMoveType > K + PatchingC + PatchingA - 1)
         NonsequentialMoveType = K + PatchingC + PatchingA - 1;
     if (PatchingC >= 1) {
         BestMove = BestSubsequentMove = BestKOptMove;
         if (!SubsequentPatching && SubsequentMoveType <= 5) {
             MoveFunction BestOptMove[] =
-                { 0, 0, Best2OptMove, Best3OptMove,
+            { 0, 0, Best2OptMove, Best3OptMove,
                 Best4OptMove, Best5OptMove
             };
             BestSubsequentMove = BestOptMove[SubsequentMoveType];
@@ -396,23 +379,8 @@ void ReadProblem()
         MaxCandidates = 0;
     if (TraceLevel >= 1) {
         printff("done\n");
-        PrintParameters();
-    } else
-        printff("PROBLEM_FILE = %s\n",
-                ProblemFileName ? ProblemFileName : "");
-    fclose(ProblemFile);
-    if (InitialTourFileName)
-        ReadTour(InitialTourFileName, &InitialTourFile);
-    if (InputTourFileName)
-        ReadTour(InputTourFileName, &InputTourFile);
-    if (SubproblemTourFileName && SubproblemSize > 0)
-        ReadTour(SubproblemTourFileName, &SubproblemTourFile);
-    if (MergeTourFiles >= 1) {
-        free(MergeTourFile);
-        MergeTourFile = (FILE **) malloc(MergeTourFiles * sizeof(FILE *));
-        for (i = 0; i < MergeTourFiles; i++)
-            ReadTour(MergeTourFileName[i], &MergeTourFile[i]);
     }
+    fclose(ProblemFile);
     free(LastLine);
     LastLine = 0;
 }
@@ -504,8 +472,6 @@ static void CheckSpecificationPart()
         eprintf("Illegal EDGE_WEIGHT_TYPE for ROHE specification");
     if (SierpinskiPartitioning && !TwoDWeightType())
         eprintf("Illegal EDGE_WEIGHT_TYPE for SIERPINSKI specification");
-    if (SubproblemBorders && !TwoDWeightType() && !ThreeDWeightType())
-        eprintf("Illegal EDGE_WEIGHT_TYPE for BORDERS specification");
 }
 
 static char *Copy(char *S)
@@ -541,8 +507,6 @@ static void CreateNodes()
         else
             Link(Prev, N);
         N->Id = i;
-        if (MergeTourFiles >= 1)
-            N->MergeSuc = (Node **) calloc(MergeTourFiles, sizeof(Node *));
     }
     Link(N, FirstNode);
 }
@@ -653,9 +617,6 @@ static void Read_EDGE_DATA_FORMAT()
     if (strcmp(EdgeDataFormat, "EDGE_LIST") &&
         strcmp(EdgeDataFormat, "ADJ_LIST"))
         eprintf("Unknown EDGE_DATA_FORMAT: %s", EdgeDataFormat);
-    if (SubproblemTourFileName)
-        eprintf("(EDGE_DATA_FORMAT)"
-                " cannot be used together with SUBPROBLEM_TOUR_FILE");
 }
 
 static void Read_EDGE_DATA_SECTION()
@@ -1152,127 +1113,6 @@ static void Read_NODE_COORD_TYPE()
         eprintf("Unknown NODE_COORD_TYPE: %s", NodeCoordType);
 }
 
-static void Read_TOUR_SECTION(FILE ** File)
-{
-    Node *First = 0, *Last = 0, *N, *Na;
-    int i, k;
-
-    if (TraceLevel >= 1) {
-        printff("Reading ");
-        if (File == &InitialTourFile)
-            printff("INITIAL_TOUR_FILE: \"%s\" ... ", InitialTourFileName);
-        else if (File == &InputTourFile)
-            printff("INPUT_TOUR_FILE: \"%s\" ... ", InputTourFileName);
-        else if (File == &SubproblemTourFile)
-            printff("SUBPROBLEM_TOUR_FILE: \"%s\" ... ",
-                    SubproblemTourFileName);
-        else
-            for (i = 0; i < MergeTourFiles; i++)
-                if (File == &MergeTourFile[i])
-                    printff("MERGE_TOUR_FILE: \"%s\" ... ",
-                            MergeTourFileName[i]);
-    }
-    if (!FirstNode)
-        CreateNodes();
-    N = FirstNode;
-    do
-        N->V = 0;
-    while ((N = N->Suc) != FirstNode);
-    if (ProblemType == HPP)
-        Dimension--;
-    if (ProblemType == ATSP)
-        Dimension /= 2;
-    if (!fscanint(*File, &i))
-        i = -1;
-    for (k = 0; k <= Dimension && i != -1; k++) {
-        if (i <= 0 || i > Dimension)
-            eprintf("TOUR_SECTION: Node number out of range: %d", i);
-        N = &NodeSet[i];
-        if (N->V == 1 && k != Dimension)
-            eprintf("TOUR_SECTION: Node number occurs twice: %d", N->Id);
-        N->V = 1;
-        if (k == 0)
-            First = Last = N;
-        else {
-            if (ProblemType == ATSP) {
-                Na = N + Dimension;
-                Na->V = 1;
-            } else
-                Na = 0;
-            if (File == &InitialTourFile) {
-                if (!Na)
-                    Last->InitialSuc = N;
-                else {
-                    Last->InitialSuc = Na;
-                    Na->InitialSuc = N;
-                }
-            } else if (File == &InputTourFile) {
-                if (!Na)
-                    Last->InputSuc = N;
-                else {
-                    Last->InputSuc = Na;
-                    Na->InputSuc = N;
-                }
-            } else if (File == &SubproblemTourFile) {
-                if (!Na)
-                    (Last->SubproblemSuc = N)->SubproblemPred = Last;
-                else {
-                    (Last->SubproblemSuc = Na)->SubproblemPred = Last;
-                    (Na->SubproblemSuc = N)->SubproblemPred = Na;
-                }
-            } else {
-                for (i = 0; i < MergeTourFiles; i++) {
-                    if (File == &MergeTourFile[i]) {
-                        if (!Na) {
-                            Last->MergeSuc[i] = N;
-                            if (i == 0)
-                                N->MergePred = Last;
-                        } else {
-                            Last->MergeSuc[i] = Na;
-                            Na->MergeSuc[i] = N;
-                            if (i == 0) {
-                                Na->MergePred = Last;
-                                N->MergePred = Na;
-                            }
-                        }
-                    }
-                }
-            }
-            Last = N;
-        }
-        if (k < Dimension)
-            fscanint(*File, &i);
-        if (k == Dimension - 1)
-            i = First->Id;
-    }
-    N = FirstNode;
-    do
-        if (!N->V)
-            eprintf("TOUR_SECTION: Node is missing: %d", N->Id);
-    while ((N = N->Suc) != FirstNode);
-    if (File == &SubproblemTourFile) {
-        do {
-            if (N->FixedTo1 &&
-                N->SubproblemPred != N->FixedTo1
-                && N->SubproblemSuc != N->FixedTo1)
-                eprintf("Fixed edge (%d, %d) "
-                        "does not belong to subproblem tour", N->Id,
-                        N->FixedTo1->Id);
-            if (N->FixedTo2 && N->SubproblemPred != N->FixedTo2
-                && N->SubproblemSuc != N->FixedTo2)
-                eprintf("Fixed edge (%d, %d) "
-                        "does not belong to subproblem tour", N->Id,
-                        N->FixedTo2->Id);
-        } while ((N = N->Suc) != FirstNode);
-    }
-    if (ProblemType == HPP)
-        Dimension++;
-    if (ProblemType == ATSP)
-        Dimension *= 2;
-    if (TraceLevel >= 1)
-        printff("done\n");
-}
-
 static void Read_TYPE()
 {
     unsigned int i;
@@ -1300,80 +1140,4 @@ static void Read_TYPE()
         ProblemType = HPP;
     else
         eprintf("Unknown TYPE: %s", Type);
-}
-
-/*
- The ReadTour function reads a tour from a file.
- 
- The format is as follows:
- 
- OPTIMUM = <real>
- Known optimal tour length. A run will be terminated as soon as a tour
- length less than or equal to optimum is achieved.
- Default: MINUS_INFINITY.
- 
- TOUR_SECTION :
- A tour is specified in this section. The tour is given by a list of integers
- giving the sequence in which the nodes are visited in the tour. The tour is
- terminated by a -1.
- 
- EOF
- Terminates the input data. The entry is optional.
- 
- Other keywords in TSPLIB format may be included in the file, but they are
- ignored.
- */
-
-void ReadTour(char *FileName, FILE ** File)
-{
-    char *Line, *Keyword, *Token;
-    unsigned int i;
-    int Done = 0;
-
-    if (!(*File = fopen(FileName, "r")))
-        eprintf("Cannot open tour file: \"%s\"", FileName);
-    while ((Line = ReadLine(*File))) {
-        if (!(Keyword = strtok(Line, Delimiters)))
-            continue;
-        for (i = 0; i < strlen(Keyword); i++)
-            Keyword[i] = (char) toupper(Keyword[i]);
-        if (!strcmp(Keyword, "COMMENT") ||
-            !strcmp(Keyword, "DEMAND_SECTION") ||
-            !strcmp(Keyword, "DEPOT_SECTION") ||
-            !strcmp(Keyword, "DISPLAY_DATA_SECTION") ||
-            !strcmp(Keyword, "DISPLAY_DATA_TYPE") ||
-            !strcmp(Keyword, "EDGE_DATA_FORMAT") ||
-            !strcmp(Keyword, "EDGE_DATA_SECTION") ||
-            !strcmp(Keyword, "EDGE_WEIGHT_FORMAT") ||
-            !strcmp(Keyword, "EDGE_WEIGHT_SECTION") ||
-            !strcmp(Keyword, "EDGE_WEIGHT_TYPE") ||
-            !strcmp(Keyword, "FIXED_EDGES_SECTION") ||
-            !strcmp(Keyword, "NAME") ||
-            !strcmp(Keyword, "NODE_COORD_SECTION") ||
-            !strcmp(Keyword, "NODE_COORD_TYPE")
-            || !strcmp(Keyword, "TYPE"));
-        else if (strcmp(Keyword, "OPTIMUM") == 0) {
-            if (!(Token = strtok(0, Delimiters)) ||
-                !sscanf(Token, GainInputFormat, &Optimum))
-                eprintf("[%s] (OPTIMUM): Integer expected", FileName);
-        } else if (strcmp(Keyword, "DIMENSION") == 0) {
-            int Dim = 0;
-            if (!(Token = strtok(0, Delimiters)) ||
-                !sscanf(Token, "%d", &Dim))
-                eprintf("[%s] (DIMENSION): integer expected", FileName);
-            if (Dim != DimensionSaved)
-                eprintf
-                    ("[%s] (DIMENSION): does not match problem dimension",
-                     FileName);
-        } else if (!strcmp(Keyword, "TOUR_SECTION")) {
-            Read_TOUR_SECTION(File);
-            Done = 1;
-        } else if (!strcmp(Keyword, "EOF"))
-            break;
-        else
-            eprintf("[%s] Unknown Keyword: %s", FileName, Keyword);
-    }
-    if (!Done)
-        eprintf("Missing TOUR_SECTION in tour file: \"%s\"", FileName);
-    fclose(*File);
 }

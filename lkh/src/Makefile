@@ -26,24 +26,20 @@ _OBJ = Activate.o AddCandidate.o AddExtraCandidates.o                  \
        Flip.o Flip_SL.o Flip_SSL.o Forbidden.o FreeStructures.o        \
        fscanint.o Gain23.o GenerateCandidates.o Genetic.o              \
        GeoConversion.o GetTime.o GreedyTour.o Hashing.o Heap.o         \
-       IsBackboneCandidate.o IsCandidate.o IsCommonEdge.o              \
+       IsBackboneCandidate.o IsCandidate.o \
        IsPossibleCandidate.o KSwapKick.o LinKernighan.o LKHmain.o      \
        Make2OptMove.o Make3OptMove.o Make4OptMove.o Make5OptMove.o     \
        MakeKOptMove.o MergeTourWithBestTour.o MergeWithTourIPT.o       \
        Minimum1TreeCost.o MinimumSpanningTree.o NormalizeNodeList.o    \
        NormalizeSegmentList.o OrderCandidateSet.o PatchCycles.o        \
-       printff.o PrintParameters.o                                     \
-       Random.o ReadCandidates.o ReadEdges.o ReadLine.o                \
-	   ReadParameters.o ReadPenalties.o ReadProblem.o RecordBestTour.o \
+       printff.o \
+       Random.o ReadLine.o                \
+	   ReadProblem.o RecordBestTour.o \
 	   RecordBetterTour.o RemoveFirstActive.o                          \
        ResetCandidateSet.o RestoreTour.o SegmentSize.o Sequence.o      \
-       SFCTour.o SolveCompressedSubproblem.o                           \
-       SolveDelaunaySubproblems.o SolveKarpSubproblems.o               \
-       SolveKCenterSubproblems.o SolveKMeansSubproblems.o              \
-       SolveRoheSubproblems.o SolveSFCSubproblems.o SolveSubproblem.o  \
-       SolveSubproblemBorderProblems.o SolveTourSegmentSubproblems.o   \
+       SFCTour.o \
        Statistics.o StoreTour.o SymmetrizeCandidateSet.o               \
-       TrimCandidateSet.o WriteCandidates.o WritePenalties.o           \
+       TrimCandidateSet.o \
        WriteTour.o MergeWithTourGPX2.o gpx.o LKH.o
 
 all:

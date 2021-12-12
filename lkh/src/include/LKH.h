@@ -22,7 +22,7 @@
 /* Macro definitions */
 
 #define Fixed(a, b) ((a)->FixedTo1 == (b) || (a)->FixedTo2 == (b))
-#define FixedOrCommon(a, b) (Fixed(a, b) || IsCommonEdge(a, b))
+#define FixedOrCommon(a, b) (Fixed(a, b))
 #define InBestTour(a, b) ((a)->BestSuc == (b) || (b)->BestSuc == (a))
 #define InNextBestTour(a, b)\
     ((a)->NextBestSuc == (b) || (b)->NextBestSuc == (a))
@@ -215,8 +215,6 @@ extern Node **Heap;    /* Heap used for computing minimum spanning trees */
 extern HashTable *HTable;      /* Hash table used for storing tours */
 extern int InitialPeriod;      /* Length of the first period in the ascent */
 extern int InitialStepSize;    /* Initial step size used in the ascent */
-extern double InitialTourFraction; /* Fraction of the initial tour to be 
-                                       constructed by INITIAL_TOUR_FILE edges */
 extern char *LastLine; /* Last input line */
 extern double LowerBound;  /* Lower bound found by the ascent */
 extern int Kicks;      /* Specifies the number of K-swap-kicks */
@@ -233,7 +231,6 @@ extern int MaxMatrixDimension; /* Maximum dimension for an explicit cost
 extern int MaxSwaps;   /* Maximum number of swaps made during the 
                           search for a move */
 extern int MaxTrials;  /* Maximum number of trials in each run */
-extern int MergeTourFiles;     /* Number of MERGE_TOUR_FILEs */
 extern int MoveType;   /* Specifies the sequantial move type to be used 
                           in local search. A value K >= 2 signifies 
                           that a k-opt moves are tried for k <= K */
@@ -275,7 +272,6 @@ extern int StopAtOptimum;      /* Specifies whether a run will be terminated if
                                   the tour length becomes equal to Optimum */
 extern int Subgradient;        /* Specifies whether the Pi-values should be 
                                   determined by subgradient optimization */
-extern int SubproblemSize;     /* Number of nodes in a subproblem */
 extern int SubsequentMoveType; /* Specifies the move type to be used for all 
                                   moves following the first move in a sequence 
                                   of moves. The value K >= 2 signifies that a 
@@ -295,10 +291,6 @@ extern int Trial;      /* Ordinal number of the current trial */
 /* The following variables are read by the functions ReadParameters and 
    ReadProblem: */
 
-extern char *ParameterFileName, *ProblemFileName, *PiFileName,
-            *TourFileName, *OutputTourFileName, *InputTourFileName,
-            **CandidateFileName, **EdgeFileName, *InitialTourFileName,
-            *SubproblemTourFileName, **MergeTourFileName;
 extern char *Name, *Type, *EdgeWeightType, *EdgeWeightFormat,
             *EdgeDataFormat, *NodeCoordType, *DisplayDataType;
 extern int CandidateSetSymmetric, CandidateSetType,
@@ -311,10 +303,8 @@ extern int CandidateSetSymmetric, CandidateSetType,
            PatchingCExtended, PatchingCRestricted,
            ProblemType,
            RohePartitioning, SierpinskiPartitioning,
-           SubproblemBorders, SubproblemsCompressed, WeightType, WeightFormat;
+           WeightType, WeightFormat;
 
-extern FILE *ParameterFile, *ProblemFile, *PiFile, *InputTourFile,
-            *TourFile, *InitialTourFile, *SubproblemTourFile, **MergeTourFile;
 extern CostFunction Distance, D, C, c;
 extern MoveFunction BestMove, BacktrackMove, BestSubsequentMove;
 extern MergeTourFunction MergeWithTour;
@@ -414,7 +404,6 @@ GainType GreedyTour(void);
 void InitializeStatistics(void);
 int IsBackboneCandidate(const Node * ta, const Node * tb);
 int IsCandidate(const Node * ta, const Node * tb);
-int IsCommonEdge(const Node * ta, const Node * tb);
 int IsPossibleCandidate(Node * From, Node * To);
 void KSwapKick(int K);
 GainType LinKernighan(void);
@@ -439,16 +428,10 @@ void OrderCandidateSet(int MaxCandidates,
                        GainType MaxAlpha, int Symmetric);
 GainType PatchCycles(int k, GainType Gain);
 void printff(char *fmt, ...);
-void PrintParameters(void);
 void PrintStatistics(void);
 unsigned Random(void);
-int ReadCandidates(int MaxCandidates);
-int ReadEdges(int MaxCandidates);
 char *ReadLine(FILE * InputFile);
-void ReadParameters(void);
-int ReadPenalties(void);
 void ReadProblem(void);
-void ReadTour(char * FileName, FILE ** File);
 void RecordBestTour(void);
 void RecordBetterTour(void);
 Node *RemoveFirstActive(void);
@@ -456,25 +439,11 @@ void ResetCandidateSet(void);
 void RestoreTour(void);
 int SegmentSize(Node *ta, Node *tb);
 GainType SFCTour(int CurveType);
-void SolveCompressedSubproblem(int CurrentSubproblem, int Subproblems, 
-                               GainType * GlobalBestCost);
-void SolveDelaunaySubproblems(void);
-void SolveKarpSubproblems(void);
-void SolveKCenterSubproblems(void);
-void SolveKMeansSubproblems(void);
-void SolveRoheSubproblems(void);
-void SolveSFCSubproblems(void);
-int SolveSubproblem(int CurrentSubproblem, int Subproblems, 
-                    GainType * GlobalBestCost);
-void SolveSubproblemBorderProblems(int Subproblems, GainType * GlobalCost);
-void SolveTourSegmentSubproblems(void);
 void StoreTour(void);
 void SRandom(unsigned seed);
 void SymmetrizeCandidateSet(void);
 void TrimCandidateSet(int MaxCandidates);
 void UpdateStatistics(GainType Cost, double Time);
-void WriteCandidates(void);
-void WritePenalties(void);
 void WriteTour(char * FileName, int * Tour, GainType Cost);
 
 #endif

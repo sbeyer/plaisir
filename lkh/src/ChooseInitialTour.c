@@ -42,7 +42,7 @@ void ChooseInitialTour()
             KSwapKick(KickType);
         return;
     }
-    if (Trial == 1 && (!FirstNode->InitialSuc || InitialTourFraction < 1)) {
+    if (Trial == 1 && !FirstNode->InitialSuc) {
         if (InitialTourAlgorithm == BORUVKA ||
             InitialTourAlgorithm == GREEDY ||
             InitialTourAlgorithm == MOORE ||
@@ -102,26 +102,6 @@ void ChooseInitialTour()
                 Alternatives++;
                 NextN->Next = FirstAlternative;
                 FirstAlternative = NextN;
-            }
-        }
-        if (Alternatives == 0 && MergeTourFiles > 1) {
-            for (NN = N->CandidateSet; NN && (NextN = NN->To); NN++) {
-                if (!NextN->V && IsCommonEdge(N, NextN)) {
-                    Alternatives++;
-                    NextN->Next = FirstAlternative;
-                    FirstAlternative = NextN;
-                }
-            }
-        }
-        if (Alternatives == 0 && FirstNode->InitialSuc && Trial == 1 &&
-            Count <= InitialTourFraction * Dimension) {
-            /* Case B */
-            for (NN = N->CandidateSet; NN && (NextN = NN->To); NN++) {
-                if (!NextN->V && InInitialTour(N, NextN)) {
-                    Alternatives++;
-                    NextN->Next = FirstAlternative;
-                    FirstAlternative = NextN;
-                }
             }
         }
         if (Alternatives == 0 && Trial > 1 &&

@@ -151,7 +151,7 @@ void Create_POPMUSIC_CandidateSet(int K)
         setInitialSuc = 0;
         if (cost < costMin) {
             costMin = cost;
-            setInitialSuc = POPMUSIC_InitialTour && !InitialTourFileName;
+            setInitialSuc = POPMUSIC_InitialTour;
         }
         for (i = 0; i < n; i++) {
             Node *a = node[solution[i]];

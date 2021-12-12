@@ -25,9 +25,7 @@ void WriteTour(char *FileName, int *Tour, GainType Cost)
     FullFileName = FullName(FileName, Cost);
     Now = time(&Now);
     if (TraceLevel >= 1)
-        printff("Writing%s: \"%s\" ... ",
-                FileName == TourFileName ? " TOUR_FILE" :
-                FileName == OutputTourFileName ? " OUTPUT_TOUR_FILE" : "",
+        printff("Writing%s: \"%s\" ... ", "",
                 FullFileName);
     TourFile = fopen(FullFileName, "w");
     fprintf(TourFile, "NAME : %s." GainFormat ".tour\n", Name, Cost);

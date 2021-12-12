@@ -37,13 +37,4 @@ void CandidateReport()
             Min, (double) Sum / Dimension, Max);
     if (Fixed > 0)
         printff("Edges.fixed = %d [Cost = " GainFormat "]\n", Fixed, Cost);
-    if (MergeTourFiles >= 1) {
-        Count = 0;
-        N = FirstNode;
-        do
-            if (IsCommonEdge(N, N->MergeSuc[0]))
-                Count++;
-        while ((N = N->Suc) != FirstNode);
-        printff("Edges.common = %d\n", Count);
-    }
 }
