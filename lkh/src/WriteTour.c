@@ -28,7 +28,6 @@ void WriteTour(char *FileName, int *Tour, GainType Cost)
         printff("Writing%s: \"%s\" ... ", "",
                 FullFileName);
     TourFile = fopen(FullFileName, "w");
-    fprintf(TourFile, "NAME : %s." GainFormat ".tour\n", Name, Cost);
     fprintf(TourFile, "COMMENT : Length = " GainFormat "\n", Cost);
     fprintf(TourFile, "COMMENT : Found by LKH [Keld Helsgaun] %s",
             ctime(&Now));

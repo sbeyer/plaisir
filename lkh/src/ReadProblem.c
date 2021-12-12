@@ -25,9 +25,6 @@
  *
  * Below is given a list of all available keywords.
  *
- * NAME : <string>e
- * Identifies the data file.
- *
  * COMMENT : <string>
  * Additional comments (usually the name of the contributor or the creator of
  * the problem instance is given here).
@@ -204,7 +201,6 @@ static void Read_EDGE_WEIGHT_SECTION(void);
 static void Read_EDGE_WEIGHT_TYPE(void);
 static void Read_FIXED_EDGES_SECTION(void);
 static void Read_GRID_SIZE(void);
-static void Read_NAME(void);
 static void Read_NODE_COORD_SECTION(void);
 static void Read_NODE_COORD_TYPE(void);
 static int TwoDWeightType(void);
@@ -226,7 +222,6 @@ void ReadProblem()
     FirstNode = 0;
     WeightType = WeightFormat = -1;
     CoordType = NO_COORDS;
-    Name = Copy("Unnamed");
     Type = EdgeWeightType = EdgeWeightFormat = 0;
     EdgeDataFormat = NodeCoordType = DisplayDataType = 0;
     Distance = 0;
@@ -261,8 +256,6 @@ void ReadProblem()
             Read_FIXED_EDGES_SECTION();
         else if (!strcmp(Keyword, "GRID_SIZE"))
             Read_GRID_SIZE();
-        else if (!strcmp(Keyword, "NAME"))
-            Read_NAME();
         else if (!strcmp(Keyword, "NODE_COORD_SECTION"))
             Read_NODE_COORD_SECTION();
         else if (!strcmp(Keyword, "NODE_COORD_TYPE"))
@@ -498,12 +491,6 @@ static int FixEdge(Node * Na, Node * Nb)
     else
         return 0;
     return 1;
-}
-
-static void Read_NAME()
-{
-    if (!(Name = Copy(strtok(0, Delimiters))))
-        eprintf("NAME: string expected");
 }
 
 static void Read_DIMENSION()
@@ -996,10 +983,6 @@ static void Read_NODE_COORD_SECTION()
         if (CoordType == THREED_COORDS
             && !fscanf(ProblemFile, "%lf", &N->Z))
             eprintf("NODE_COORD_SECTION: Missing Z-coordinate");
-        if (Name && !strcmp(Name, "d657")) {
-            N->X = (float) N->X;
-            N->Y = (float) N->Y;
-        }
     }
     N = FirstNode;
     do

@@ -129,7 +129,7 @@ int Trial;      /* Ordinal number of the current trial */
 /* The following variables are read by the functions ReadParameters and 
    ReadProblem: */
 
-char *Name, *Type, *EdgeWeightType, *EdgeWeightFormat,
+char *Type, *EdgeWeightType, *EdgeWeightFormat,
     *EdgeDataFormat, *NodeCoordType, *DisplayDataType;
 int CandidateSetSymmetric, CandidateSetType,
     CoordType, DelaunayPartitioning, DelaunayPure,

@@ -288,7 +288,7 @@ extern int Trial;      /* Ordinal number of the current trial */
 /* The following variables are read by the functions ReadParameters and 
    ReadProblem: */
 
-extern char *Name, *Type, *EdgeWeightType, *EdgeWeightFormat,
+extern char *Type, *EdgeWeightType, *EdgeWeightFormat,
             *EdgeDataFormat, *NodeCoordType, *DisplayDataType;
 extern int CandidateSetSymmetric, CandidateSetType,
            CoordType, DelaunayPartitioning, DelaunayPure,

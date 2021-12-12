@@ -29,7 +29,6 @@ void FreeStructures()
     Free(Rand);
     Free(CacheSig);
     Free(CacheVal);
-    Free(Name);
     Free(Type);
     Free(EdgeWeightType);
     Free(EdgeWeightFormat);
