@@ -51,39 +51,6 @@ void CreateDelaunayCandidateSet()
         } while ((e = Next(e, u)) != e_start && ++Count < Dimension);
     }
     free_memory();
-    if (Level == 0 &&
-        (WeightType == GEO || WeightType == GEOM ||
-         WeightType == GEO_MEEUS || WeightType == GEOM_MEEUS)) {
-        if (TraceLevel >= 2)
-            printff("done\n");
-        From = FirstNode;
-        while ((From = From->Suc) != FirstNode)
-            if ((From->Y > 0) != (FirstNode->Y > 0))
-                break;
-        if (From != FirstNode) {
-            /* Transform longitude (180 and -180 map to 0) */
-            From = FirstNode;
-            do {
-                From->Zc = From->Y;
-                if (WeightType == GEO || WeightType == GEO_MEEUS)
-                    From->Y =
-                        (int) From->Y + 5.0 * (From->Y -
-                                               (int) From->Y) / 3.0;
-                From->Y += From->Y > 0 ? -180 : 180;
-                if (WeightType == GEO || WeightType == GEO_MEEUS)
-                    From->Y =
-                        (int) From->Y + 3.0 * (From->Y -
-                                               (int) From->Y) / 5.0;
-            } while ((From = From->Suc) != FirstNode);
-            Level++;
-            CreateDelaunayCandidateSet();
-            Level--;
-            From = FirstNode;
-            do
-                From->Y = From->Zc;
-            while ((From = From->Suc) != FirstNode);
-        }
-    }
     if (Level == 0) {
         AddTourCandidates();
         if (ExtraCandidates < 2) {
@@ -96,7 +63,7 @@ void CreateDelaunayCandidateSet()
                     From->CandidateSet[1].To == 0) {
                     if (TraceLevel >= 2)
                         printff("*** Not complete ***\n");
-                    AddExtraCandidates(CoordType == THREED_COORDS ? 8 : 4,
+                    AddExtraCandidates(4,
                                        QUADRANT, 1);
                     break;
                 }

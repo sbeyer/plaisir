@@ -30,7 +30,7 @@ void Connect(Node * N1, int Max, int Sparse)
                 return;
             }
             if (!N1->FixedTo2 && !N->FixedTo2 &&
-                (!c || c(N1, N) < N1->NextCost) &&
+                (c(N1, N) < N1->NextCost) &&
                 (d = D(N1, N)) < N1->NextCost) {
                 N1->NextCost = d;
                 if (d <= Max)

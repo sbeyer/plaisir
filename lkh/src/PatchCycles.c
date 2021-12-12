@@ -124,14 +124,14 @@ static GainType PatchCyclesRec(int k, int m, int M, GainType G0)
                     (!PatchingARestricted || IsCandidate(s4, s1))) {
                     GainType Bound = BestCloseUpGain >= 0 ||
                         IsCandidate(s4, s1) ? BestCloseUpGain : 0;
-                    if ((!c || G2 - c(s4, s1) > Bound) &&
+                    if ((G2 - c(s4, s1) > Bound) &&
                         (CloseUpGain = G2 - C(s4, s1)) > Bound) {
                         S3 = s3;
                         S4 = s4;
                         BestCloseUpGain = CloseUpGain;
                     }
                 }
-            } else if ((!c || G2 - c(s4, s1) > 0)
+            } else if ((G2 - c(s4, s1) > 0)
                        && (Gain = G2 - C(s4, s1)) > 0) {
                 incl[incl[2 * k + 1] = 2 * (k + m)] = 2 * k + 1;
                 MakeKOptMove(k + m);
@@ -184,7 +184,7 @@ static GainType PatchCyclesRec(int k, int m, int M, GainType G0)
                             || Added(s6, s1))
                             continue;
                         G4 = G3 + C(s5, s6);
-                        if ((!c || G4 - c(s6, s1) > 0) &&
+                        if ((G4 - c(s6, s1) > 0) &&
                             (Gain = G4 - C(s6, s1)) > 0) {
                             if (!pSaved) {
                                 pSaved = (int *) malloc(2 * k * sizeof(int));

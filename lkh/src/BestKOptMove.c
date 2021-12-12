@@ -102,7 +102,7 @@ static GainType BestKOptMoveRec(int k, GainType G0)
             G2 = G1 + C(t3, t4);
             G3 = MINUS_INFINITY;
             if (t4 != t1 && !Added(t4, t1) &&
-                (!c || G2 - c(t4, t1) > 0) &&
+                (G2 - c(t4, t1) > 0) &&
                 (G3 = G2 - C(t4, t1)) > 0 && FeasibleKOptMove(k)) {
                 UnmarkAdded(t2, t3);
                 MakeKOptMove(k);
@@ -202,7 +202,7 @@ static GainType BestKOptMoveRec(int k, GainType G0)
                     || Added(t4, t1))
                     continue;
                 G2 = G1 + C(t3, t4);
-                if ((!c || G2 - c(t4, t1) > 0)
+                if ((G2 - c(t4, t1) > 0)
                     && (Gain = G2 - C(t4, t1)) > 0) {
                     incl[incl[i ^ 1] = 1] = i ^ 1;
                     incl[incl[i] = 2 * k - 2] = i;

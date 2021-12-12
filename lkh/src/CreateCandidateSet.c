@@ -23,6 +23,7 @@ void CreateCandidateSet()
     double EntryTime = GetTime();
 
     Norm = 9999;
+    /*
     if (C == C_EXPLICIT) {
         Na = FirstNode;
         do {
@@ -31,8 +32,8 @@ void CreateCandidateSet()
         }
         while ((Na = Na->Suc) != FirstNode);
     }
-    if (Distance == Distance_1 ||
-            (MaxTrials == 0 &&
+    */
+    if ((MaxTrials == 0 &&
              (FirstNode->InitialSuc || InitialTourAlgorithm == SIERPINSKI ||
               InitialTourAlgorithm == MOORE))) {
         AddTourCandidates();
@@ -98,6 +99,7 @@ End_CreateCandidateSet:
         }
         while ((Na = Na->Suc) != FirstNode);
     }
+    /*
     if (C == C_EXPLICIT) {
         Na = FirstNode;
         do
@@ -105,6 +107,7 @@ End_CreateCandidateSet:
                 Na->C[i] += Na->Pi + NodeSet[i].Pi;
         while ((Na = Na->Suc) != FirstNode);
     }
+    */
     if (TraceLevel >= 1) {
         CandidateReport();
         printff("Preprocessing time = %0.2f sec.\n",

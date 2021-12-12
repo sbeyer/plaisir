@@ -39,12 +39,6 @@
     { Link((a)->Pred, (a)->Suc); Link(a, a); Link((b)->Pred, a); Link(a, b); }
 #define SLink(a, b) { (a)->Suc = (b); (b)->Pred = (a); }
 
-enum CoordTypes { TWOD_COORDS, THREED_COORDS, NO_COORDS };
-enum EdgeWeightTypes { EXPLICIT, EUC_2D, EUC_3D, MAX_2D, MAX_3D, MAN_2D,
-    MAN_3D, CEIL_2D, CEIL_3D, FLOOR_2D, FLOOR_3D,
-    GEO, GEOM, GEO_MEEUS, GEOM_MEEUS, ATT, TOR_2D, TOR_3D,
-    XRAY1, XRAY2, SPECIAL
-};
 enum EdgeWeightFormats { FUNCTION, FULL_MATRIX, UPPER_ROW, LOWER_ROW,
     UPPER_DIAG_ROW, LOWER_DIAG_ROW, UPPER_COL, LOWER_COL,
     UPPER_DIAG_COL, LOWER_DIAG_COL
@@ -62,7 +56,6 @@ typedef struct SSegment SSegment;
 typedef struct SwapRecord SwapRecord;
 typedef Node *(*MoveFunction) (Node * t1, Node * t2, GainType * G0,
                                GainType * Gain);
-typedef int (*CostFunction) (Node * Na, Node * Nb);
 typedef GainType (*MergeTourFunction) (void);
 
 /* The Node structure is used to represent nodes (cities) of the problem */
@@ -291,7 +284,7 @@ extern int Trial;      /* Ordinal number of the current trial */
 extern char *Type, *EdgeWeightType, *EdgeWeightFormat,
             *EdgeDataFormat, *NodeCoordType, *DisplayDataType;
 extern int CandidateSetSymmetric, CandidateSetType,
-           CoordType, DelaunayPartitioning, DelaunayPure,
+           DelaunayPartitioning, DelaunayPure,
            ExtraCandidateSetSymmetric, ExtraCandidateSetType,
            InitialTourAlgorithm,
            KarpPartitioning, KCenterPartitioning, KMeansPartitioning,
@@ -299,55 +292,20 @@ extern int CandidateSetSymmetric, CandidateSetType,
            PatchingAExtended, PatchingARestricted,
            PatchingCExtended, PatchingCRestricted,
            RohePartitioning, SierpinskiPartitioning,
-           WeightType, WeightFormat;
+           WeightFormat;
 
-extern CostFunction Distance, D, C, c;
 extern MoveFunction BestMove, BacktrackMove, BestSubsequentMove;
 extern MergeTourFunction MergeWithTour;
 
 /* Function prototypes: */
 
-int Distance_1(Node * Na, Node * Nb);
-int Distance_LARGE(Node * Na, Node * Nb);
-int Distance_ATT(Node * Na, Node * Nb);
-int Distance_CEIL_2D(Node * Na, Node * Nb);
-int Distance_CEIL_3D(Node * Na, Node * Nb);
-int Distance_EXPLICIT(Node * Na, Node * Nb);
-int Distance_EUC_2D(Node * Na, Node * Nb);
-int Distance_EUC_3D(Node * Na, Node * Nb);
-int Distance_FLOOR_2D(Node * Na, Node * Nb);
-int Distance_FLOOR_3D(Node * Na, Node * Nb);
-int Distance_GEO(Node * Na, Node * Nb);
-int Distance_GEOM(Node * Na, Node * Nb);
-int Distance_GEO_MEEUS(Node * Na, Node * Nb);
-int Distance_GEOM_MEEUS(Node * Na, Node * Nb);
-int Distance_MAN_2D(Node * Na, Node * Nb);
-int Distance_MAN_3D(Node * Na, Node * Nb);
-int Distance_MAX_2D(Node * Na, Node * Nb);
-int Distance_MAX_3D(Node * Na, Node * Nb);
-int Distance_SPECIAL(Node * Na, Node * Nb);
-int Distance_TOR_2D(Node * Na, Node * Nb);
-int Distance_TOR_3D(Node * Na, Node * Nb);
-int Distance_XRAY1(Node * Na, Node * Nb);
-int Distance_XRAY2(Node * Na, Node * Nb);
+int Distance(Node * Na, Node * Nb);
 
-int D_EXPLICIT(Node * Na, Node * Nb);
-int D_FUNCTION(Node * Na, Node * Nb);
+int D(Node * Na, Node * Nb);
 
-int C_EXPLICIT(Node * Na, Node * Nb);
-int C_FUNCTION(Node * Na, Node * Nb);
+int C(Node * Na, Node * Nb);
 
-int c_ATT(Node * Na, Node *Nb);
-int c_CEIL_2D(Node * Na, Node * Nb);
-int c_CEIL_3D(Node * Na, Node * Nb);
-int c_EUC_2D(Node * Na, Node * Nb);
-int c_EUC_3D(Node * Na, Node * Nb);
-int c_FLOOR_2D(Node * Na, Node * Nb);
-int c_FLOOR_3D(Node * Na, Node * Nb);
-int c_GEO(Node * Na, Node * Nb);
-int c_GEOM(Node * Na, Node * Nb);
-int c_GEO_MEEUS(Node * Na, Node * Nb);
-int c_GEOM_MEEUS(Node * Na, Node * Nb);
+int c(Node * Na, Node * Nb);
 
 void Activate(Node * t);
 int AddCandidate(Node * From, Node * To, int Cost, int Alpha);

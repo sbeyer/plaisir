@@ -27,11 +27,7 @@ void AddExtraCandidates(int K, int CandidateSetType, int Symmetric)
     } while ((t = t->Suc) != FirstNode);
     AddTourCandidates();
     if (CandidateSetType == NN) {
-        if ((CoordType == TWOD_COORDS && Distance != Distance_TOR_2D) ||
-            (CoordType == THREED_COORDS && Distance != Distance_TOR_3D))
-            CreateNearestNeighborCandidateSet(K);
-        else
-            CreateNNCandidateSet(K);
+        CreateNearestNeighborCandidateSet(K);
     } else if (CandidateSetType == QUADRANT)
         CreateQuadrantCandidateSet(K);
     t = FirstNode;

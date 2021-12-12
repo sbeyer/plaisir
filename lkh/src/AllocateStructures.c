@@ -39,13 +39,13 @@ void AllocateStructures()
     for (i = 1; i <= Dimension; i++)
         Rand[i] = Random();
     SRandom(Seed);
-    if (WeightType != EXPLICIT) {
-        for (i = 0; (1 << i) < (Dimension << 1); i++);
-        i = 1 << i;
-        CacheSig = (int *) calloc(i, sizeof(int));
-        CacheVal = (int *) calloc(i, sizeof(int));
-        CacheMask = i - 1;
-    }
+
+    for (i = 0; (1 << i) < (Dimension << 1); i++);
+    i = 1 << i;
+    CacheSig = (int *) calloc(i, sizeof(int));
+    CacheVal = (int *) calloc(i, sizeof(int));
+    CacheMask = i - 1;
+
     AllocateSegments();
     K = MoveType;
     if (SubsequentMoveType > K)

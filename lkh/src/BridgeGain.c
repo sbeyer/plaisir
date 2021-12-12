@@ -109,7 +109,7 @@ BridgeGain(Node * s1, Node * s2, Node * s3, Node * s4,
                     continue;
                 G2 = G1 + C(t3, t4);
                 /* Test if an improvement can be obtained */
-                if ((!c || G2 - c(t4, t1) > 0)
+                if ((G2 - c(t4, t1) > 0)
                     && (Gain = G2 - C(t4, t1)) > 0) {
                     switch (Case6) {
                     case 0:
@@ -171,7 +171,7 @@ BridgeGain(Node * s1, Node * s2, Node * s3, Node * s4,
                         continue;
                     G3 = G2 - Nt4->Cost;
                     G4 = G3 + C(t5, t6);
-                    if ((!c || G4 - c(t6, t1) > 0) &&
+                    if ((G4 - c(t6, t1) > 0) &&
                         (Gain = G4 - C(t6, t1)) > 0) {
                         if (X4 == 1)
                             Swap4(s1, s2, s4, t3, t4, t1, s1, s3, s2, t5,
@@ -228,7 +228,7 @@ BridgeGain(Node * s1, Node * s2, Node * s3, Node * s4,
                         G5 = G4 - Nt6->Cost;
                         G6 = G5 + C(t7, t8);
                         /* Test if an improvement can be achieved */
-                        if ((!c || G6 - c(t8, t1) > 0) &&
+                        if ((G6 - c(t8, t1) > 0) &&
                             (Gain = G6 - C(t8, t1)) > 0) {
                             if (X4 == 1)
                                 Swap4(s1, s2, s4, t3, t4, t1, s1, s3, s2,

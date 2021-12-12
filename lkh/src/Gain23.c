@@ -71,13 +71,13 @@ GainType Gain23()
                      followed by a 2-, 3- or 4-opt move */
                     if (X4 == 1 && s4 != s1 &&
                         2 * SegmentSize(s2, s3) <= Dimension &&
-                        (!c || G2 - c(s4, s1) > 0) &&
+                        (G2 - c(s4, s1) > 0) &&
                         (G3 = G2 - C(s4, s1)) > 0 &&
                         (Gain = BridgeGain(s1, s2, s3, s4, 0, 0, 0, 0, 0,
                                            G3)) > 0)
                         return Gain;
                     if (X4 == 2 &&
-                        (!c || G2 - c(s4, s1) > 0) &&
+                        (G2 - c(s4, s1) > 0) &&
                         (Gain = G2 - C(s4, s1)) > 0) {
                         Swap1(s1, s2, s3);
                         return Gain;
@@ -122,7 +122,7 @@ GainType Gain23()
                                 continue;
                             G4 = G3 + C(s5, s6);
                             Gain6 = 0;
-                            if ((!c || G4 - c(s6, s1) > 0) &&
+                            if ((G4 - c(s6, s1) > 0) &&
                                 (Gain6 = G4 - C(s6, s1)) > 0) {
                                 if (Case6 <= 2 || Case6 == 5 || Case6 == 6) {
                                     Make3OptMove(s1, s2, s3, s4, s5, s6,
@@ -218,7 +218,7 @@ GainType Gain23()
                                     if (FixedOrCommon(s7, s8))
                                         continue;
                                     G6 = G5 + C(s7, s8);
-                                    if ((!c || G6 - c(s8, s1) > 0) &&
+                                    if ((G6 - c(s8, s1) > 0) &&
                                         (Gain = G6 - C(s8, s1)) > 0) {
                                         if (Case8 <= 15) {
                                             Make4OptMove(s1, s2, s3, s4,

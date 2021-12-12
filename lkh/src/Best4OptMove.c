@@ -71,7 +71,7 @@ Node *Best4OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                 continue;
             G2 = G1 + C(t3, t4);
             if (X4 == 1 &&
-                (!c || G2 - c(t4, t1) > 0) && (*Gain = G2 - C(t4, t1)) > 0)
+                (G2 - c(t4, t1) > 0) && (*Gain = G2 - C(t4, t1)) > 0)
             {
                 Swap1(t1, t2, t3);
                 return 0;
@@ -116,7 +116,7 @@ Node *Best4OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                         continue;
                     G4 = G3 + C(t5, t6);
                     if ((Case6 <= 2 || Case6 == 5 || Case6 == 6) &&
-                        (!c || G4 - c(t6, t1) > 0) &&
+                        (G4 - c(t6, t1) > 0) &&
                         (*Gain = G4 - C(t6, t1)) > 0) {
                         Make3OptMove(t1, t2, t3, t4, t5, t6, Case6);
                         return 0;
@@ -186,7 +186,7 @@ Node *Best4OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                                 continue;
                             G6 = G5 + C(t7, t8);
                             if (t8 != t1 &&
-                                (!c || G6 - c(t8, t1) > 0) &&
+                                (G6 - c(t8, t1) > 0) &&
                                 (*Gain = G6 - C(t8, t1)) > 0) {
                                 Make4OptMove(t1, t2, t3, t4, t5, t6, t7,
                                              t8, Case8);

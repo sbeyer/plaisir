@@ -6,10 +6,8 @@
  */
 
 static void NearestQuadrantNeighbors(Node * N, int Q, int K);
-static int Contains2D(Node * T, int Q, Node * N);
-static int Contains3D(Node * T, int Q, Node * N);
-static int BoxOverlaps2D(Node * T, int Q, Node * N);
-static int BoxOverlaps3D(Node * T, int Q, Node * N);
+static int Contains(Node * T, int Q, Node * N);
+static int BoxOverlaps(Node * T, int Q, Node * N);
 static void ComputeBounds(int start, int end);
 
 typedef int (*ContainsFunction) (Node * T, int Q, Node * N);
@@ -17,10 +15,8 @@ typedef int (*BoxOverlapsFunction) (Node * T, int Q, Node * N);
 
 static Node **KDTree;
 static Candidate *CandidateSet;
-static double *XMin, *XMax, *YMin, *YMax, *ZMin, *ZMax;
+static double *XMin, *XMax, *YMin, *YMax;
 static int Candidates, Radius;
-static ContainsFunction Contains;
-static BoxOverlapsFunction BoxOverlaps;
 static int Level = 0;
 
 /*
@@ -39,7 +35,6 @@ static int Level = 0;
 void CreateQuadrantCandidateSet(int K)
 {
     Node *From, *To;
-    Candidate *NFrom;
     int L, Q, CandPerQ, Added, i;
 
     if (K <= 0)
@@ -51,15 +46,8 @@ void CreateQuadrantCandidateSet(int K)
     XMax = (double *) malloc((1 + DimensionSaved) * sizeof(double));
     YMin = (double *) malloc((1 + DimensionSaved) * sizeof(double));
     YMax = (double *) malloc((1 + DimensionSaved) * sizeof(double));
-    if (CoordType == THREED_COORDS) {
-        ZMin = (double *) malloc((1 + DimensionSaved) * sizeof(double));
-        ZMax = (double *) malloc((1 + DimensionSaved) * sizeof(double));
-    }
     ComputeBounds(0, Dimension - 1);
-    Contains = CoordType == THREED_COORDS ? Contains3D : Contains2D;
-    BoxOverlaps =
-        CoordType == THREED_COORDS ? BoxOverlaps3D : BoxOverlaps2D;
-    L = CoordType == THREED_COORDS ? 8 : 4;
+    L = 4;
     CandPerQ = K / L;
     CandidateSet = (Candidate *) malloc((K + 1) * sizeof(Candidate));
 
@@ -91,59 +79,6 @@ void CreateQuadrantCandidateSet(int K)
     free(XMax);
     free(YMin);
     free(YMax);
-    if (CoordType == THREED_COORDS) {
-        free(ZMin);
-        free(ZMax);
-    }
-    if (Level == 0 &&
-        (WeightType == GEO || WeightType == GEOM ||
-         WeightType == GEO_MEEUS || WeightType == GEOM_MEEUS)) {
-        Candidate **SavedCandidateSet;
-        SavedCandidateSet =
-            (Candidate **) malloc((1 + DimensionSaved) *
-                                  sizeof(Candidate *));
-        if (TraceLevel >= 2)
-            printff("done\n");
-        From = FirstNode;
-        while ((From = From->Suc) != FirstNode)
-            if ((From->Y > 0) != (FirstNode->Y > 0))
-                break;
-        if (From != FirstNode) {
-            /* Transform longitude (180 and -180 map to 0) */
-            From = FirstNode;
-            do {
-                SavedCandidateSet[From->Id] = From->CandidateSet;
-                From->CandidateSet = 0;
-                From->Zc = From->Y;
-                if (WeightType == GEO || WeightType == GEO_MEEUS)
-                    From->Y =
-                        (int) From->Y + 5.0 * (From->Y -
-                                               (int) From->Y) / 3.0;
-                From->Y += From->Y > 0 ? -180 : 180;
-                if (WeightType == GEO || WeightType == GEO_MEEUS)
-                    From->Y =
-                        (int) From->Y + 3.0 * (From->Y -
-                                               (int) From->Y) / 5.0;
-            } while ((From = From->Suc) != FirstNode);
-            Level++;
-            CreateQuadrantCandidateSet(K);
-            Level--;
-            From = FirstNode;
-            do
-                From->Y = From->Zc;
-            while ((From = From->Suc) != FirstNode);
-            do {
-                Candidate *QCandidateSet = From->CandidateSet;
-                From->CandidateSet = SavedCandidateSet[From->Id];
-                if (QCandidateSet) {
-                    for (NFrom = QCandidateSet; (To = NFrom->To); NFrom++)
-                        AddCandidate(From, To, NFrom->Cost, NFrom->Alpha);
-                    free(QCandidateSet);
-                }
-            } while ((From = From->Suc) != FirstNode);
-            free(SavedCandidateSet);
-        }
-    }
     if (Level == 0) {
         ResetCandidateSet();
         AddTourCandidates();
@@ -174,14 +109,7 @@ void CreateNearestNeighborCandidateSet(int K)
     XMax = (double *) malloc((1 + DimensionSaved) * sizeof(double));
     YMin = (double *) malloc((1 + DimensionSaved) * sizeof(double));
     YMax = (double *) malloc((1 + DimensionSaved) * sizeof(double));
-    if (CoordType == THREED_COORDS) {
-        ZMin = (double *) malloc((1 + DimensionSaved) * sizeof(double));
-        ZMax = (double *) malloc((1 + DimensionSaved) * sizeof(double));
-    }
     ComputeBounds(0, Dimension - 1);
-    Contains = CoordType == THREED_COORDS ? Contains3D : Contains2D;
-    BoxOverlaps =
-        CoordType == THREED_COORDS ? BoxOverlaps3D : BoxOverlaps2D;
     CandidateSet = (Candidate *) malloc((K + 1) * sizeof(Candidate));
 
     From = FirstNode;
@@ -199,41 +127,6 @@ void CreateNearestNeighborCandidateSet(int K)
     free(XMax);
     free(YMin);
     free(YMax);
-    if (CoordType == THREED_COORDS) {
-        free(ZMin);
-        free(ZMax);
-    }
-    if (Level == 0 && (WeightType == GEOM || WeightType == GEOM_MEEUS)) {
-        Candidate **SavedCandidateSet;
-        SavedCandidateSet =
-           (Candidate **) malloc((1 + DimensionSaved) * sizeof(Candidate *));
-        if (TraceLevel >= 2)
-            printff("done\n");
-        /* Transform longitude (180 and -180 map to 0) */
-        From = FirstNode;
-        do {
-            SavedCandidateSet[From->Id] = From->CandidateSet;
-            From->CandidateSet = 0;
-            From->Yc = From->Y;
-            From->Y += From->Y > 0 ? -180 : 180;
-        } while ((From = From->Suc) != FirstNode);
-        Level++;
-        CreateNearestNeighborCandidateSet(K);
-        Level--;
-        From = FirstNode;
-        do
-            From->Y = From->Yc;
-        while ((From = From->Suc) != FirstNode);
-        do {
-            Candidate *QCandidateSet = From->CandidateSet;
-            Candidate *NFrom;
-            From->CandidateSet = SavedCandidateSet[From->Id];
-            for (NFrom = QCandidateSet; (To = NFrom->To); NFrom++)
-                AddCandidate(From, To, NFrom->Cost, NFrom->Alpha);
-            free(QCandidateSet);
-        } while ((From = From->Suc) != FirstNode);
-        free(SavedCandidateSet);
-    }
     if (Level == 0) {
         ResetCandidateSet();
         AddTourCandidates();
@@ -256,10 +149,6 @@ static void ComputeBounds(int start, int end)
         Node *T = KDTree[mid];
         XMin[T->Id] = YMin[T->Id] = DBL_MAX;
         XMax[T->Id] = YMax[T->Id] = -DBL_MAX;
-        if (CoordType == THREED_COORDS) {
-            ZMin[T->Id] = DBL_MAX;
-            ZMax[T->Id] = -DBL_MAX;
-        }
         for (i = start; i <= end; i++) {
             Node *N = KDTree[i];
             if (N == T)
@@ -272,12 +161,6 @@ static void ComputeBounds(int start, int end)
                 YMin[T->Id] = N->Y;
             if (N->Y > YMax[T->Id])
                 YMax[T->Id] = N->Y;
-            if (CoordType == THREED_COORDS) {
-                if (N->Z < ZMin[T->Id])
-                    ZMin[T->Id] = N->Z;
-                if (N->Z > ZMax[T->Id])
-                    ZMax[T->Id] = N->Z;
-            }
         }
         ComputeBounds(start, mid - 1);
         ComputeBounds(mid + 1, end);
@@ -297,7 +180,7 @@ static void ComputeBounds(int start, int end)
  *
  */
 
-static int Contains2D(Node * T, int Q, Node * N)
+static int Contains(Node * T, int Q, Node * N)
 {
     switch (Q) {
     case 1:
@@ -314,48 +197,11 @@ static int Contains2D(Node * T, int Q, Node * N)
 }
 
 /*
- * The Contains3D function returns 1 if T belongs to 3-D 
- * quadrant Q relative to N; otherwise 0.
- *
- *          Q = 2 | Q = 1
- *          ===== N =====   for T.Z >= N.Z
- *          Q = 3 | Q = 4
- *
- *          Q = 6 | Q = 5
- *          ===== N =====   for T.Z <= N.Z
- *          Q = 7 | Q = 8
- */
-
-static int Contains3D(Node * T, int Q, Node * N)
-{
-    switch (Q) {
-    case 1:
-        return T->X >= N->X && T->Y >= N->Y && T->Z >= N->Z;
-    case 2:
-        return T->X <= N->X && T->Y >= N->Y && T->Z >= N->Z;
-    case 3:
-        return T->X <= N->X && T->Y <= N->Y && T->Z >= N->Z;
-    case 4:
-        return T->X >= N->X && T->Y <= N->Y && T->Z >= N->Z;
-    case 5:
-        return T->X >= N->X && T->Y >= N->Y && T->Z <= N->Z;
-    case 6:
-        return T->X <= N->X && T->Y >= N->Y && T->Z <= N->Z;
-    case 7:
-        return T->X <= N->X && T->Y <= N->Y && T->Z <= N->Z;
-    case 8:
-        return T->X >= N->X && T->Y <= N->Y && T->Z <= N->Z;
-    default:
-        return 1;
-    }
-}
-
-/*
  * The BoxOverlaps2D function returns 1 if T's bounding box 
  * overlaps the 2-D quadrant Q relative to N; otherwise 0.
  */
 
-static int BoxOverlaps2D(Node * T, int Q, Node * N)
+static int BoxOverlaps(Node * T, int Q, Node * N)
 {
     switch (Q) {
     case 1:
@@ -371,42 +217,6 @@ static int BoxOverlaps2D(Node * T, int Q, Node * N)
     }
 }
 
-/*
- * The BoxOverlaps3D function returns 1 if T's bounding box 
- * overlaps the 3-D quadrant Q relative to N; otherwise 0.
- */
-
-static int BoxOverlaps3D(Node * T, int Q, Node * N)
-{
-    switch (Q) {
-    case 1:
-        return XMax[T->Id] >= N->X && YMax[T->Id] >= N->Y &&
-            ZMax[T->Id] >= N->Z;
-    case 2:
-        return XMin[T->Id] <= N->X && YMax[T->Id] >= N->Y &&
-            ZMax[T->Id] >= N->Z;
-    case 3:
-        return XMin[T->Id] <= N->X && YMin[T->Id] <= N->Y &&
-            ZMax[T->Id] >= N->Z;
-    case 4:
-        return XMax[T->Id] >= N->X && YMin[T->Id] <= N->Y &&
-            ZMax[T->Id] >= N->Z;
-    case 5:
-        return XMax[T->Id] >= N->X && YMax[T->Id] >= N->Y &&
-            ZMin[T->Id] <= N->Z;
-    case 6:
-        return XMin[T->Id] <= N->X && YMax[T->Id] >= N->Y &&
-            ZMin[T->Id] <= N->Z;
-    case 7:
-        return XMin[T->Id] <= N->X && YMin[T->Id] <= N->Y &&
-            ZMin[T->Id] <= N->Z;
-    case 8:
-        return XMax[T->Id] >= N->X && YMin[T->Id] <= N->Y &&
-            ZMin[T->Id] <= N->Z;
-    default:
-        return 1;
-    }
-}
 
 /*
  * The Overlaps function returns 1 if High is zero and the half 
@@ -474,7 +284,7 @@ static void NQN(Node * N, int Q, int start, int end, int K)
         IsPossibleCandidate(N, T) &&
         Contains(T, Q, N) &&
         !InCandidateSet(N, T) &&
-        (!c || c(N, T) - N->Pi - T->Pi <= Radius) &&
+        (c(N, T) - N->Pi - T->Pi <= Radius) &&
         (d = Distance(N, T) * Precision) <= Radius) {
         int i = Candidates;
         while (--i >= 0 && d < CandidateSet[i].Cost)
@@ -496,14 +306,14 @@ static void NQN(Node * N, int Q, int start, int end, int K)
             if (Overlaps(Q, diff, 0, axis))
                 NQN(N, Q, start, mid - 1, K);
             if (Overlaps(Q, diff, 1, axis) &&
-                (!c || c(N, &P) - N->Pi <= Radius) &&
+                (c(N, &P) - N->Pi <= Radius) &&
                 Distance(N, &P) * Precision <= Radius)
                 NQN(N, Q, mid + 1, end, K);
         } else {
             if (Overlaps(Q, diff, 1, axis))
                 NQN(N, Q, mid + 1, end, K);
             if (Overlaps(Q, diff, 0, axis) &&
-                (!c || c(N, &P) - N->Pi <= Radius) &&
+                (c(N, &P) - N->Pi <= Radius) &&
                 Distance(N, &P) * Precision <= Radius)
                 NQN(N, Q, start, mid - 1, K);
         }

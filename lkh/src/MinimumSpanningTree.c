@@ -90,7 +90,7 @@ void MinimumSpanningTree(int Sparse)
                     Min = INT_MIN;
                 } else {
                     if (!Blue->FixedTo2 && !N->FixedTo2 &&
-                        (!c || c(Blue, N) < N->Cost) &&
+                        (c(Blue, N) < N->Cost) &&
                         (d = D(Blue, N)) < N->Cost) {
                         N->Cost = d;
                         N->Dad = Blue;

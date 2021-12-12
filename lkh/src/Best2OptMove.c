@@ -54,7 +54,7 @@ Node *Best2OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
         if (FixedOrCommon(t3, t4))
             continue;
         G2 = G1 + C(t3, t4);
-        if ((!c || G2 - c(t4, t1) > 0) && (*Gain = G2 - C(t4, t1)) > 0) {
+        if ((G2 - c(t4, t1) > 0) && (*Gain = G2 - C(t4, t1)) > 0) {
             Swap1(t1, t2, t3);
             return 0;
         }

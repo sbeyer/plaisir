@@ -25,43 +25,8 @@
  *
  * Below is given a list of all available keywords.
  *
- * COMMENT : <string>
- * Additional comments (usually the name of the contributor or the creator of
- * the problem instance is given here).
- *
  * DIMENSION : < integer>
  * The number of nodes.
- *
- * EDGE_WEIGHT_TYPE : <string>
- * Specifies how the edge weights (or distances) are given. The values are:
- * ATT          Special distance function for problem att48 and att532
- * CEIL_2D      Weights are Euclidean distances in 2-D rounded up
- * CEIL_3D      Weights are Euclidean distances in 3-D rounded up
- * EUC_2D       Weights are Euclidean distances in 2-D
- * EUC_3D       Weights are Euclidean distances in 3-D
- * EXPLICIT     Weights are listed explicitly in the corresponding section
- * FLOOR_2D     Weights are Euclidean distances in 2-D rounded down
- * FLOOR_3D     Weights are Euclidean distances in 3-D rounded down
- * GEO          Weights are geographical distances in kilometers (TSPLIB).
- *              Coordinates are given in the form DDD.MM where DDD are the
- *              degrees and MM the minutes
- * GEOM         Weights are geographical distances in meters (used for the
- *              world TSP). Coordinates are given in decimal form
- * GEO_MEEUS    Weights are geographical distances in kilometers, computed
- *              according to Meeus' formula.  Coordinates are given in the
- *              form DDD.MM where DDD are the degrees and MM the minutes
- * GEOM_MEEUS   Weights are geographical distances, computed according to
- *              Meeus' formula. Coordinates are given in decimal form
- * MAN_2D       Weights are Manhattan distances in 2-D
- * MAN_3D       Weights are Manhattan distances in 3-D
- * MAX_2D       Weights are maximum distances in 2-D
- * MAX_3D       Weights are maximum distances in 3-D
- * TOR_2D       Wirghes are toroidal distances in 2-D
- * TOR_3D       Wirghes are toroidal distances in 3-D
- * XRAY1        Distance function for crystallography problems (Version 1)
- * XRAY2        Distance function for crystallography problems (Version 2)
- * SPECIAL      There is a special distance function implemented in
- *              the Distance_SPECIAL function.
  *
  * EDGE-WEIGHT_FORMAT : <string>
  * Describes the format of the edge weights if they are given explicitly.
@@ -90,17 +55,6 @@
  * graph is not complete. The values are
  * EDGE_LIST    The graph is given by an edge list
  * ADJ_LIST     The graph is given by an adjacency list
- *
- * NODE_COORD_TYPE : <string>
- * Specifies whether the coordinates are associated with each node
- * (which, for example may be used for either graphical display or
- * distance computations.
- * The values are
- * TWOD_COORDS      Nodes are specified by coordinates in 2-D
- * THREED_COORDS    Nodes are specified by coordinates in 3-D
- * NO_COORDS        The nodes do not have associated coordinates
- * The default value is NO_COORDS. In the current implementation, however,
- * the value has no significance.
  *
  * DISPLAY_DATA_TYPE : <string>
  * Specifies how a graphical display of the nodes can be obtained.
@@ -134,12 +88,7 @@
  *
  *      <integer> <real> <real>
  *
- * if NODE_COORD_TYPE is TWOD_COORDS, or
- *
- *      <integer> <real> <real> <real>
- *
- * if NODE_COORD_TYPE is THREED_COORDS. The integers give the number of the
- * respective nodes. The real numbers are the associated coordinates.
+ * The real numbers are the associated coordinates.
  *
  * EDGE_DATA_SECTION :
  * Edges of the graph are specified in either of the two formats allowed in
@@ -195,14 +144,11 @@ static void Read_DIMENSION(void);
 static void Read_DISPLAY_DATA_SECTION(void);
 static void Read_DISPLAY_DATA_TYPE(void);
 static void Read_EDGE_DATA_FORMAT(void);
-static void Read_EDGE_DATA_SECTION(void);
 static void Read_EDGE_WEIGHT_FORMAT(void);
 static void Read_EDGE_WEIGHT_SECTION(void);
-static void Read_EDGE_WEIGHT_TYPE(void);
 static void Read_FIXED_EDGES_SECTION(void);
 static void Read_GRID_SIZE(void);
 static void Read_NODE_COORD_SECTION(void);
-static void Read_NODE_COORD_TYPE(void);
 static int TwoDWeightType(void);
 static int ThreeDWeightType(void);
 
@@ -220,21 +166,16 @@ void ReadProblem()
 
     FreeStructures();
     FirstNode = 0;
-    WeightType = WeightFormat = -1;
-    CoordType = NO_COORDS;
+    WeightFormat = -1;
     Type = EdgeWeightType = EdgeWeightFormat = 0;
     EdgeDataFormat = NodeCoordType = DisplayDataType = 0;
-    Distance = 0;
     GridSize = 1000000.0;
-    C = 0;
-    c = 0;
     while ((Line = ReadLine(ProblemFile))) {
         if (!(Keyword = strtok(Line, Delimiters)))
             continue;
         for (i = 0; i < (int) strlen(Keyword); i++)
             Keyword[i] = (char) toupper(Keyword[i]);
-        if (!strcmp(Keyword, "COMMENT"));
-        else if (!strcmp(Keyword, "DIMENSION"))
+        if (!strcmp(Keyword, "DIMENSION"))
             Read_DIMENSION();
         else if (!strcmp(Keyword, "DISPLAY_DATA_SECTION"))
             Read_DISPLAY_DATA_SECTION();
@@ -242,14 +183,10 @@ void ReadProblem()
             Read_DISPLAY_DATA_TYPE();
         else if (!strcmp(Keyword, "EDGE_DATA_FORMAT"))
             Read_EDGE_DATA_FORMAT();
-        else if (!strcmp(Keyword, "EDGE_DATA_SECTION"))
-            Read_EDGE_DATA_SECTION();
         else if (!strcmp(Keyword, "EDGE_WEIGHT_FORMAT"))
             Read_EDGE_WEIGHT_FORMAT();
         else if (!strcmp(Keyword, "EDGE_WEIGHT_SECTION"))
             Read_EDGE_WEIGHT_SECTION();
-        else if (!strcmp(Keyword, "EDGE_WEIGHT_TYPE"))
-            Read_EDGE_WEIGHT_TYPE();
         else if (!strcmp(Keyword, "EOF"))
             break;
         else if (!strcmp(Keyword, "FIXED_EDGES_SECTION"))
@@ -258,8 +195,6 @@ void ReadProblem()
             Read_GRID_SIZE();
         else if (!strcmp(Keyword, "NODE_COORD_SECTION"))
             Read_NODE_COORD_SECTION();
-        else if (!strcmp(Keyword, "NODE_COORD_TYPE"))
-            Read_NODE_COORD_TYPE();
         else
             eprintf("Unknown keyword: %s", Keyword);
     }
@@ -298,34 +233,6 @@ void ReadProblem()
         POPMUSIC_MaxNeighbors = Dimension - 1;
     if (POPMUSIC_SampleSize > Dimension)
         POPMUSIC_SampleSize = Dimension;
-    if (CostMatrix == 0 && Dimension <= MaxMatrixDimension &&
-            Distance != 0 && Distance != Distance_1 && Distance != Distance_LARGE &&
-            Distance != Distance_SPECIAL) {
-        Node *Ni, *Nj;
-        CostMatrix = (int *) calloc((size_t) Dimension * (Dimension - 1) / 2,
-                sizeof(int));
-        Ni = FirstNode->Suc;
-        do {
-            Ni->C =
-                &CostMatrix[(size_t) (Ni->Id - 1) * (Ni->Id - 2) / 2] - 1;
-            for (Nj = FirstNode; Nj != Ni; Nj = Nj->Suc)
-                Ni->C[Nj->Id] = Fixed(Ni, Nj) ? 0 : Distance(Ni, Nj);
-        }
-        while ((Ni = Ni->Suc) != FirstNode);
-        WeightType = EXPLICIT;
-        c = 0;
-    }
-    if (Precision > 1 && WeightType == EXPLICIT) {
-        int j, n = Dimension;
-        for (i = 2; i <= n; i++) {
-            Node *N = &NodeSet[i];
-            for (j = 1; j < i; j++)
-                if (N->C[j] * Precision / Precision != N->C[j])
-                    eprintf("PRECISION (= %d) is too large", Precision);
-        }
-    }
-    C = WeightType == EXPLICIT ? C_EXPLICIT : C_FUNCTION;
-    D = WeightType == EXPLICIT ? D_EXPLICIT : D_FUNCTION;
     if (SubsequentMoveType == 0)
         SubsequentMoveType = MoveType;
     K = MoveType >= SubsequentMoveType
@@ -364,37 +271,19 @@ void ReadProblem()
 
 static int TwoDWeightType()
 {
-    return WeightType == EUC_2D || WeightType == MAX_2D ||
-        WeightType == MAN_2D || WeightType == CEIL_2D ||
-        WeightType == FLOOR_2D ||
-        WeightType == GEO || WeightType == GEOM ||
-        WeightType == GEO_MEEUS || WeightType == GEOM_MEEUS ||
-        WeightType == ATT || WeightType == TOR_2D ||
-        (WeightType == SPECIAL && CoordType == TWOD_COORDS);
+    return 1;
 }
 
 static int ThreeDWeightType()
 {
-    return WeightType == EUC_3D || WeightType == MAX_3D ||
-        WeightType == MAN_3D || WeightType == CEIL_3D ||
-        WeightType == FLOOR_3D || WeightType == TOR_3D ||
-        WeightType == XRAY1 || WeightType == XRAY2 ||
-        (WeightType == SPECIAL && CoordType == THREED_COORDS);
+    return 0;
 }
 
 static void CheckSpecificationPart()
 {
     if (Dimension < 3)
         eprintf("DIMENSION < 3 or not specified");
-    if (WeightType == -1 && !EdgeWeightType)
-        eprintf("EDGE_WEIGHT_TYPE is missing");
-    if (WeightType == EXPLICIT && WeightFormat == -1 && !EdgeWeightFormat)
-        eprintf("EDGE_WEIGHT_FORMAT is missing");
-    if (WeightType == EXPLICIT && WeightFormat == FUNCTION)
-        eprintf("Conflicting EDGE_WEIGHT_TYPE and EDGE_WEIGHT_FORMAT");
-    if (WeightType != EXPLICIT
-        && (WeightType != SPECIAL || CoordType != NO_COORDS)
-        && WeightType != -1 && WeightFormat != -1
+    if (WeightFormat != -1
         && WeightFormat != FUNCTION)
         eprintf("Conflicting EDGE_WEIGHT_TYPE and EDGE_WEIGHT_FORMAT");
     if (CandidateSetType == DELAUNAY && !TwoDWeightType()
@@ -533,9 +422,6 @@ static void Read_DISPLAY_DATA_SECTION()
             eprintf("DISPLAY_DATA_SECTION: Missing X-coordinate");
         if (!fscanf(ProblemFile, "%lf", &N->Y))
             eprintf("DISPLAY_DATA_SECTION: Missing Y-coordinate");
-        if (CoordType == THREED_COORDS
-            && !fscanf(ProblemFile, "%lf", &N->Z))
-            eprintf("DISPLAY_DATA_SECTION: Missing Z-coordinate");
     }
     N = FirstNode;
     do
@@ -574,6 +460,7 @@ static void Read_EDGE_DATA_FORMAT()
         eprintf("Unknown EDGE_DATA_FORMAT: %s", EdgeDataFormat);
 }
 
+/*
 static void Read_EDGE_DATA_SECTION()
 {
     Node *Ni, *Nj;
@@ -647,6 +534,7 @@ static void Read_EDGE_DATA_SECTION()
     MaxCandidates = ExtraCandidates = 0;
     Distance = WithWeights ? Distance_LARGE : Distance_1;
 }
+*/
 
 static void Read_EDGE_WEIGHT_FORMAT()
 {
@@ -796,111 +684,6 @@ static void Read_EDGE_WEIGHT_SECTION()
     }
 }
 
-static void Read_EDGE_WEIGHT_TYPE()
-{
-    unsigned int i;
-
-    if (!(EdgeWeightType = Copy(strtok(0, Delimiters))))
-        eprintf("EDGE_WEIGHT_TYPE: string expected");
-    for (i = 0; i < strlen(EdgeWeightType); i++)
-        EdgeWeightType[i] = (char) toupper(EdgeWeightType[i]);
-    if (!strcmp(EdgeWeightType, "ATT")) {
-        WeightType = ATT;
-        Distance = Distance_ATT;
-        c = c_ATT;
-        CoordType = TWOD_COORDS;
-    } else if (!strcmp(EdgeWeightType, "CEIL_2D")) {
-        WeightType = CEIL_2D;
-        Distance = Distance_CEIL_2D;
-        c = c_CEIL_2D;
-        CoordType = TWOD_COORDS;
-    } else if (!strcmp(EdgeWeightType, "CEIL_3D")) {
-        WeightType = CEIL_3D;
-        Distance = Distance_CEIL_3D;
-        c = c_CEIL_3D;
-        CoordType = THREED_COORDS;
-    } else if (!strcmp(EdgeWeightType, "EUC_2D")) {
-        WeightType = EUC_2D;
-        Distance = Distance_EUC_2D;
-        c = c_EUC_2D;
-        CoordType = TWOD_COORDS;
-    } else if (!strcmp(EdgeWeightType, "EUC_3D")) {
-        WeightType = EUC_3D;
-        Distance = Distance_EUC_3D;
-        c = c_EUC_3D;
-        CoordType = THREED_COORDS;
-    } else if (!strcmp(EdgeWeightType, "EXPLICIT")) {
-        WeightType = EXPLICIT;
-        Distance = Distance_EXPLICIT;
-    } else if (!strcmp(EdgeWeightType, "FLOOR_2D")) {
-        WeightType = FLOOR_2D;
-        Distance = Distance_FLOOR_2D;
-        c = c_FLOOR_2D;
-        CoordType = TWOD_COORDS;
-    } else if (!strcmp(EdgeWeightType, "FLOOR_3D")) {
-        WeightType = FLOOR_3D;
-        Distance = Distance_FLOOR_3D;
-        c = c_FLOOR_3D;
-        CoordType = THREED_COORDS;
-    } else if (!strcmp(EdgeWeightType, "MAN_2D")) {
-        WeightType = MAN_2D;
-        Distance = Distance_MAN_2D;
-        CoordType = TWOD_COORDS;
-    } else if (!strcmp(EdgeWeightType, "MAN_3D")) {
-        WeightType = MAN_3D;
-        Distance = Distance_MAN_3D;
-        CoordType = THREED_COORDS;
-    } else if (!strcmp(EdgeWeightType, "MAX_2D")) {
-        WeightType = MAX_2D;
-        Distance = Distance_MAX_2D;
-        CoordType = TWOD_COORDS;
-    } else if (!strcmp(EdgeWeightType, "MAX_3D")) {
-        WeightType = MAX_3D;
-        Distance = Distance_MAX_3D;
-        CoordType = THREED_COORDS;
-    } else if (!strcmp(EdgeWeightType, "GEO")) {
-        WeightType = GEO;
-        Distance = Distance_GEO;
-        c = c_GEO;
-        CoordType = TWOD_COORDS;
-    } else if (!strcmp(EdgeWeightType, "GEOM")) {
-        WeightType = GEOM;
-        Distance = Distance_GEOM;
-        c = c_GEOM;
-        CoordType = TWOD_COORDS;
-    } else if (!strcmp(EdgeWeightType, "GEO_MEEUS")) {
-        WeightType = GEO_MEEUS;
-        Distance = Distance_GEO_MEEUS;
-        c = c_GEO_MEEUS;
-        CoordType = TWOD_COORDS;
-    } else if (!strcmp(EdgeWeightType, "GEOM_MEEUS")) {
-        WeightType = GEOM_MEEUS;
-        Distance = Distance_GEOM_MEEUS;
-        c = c_GEOM_MEEUS;
-        CoordType = TWOD_COORDS;
-    } else if (!strcmp(EdgeWeightType, "TOR_2D")) {
-        WeightType = TOR_2D;
-        Distance = Distance_TOR_2D;
-        CoordType = TWOD_COORDS;
-    } else if (!strcmp(EdgeWeightType, "TOR_3D")) {
-        WeightType = TOR_3D;
-        Distance = Distance_TOR_3D;
-        CoordType = THREED_COORDS;
-    } else if (!strcmp(EdgeWeightType, "XRAY1")) {
-        WeightType = XRAY1;
-        Distance = Distance_XRAY1;
-        CoordType = THREED_COORDS;
-    } else if (!strcmp(EdgeWeightType, "XRAY2")) {
-        WeightType = XRAY2;
-        Distance = Distance_XRAY2;
-        CoordType = THREED_COORDS;
-    } else if (!strcmp(EdgeWeightType, "SPECIAL")) {
-        WeightType = SPECIAL;
-        Distance = Distance_SPECIAL;
-    } else
-        eprintf("Unknown EDGE_WEIGHT_TYPE: %s", EdgeWeightType);
-}
-
 static void Read_FIXED_EDGES_SECTION()
 {
     Node *Ni, *Nj, *N, *NPrev = 0, *NNext;
@@ -956,9 +739,6 @@ static void Read_NODE_COORD_SECTION()
     int Id, i;
 
     CheckSpecificationPart();
-    if (CoordType != TWOD_COORDS && CoordType != THREED_COORDS)
-        eprintf("NODE_COORD_SECTION conflicts with NODE_COORD_TYPE: %s",
-                NodeCoordType);
     if (!FirstNode)
         CreateNodes();
     N = FirstNode;
@@ -980,9 +760,6 @@ static void Read_NODE_COORD_SECTION()
             eprintf("NODE_COORD_SECTION : Missing X-coordinate");
         if (!fscanf(ProblemFile, "%lf", &N->Y))
             eprintf("NODE_COORD_SECTION: Missing Y-coordinate");
-        if (CoordType == THREED_COORDS
-            && !fscanf(ProblemFile, "%lf", &N->Z))
-            eprintf("NODE_COORD_SECTION: Missing Z-coordinate");
     }
     N = FirstNode;
     do
@@ -992,22 +769,4 @@ static void Read_NODE_COORD_SECTION()
     if (!N->V)
         eprintf("NODE_COORD_SECTION: No coordinates given for node %d",
                 N->Id);
-}
-
-static void Read_NODE_COORD_TYPE()
-{
-    unsigned int i;
-
-    if (!(NodeCoordType = Copy(strtok(0, Delimiters))))
-        eprintf("NODE_COORD_TYPE: string expected");
-    for (i = 0; i < strlen(NodeCoordType); i++)
-        NodeCoordType[i] = (char) toupper(NodeCoordType[i]);
-    if (!strcmp(NodeCoordType, "TWOD_COORDS"))
-        CoordType = TWOD_COORDS;
-    else if (!strcmp(NodeCoordType, "THREED_COORDS"))
-        CoordType = THREED_COORDS;
-    else if (!strcmp(NodeCoordType, "NO_COORDS"))
-        CoordType = NO_COORDS;
-    else
-        eprintf("Unknown NODE_COORD_TYPE: %s", NodeCoordType);
 }

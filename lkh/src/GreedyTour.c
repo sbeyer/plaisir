@@ -107,7 +107,7 @@ GainType GreedyTour()
                 To = FirstNode;
                 do {
                     if (MayBeAddedToFragments(From, To) &&
-                        (!c || c(From, To) < Min)
+                        (c(From, To) < Min)
                         && (d = C(From, To)) < Min) {
                         Min = From->Cost = d;
                         Nearest = To;
@@ -289,7 +289,7 @@ static Node *NearestNeighbor(Node * From)
                 To->Level = N->Level + 1;
                 if (MayBeAddedToFragments(From, To) &&
                     (N == From ? (d = NN->Cost) < Min :
-                     (!c || c(From, To) < Min)
+                     (c(From, To) < Min)
                      && (d = C(From, To)) < Min)) {
                     Min = From->Cost = d;
                     /* Randomization */
@@ -329,7 +329,7 @@ static Node *NearestInList(Node * From, Node * First)
     To = First;
     do {
         if (MayBeAddedToFragments(From, To) &&
-            (!c || c(From, To) < Min) && (d = C(From, To)) < Min) {
+            (c(From, To) < Min) && (d = C(From, To)) < Min) {
             Min = From->Cost = d;
             Nearest = To;
         }

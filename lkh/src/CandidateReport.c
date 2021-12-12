@@ -25,11 +25,11 @@ void CandidateReport()
         Sum += Count;
         if (N->FixedTo1 && N->Id < N->FixedTo1->Id) {
             Fixed++;
-            Cost += Distance != Distance_1 ? Distance(N, N->FixedTo1) : 0;
+            Cost += Distance(N, N->FixedTo1);
         }
         if (N->FixedTo2 && N->Id < N->FixedTo2->Id) {
             Fixed++;
-            Cost += Distance != Distance_1 ? Distance(N, N->FixedTo2) : 0;
+            Cost += Distance(N, N->FixedTo2);
         }
     }
     while ((N = N->Suc) != FirstNode);

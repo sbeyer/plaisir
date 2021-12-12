@@ -132,7 +132,7 @@ int Trial;      /* Ordinal number of the current trial */
 char *Type, *EdgeWeightType, *EdgeWeightFormat,
     *EdgeDataFormat, *NodeCoordType, *DisplayDataType;
 int CandidateSetSymmetric, CandidateSetType,
-    CoordType, DelaunayPartitioning, DelaunayPure,
+    DelaunayPartitioning, DelaunayPure,
     ExtraCandidateSetSymmetric, ExtraCandidateSetType,
     InitialTourAlgorithm,
     KarpPartitioning, KCenterPartitioning, KMeansPartitioning,
@@ -140,11 +140,10 @@ int CandidateSetSymmetric, CandidateSetType,
     PatchingAExtended, PatchingARestricted,
     PatchingCExtended, PatchingCRestricted,
     RohePartitioning, SierpinskiPartitioning,
-    SubproblemBorders, SubproblemsCompressed, WeightType, WeightFormat;
+    SubproblemBorders, SubproblemsCompressed, WeightFormat;
 
 FILE *ParameterFile, *ProblemFile, *PiFile, *InputTourFile,
     *TourFile, *InitialTourFile, *SubproblemTourFile, **MergeTourFile;
-CostFunction Distance, D, C, c;
 MoveFunction BestMove, BacktrackMove, BestSubsequentMove;
 MergeTourFunction MergeWithTour;
 

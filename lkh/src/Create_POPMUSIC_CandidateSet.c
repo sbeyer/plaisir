@@ -7,7 +7,7 @@
 
 #define d(a, b) (((a) == (b) ? 0 : D(a, b)\
                  - (a)->Pi - (b)->Pi) / Precision)
-#define less(a, b, dmin) (!c || (c(a, b)\
+#define less(a, b, dmin) ((c(a, b)\
                                  - (a)->Pi - (b)->Pi) / Precision < dmin)
 
 static void build_path(int n, int *path, int nb_clust);

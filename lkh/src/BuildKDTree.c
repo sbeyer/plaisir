@@ -113,7 +113,7 @@ static char FindMaxSpread(int start, int end)
     Min[1] = Max[1] = N->Y;
     Min[2] = Max[2] = N->Z;
     for (i = start + 1; i <= end; i++) {
-        for (axis = CoordType == THREED_COORDS ? 2 : 1; axis >= 0; axis--) {
+        for (axis = 1; axis >= 0; axis--) {
             N = KDTree[i];
             if (Coord(N, axis) < Min[axis])
                 Min[axis] = Coord(N, axis);
@@ -122,8 +122,6 @@ static char FindMaxSpread(int start, int end)
         }
     }
     if (Max[0] - Min[0] > Max[1] - Min[1])
-        return CoordType != THREED_COORDS
-            || Max[0] - Min[0] > Max[2] - Min[2] ? 0 : 2;
-    return CoordType != THREED_COORDS
-        || Max[1] - Min[1] > Max[2] - Min[2] ? 1 : 2;
+        return 0;
+    return 1;
 }
