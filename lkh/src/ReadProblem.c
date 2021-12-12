@@ -1082,18 +1082,9 @@ static void Read_TYPE()
         Type[i] = (char) toupper(Type[i]);
     if (!strcmp(Type, "TSP"))
         ProblemType = TSP;
-    else if (!strcmp(Type, "SOP")) {
-        ProblemType = SOP;
-        eprintf("TYPE: Type not implemented: %s", Type);
-    } else if (!strcmp(Type, "HCP"))
+    else if (!strcmp(Type, "HCP"))
         ProblemType = HCP;
-    else if (!strcmp(Type, "CVRP")) {
-        ProblemType = CVRP;
-        eprintf("TYPE: Type not implemented: %s", Type);
-    } else if (!strcmp(Type, "TOUR")) {
-        ProblemType = TOUR;
-        eprintf("TYPE: Type not implemented: %s", Type);
-    } else if (!strcmp(Type, "HPP"))
+    else if (!strcmp(Type, "HPP"))
         ProblemType = HPP;
     else
         eprintf("Unknown TYPE: %s", Type);
