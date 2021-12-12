@@ -33,13 +33,12 @@ void WriteTour(char *FileName, int *Tour, GainType Cost)
     fprintf(TourFile, "COMMENT : Found by LKH [Keld Helsgaun] %s",
             ctime(&Now));
     fprintf(TourFile, "TYPE : TOUR\n");
-    n = ProblemType != ATSP ? Dimension : Dimension / 2;
+    n = Dimension;
     fprintf(TourFile, "DIMENSION : %d\n", n);
     fprintf(TourFile, "TOUR_SECTION\n");
 
     for (i = 1; Tour[i] != 1; i++);
-    Forwards = ProblemType == ATSP ||
-        Tour[i < n ? i + 1 : 1] < Tour[i > 1 ? i - 1 : Dimension];
+    Forwards = Tour[i < n ? i + 1 : 1] < Tour[i > 1 ? i - 1 : Dimension];
     for (j = 1; j <= n; j++) {
         fprintf(TourFile, "%d\n", Tour[i]);
         if (Forwards) {

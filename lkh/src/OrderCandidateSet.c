@@ -88,7 +88,7 @@ void OrderCandidateSet(int MaxCandidates, GainType MaxAlpha, int Symmetric)
              NFrom++) {
             if (FixedOrCommon(From, To))
                 NFrom->Alpha = INT_MIN;
-            else if (From->FixedTo2 || To->FixedTo2 || Forbidden(From, To))
+            else if (From->FixedTo2 || To->FixedTo2)
                 NFrom->Alpha = INT_MAX;
             else if (To->AlphaComputed && (NN = FindCandidate(To, From)))
                 NFrom->Alpha = NN->Alpha;
@@ -132,8 +132,7 @@ void OrderCandidateSet(int MaxCandidates, GainType MaxAlpha, int Symmetric)
                         continue;
                     if (FixedOrCommon(From, To))
                         Alpha = INT_MIN;
-                    else if (From->FixedTo2 || To->FixedTo2 ||
-                             Forbidden(From, To))
+                    else if (From->FixedTo2 || To->FixedTo2)
                         continue;
                     else if ((NN = FindCandidate(To, From)))
                         Alpha = NN->Alpha;

@@ -39,7 +39,7 @@
     { Link((a)->Pred, (a)->Suc); Link(a, a); Link((b)->Pred, a); Link(a, b); }
 #define SLink(a, b) { (a)->Suc = (b); (b)->Pred = (a); }
 
-enum Types { TSP, ATSP, SOP, HCP, CVRP, TOUR, HPP };
+enum Types { TSP, SOP, HCP, CVRP, TOUR, HPP };
 enum CoordTypes { TWOD_COORDS, THREED_COORDS, NO_COORDS };
 enum EdgeWeightTypes { EXPLICIT, EUC_2D, EUC_3D, MAX_2D, MAX_3D, MAN_2D,
     MAN_3D, CEIL_2D, CEIL_3D, FLOOR_2D, FLOOR_3D,
@@ -219,8 +219,6 @@ extern char *LastLine; /* Last input line */
 extern double LowerBound;  /* Lower bound found by the ascent */
 extern int Kicks;      /* Specifies the number of K-swap-kicks */
 extern int KickType;   /* Specifies K for a K-swap-kick */
-extern int M;          /* The M-value is used when solving an ATSP-
-                          instance by transforming it to a STSP-instance */
 extern int MaxBreadth; /* The maximum number of candidate edges 
                           considered at each level of the search for
                           a move */
@@ -313,7 +311,6 @@ extern MergeTourFunction MergeWithTour;
 
 int Distance_1(Node * Na, Node * Nb);
 int Distance_LARGE(Node * Na, Node * Nb);
-int Distance_ATSP(Node * Na, Node * Nb);
 int Distance_ATT(Node * Na, Node * Nb);
 int Distance_CEIL_2D(Node * Na, Node * Nb);
 int Distance_CEIL_3D(Node * Na, Node * Nb);
@@ -392,7 +389,6 @@ int FixedOrCommonCandidates(Node * N);
 void Flip(Node * t1, Node * t2, Node * t3);
 void Flip_SL(Node * t1, Node * t2, Node * t3);
 void Flip_SSL(Node * t1, Node * t2, Node * t3);
-int Forbidden(const Node * ta, const Node * tb);
 void FreeCandidateSets(void);
 void FreeSegments(void);
 void FreeStructures(void);

@@ -347,8 +347,7 @@ static Node *NearestInList(Node * From, Node * First)
 static int MayBeAddedToFragments(Node * From, Node * To)
 {
     return From != To && From->Degree != 2 && To->Degree != 2 &&
-        (From->Tail != To || EdgesInFragments == Dimension - 1) &&
-        !Forbidden(From, To);
+        (From->Tail != To || EdgesInFragments == Dimension - 1);
 }
 
 /*

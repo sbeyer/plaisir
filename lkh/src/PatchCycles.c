@@ -121,7 +121,6 @@ static GainType PatchCyclesRec(int k, int m, int M, GainType G0)
                 memcpy(cycle + 1, cycleSaved, 2 * k * sizeof(int));
                 if (PatchingA >= 2 && Patchwork < MaxPatchwork &&
                     k + M < NonsequentialMoveType &&
-                    !Forbidden(s4, s1) &&
                     (!PatchingARestricted || IsCandidate(s4, s1))) {
                     GainType Bound = BestCloseUpGain >= 0 ||
                         IsCandidate(s4, s1) ? BestCloseUpGain : 0;
@@ -132,7 +131,7 @@ static GainType PatchCyclesRec(int k, int m, int M, GainType G0)
                         BestCloseUpGain = CloseUpGain;
                     }
                 }
-            } else if (!Forbidden(s4, s1) && (!c || G2 - c(s4, s1) > 0)
+            } else if ((!c || G2 - c(s4, s1) > 0)
                        && (Gain = G2 - C(s4, s1)) > 0) {
                 incl[incl[2 * k + 1] = 2 * (k + m)] = 2 * k + 1;
                 MakeKOptMove(k + m);
@@ -179,7 +178,7 @@ static GainType PatchCyclesRec(int k, int m, int M, GainType G0)
                     /* Choose s6 as one of s5's two neighbors on the tour */
                     for (X6 = 1; X6 <= 2; X6++) {
                         s6 = X6 == 1 ? s5->Pred : s5->Suc;
-                        if (s6 == s1 || Forbidden(s6, s1)
+                        if (s6 == s1
                             || FixedOrCommon(s5, s6)
                             || Deleted(s5, s6)
                             || Added(s6, s1))

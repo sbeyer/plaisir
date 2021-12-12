@@ -23,7 +23,7 @@ _OBJ = Activate.o AddCandidate.o AddExtraCandidates.o                  \
 	   Create_POPMUSIC_CandidateSet.o CreateQuadrantCandidateSet.o     \
        Delaunay.o Distance.o Distance_SPECIAL.o eprintf.o ERXT.o       \
        Excludable.o Exclude.o FindTour.o FixedOrCommonCandidates.o     \
-       Flip.o Flip_SL.o Flip_SSL.o Forbidden.o FreeStructures.o        \
+       Flip.o Flip_SL.o Flip_SSL.o FreeStructures.o        \
        fscanint.o Gain23.o GenerateCandidates.o Genetic.o              \
        GeoConversion.o GetTime.o GreedyTour.o Hashing.o Heap.o         \
        IsBackboneCandidate.o IsCandidate.o \

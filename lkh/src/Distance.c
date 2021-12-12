@@ -16,16 +16,6 @@ int Distance_LARGE(Node * Na, Node * Nb)
     return 10000000;
 }
 
-int Distance_ATSP(Node * Na, Node * Nb)
-{
-    int n = DimensionSaved;
-    if ((Na->Id <= n) == (Nb->Id <= n))
-        return M;
-    if (abs(Na->Id - Nb->Id) == n)
-        return 0;
-    return Na->Id <= n ? Na->C[Nb->Id - n] : Nb->C[Na->Id - n];
-}
-
 int Distance_ATT(Node * Na, Node * Nb)
 {
     double xd = Na->X - Nb->X, yd = Na->Y - Nb->Y;

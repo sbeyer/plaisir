@@ -58,8 +58,6 @@ char *LastLine; /* Last input line */
 double LowerBound;      /* Lower bound found by the ascent */
 int Kicks;      /* Specifies the number of K-swap-kicks */
 int KickType;   /* Specifies K for a K-swap-kick */
-int M;          /* The M-value is used when solving an ATSP-
-                   instance by transforming it to a STSP-instance */
 int MaxBreadth; /* The maximum number of candidate edges 
                    considered at each level of the search for
                    a move */

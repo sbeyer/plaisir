@@ -130,10 +130,9 @@ void ChooseInitialTour()
         if (Alternatives == 0) {
             /* Case E (actually not really a random choice) */
             NextN = N->Suc;
-            while ((FixedOrCommonCandidates(NextN) == 2 ||
-                    Forbidden(N, NextN)) && NextN->Suc != FirstNode)
+            while (FixedOrCommonCandidates(NextN) == 2)
                 NextN = NextN->Suc;
-            if (FixedOrCommonCandidates(NextN) == 2 || Forbidden(N, NextN)) {
+            if (FixedOrCommonCandidates(NextN) == 2) {
                 FirstNode = N;
                 goto Start;
             }
@@ -150,10 +149,6 @@ void ChooseInitialTour()
         Follow(NextN, N);
         N = NextN;
         N->V = 1;
-    }
-    if (Forbidden(N, N->Suc)) {
-        FirstNode = N;
-        goto Start;
     }
     if (MaxTrials == 0) {
         GainType Cost = 0;

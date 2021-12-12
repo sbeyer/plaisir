@@ -30,7 +30,6 @@ void Connect(Node * N1, int Max, int Sparse)
                 return;
             }
             if (!N1->FixedTo2 && !N->FixedTo2 &&
-                !Forbidden(N1, N) &&
                 (!c || c(N1, N) < N1->NextCost) &&
                 (d = D(N1, N)) < N1->NextCost) {
                 N1->NextCost = d;
@@ -51,7 +50,6 @@ void Connect(Node * N1, int Max, int Sparse)
                 return;
             }
             if (!N1->FixedTo2 && !N->FixedTo2 &&
-                !Forbidden(N1, N) &&
                 (d = NN1->Cost + N1->Pi + N->Pi) < N1->NextCost) {
                 N1->NextCost = d;
                 if (d <= Max)

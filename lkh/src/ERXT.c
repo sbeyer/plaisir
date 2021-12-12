@@ -138,10 +138,5 @@ static Node *SelectNext(Node * N)
         return Next;
     }
     Next = FirstFree;
-    while (Forbidden(N, Next)) {
-        Next = Next->Suc;
-        if (Next == FirstFree)
-            break;
-    }
     return Next;
 }

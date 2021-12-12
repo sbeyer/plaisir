@@ -67,12 +67,12 @@ Node *Best5OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
         if (++Breadth2 > MaxBreadth)
             break;
         /* Choose t4 as one of t3's two neighbors on the tour */
-        for (X4 = ProblemType == ATSP ? 2 : 1; X4 <= 2; X4++) {
+        for (X4 = 1; X4 <= 2; X4++) {
             t4 = X4 == 1 ? PRED(t3) : SUC(t3);
             if (FixedOrCommon(t3, t4))
                 continue;
             G2 = G1 + C(t3, t4);
-            if (X4 == 1 && !Forbidden(t4, t1) &&
+            if (X4 == 1 &&
                 (!c || G2 - c(t4, t1) > 0) && (*Gain = G2 - C(t4, t1)) > 0)
             {
                 Make2OptMove(t1, t2, t3, t4);
@@ -117,7 +117,6 @@ Node *Best5OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                         continue;
                     G4 = G3 + C(t5, t6);
                     if ((Case6 <= 2 || Case6 == 5 || Case6 == 6) &&
-                        !Forbidden(t6, t1) &&
                         (!c || G4 - c(t6, t1) > 0) &&
                         (*Gain = G4 - C(t6, t1)) > 0) {
                         Make3OptMove(t1, t2, t3, t4, t5, t6, Case6);
@@ -218,7 +217,6 @@ Node *Best5OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                                  Case6 == 4 ? !BTW671 :
                                  Case6 == 7 ? BTW273 :
                                  Case6 != 8 && X8 == 1) &&
-                                !Forbidden(t8, t1) &&
                                 (!c || G6 - c(t8, t1) > 0) &&
                                 (*Gain = G6 - C(t8, t1)) > 0) {
                                 Make4OptMove(t1, t2, t3, t4, t5, t6, t7,
@@ -489,8 +487,7 @@ Node *Best5OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                                     if (FixedOrCommon(t9, t10))
                                         continue;
                                     G8 = G7 + C(t9, t10);
-                                    if (!Forbidden(t10, t1) &&
-                                        (!c || G8 - c(t10, t1) > 0) &&
+                                    if ((!c || G8 - c(t10, t1) > 0) &&
                                         (*Gain = G8 - C(t10, t1)) > 0) {
                                         Make5OptMove(t1, t2, t3, t4, t5,
                                                      t6, t7, t8, t9, t10,

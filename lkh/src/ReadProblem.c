@@ -31,7 +31,6 @@
  * TYPE : <string>
  * Specifies the type of data. Possible types are
  * TSP          Data for a symmetric traveling salesman problem
- * ATSP         Data for an asymmetric traveling salesman problem
  * HCP          Hamiltonian cycle problem data
  * HPP          Hamiltonian path problem data (not available in TSPLIB)
  *
@@ -317,7 +316,7 @@ void ReadProblem()
         POPMUSIC_SampleSize = Dimension;
     if (CostMatrix == 0 && Dimension <= MaxMatrixDimension &&
             Distance != 0 && Distance != Distance_1 && Distance != Distance_LARGE &&
-            Distance != Distance_ATSP && Distance != Distance_SPECIAL) {
+            Distance != Distance_SPECIAL) {
         Node *Ni, *Nj;
         CostMatrix = (int *) calloc((size_t) Dimension * (Dimension - 1) / 2,
                 sizeof(int));
@@ -336,8 +335,8 @@ void ReadProblem()
         WeightType = EXPLICIT;
         c = 0;
     }
-    if (Precision > 1 && (WeightType == EXPLICIT || ProblemType == ATSP)) {
-        int j, n = ProblemType == ATSP ? Dimension / 2 : Dimension;
+    if (Precision > 1 && WeightType == EXPLICIT) {
+        int j, n = Dimension;
         for (i = 2; i <= n; i++) {
             Node *N = &NodeSet[i];
             for (j = 1; j < i; j++)
@@ -411,7 +410,7 @@ static void CheckSpecificationPart()
         eprintf("TYPE is missing");
     if (Dimension < 3)
         eprintf("DIMENSION < 3 or not specified");
-    if (WeightType == -1 && ProblemType != ATSP && ProblemType != HCP &&
+    if (WeightType == -1 && ProblemType != HCP &&
         ProblemType != HPP && !EdgeWeightType)
         eprintf("EDGE_WEIGHT_TYPE is missing");
     if (WeightType == EXPLICIT && WeightFormat == -1 && !EdgeWeightFormat)
@@ -423,8 +422,6 @@ static void CheckSpecificationPart()
         && WeightType != -1 && WeightFormat != -1
         && WeightFormat != FUNCTION)
         eprintf("Conflicting EDGE_WEIGHT_TYPE and EDGE_WEIGHT_FORMAT");
-    if (ProblemType == ATSP && WeightType != EXPLICIT && WeightType != -1)
-        eprintf("Conflicting TYPE and EDGE_WEIGHT_TYPE");
     if (CandidateSetType == DELAUNAY && !TwoDWeightType()
         && MaxCandidates > 0)
         eprintf
@@ -492,9 +489,7 @@ static void CreateNodes()
 
     if (Dimension <= 0)
         eprintf("DIMENSION is not positive (or not specified)");
-    if (ProblemType == ATSP)
-        Dimension *= 2;
-    else if (ProblemType == HPP) {
+    if (ProblemType == HPP) {
         Dimension++;
         if (Dimension > MaxMatrixDimension)
             eprintf("Dimension too large in HPP problem");
@@ -638,22 +633,18 @@ static void Read_EDGE_DATA_SECTION()
             WithWeights = 1;
         while (i != -1) {
             if (i <= 0 ||
-                i > (ProblemType != ATSP ? Dimension : Dimension / 2))
+                i > Dimension)
                 eprintf("EDGE_DATA_SECTION: Node number out of range: %d",
                         i);
             if (!FirstLine)
                 fscanint(ProblemFile, &j);
-            if (j <= 0
-                || j > (ProblemType !=
-                        ATSP ? Dimension : Dimension / 2))
+            if (j <= 0 || j > Dimension)
                 eprintf
                     ("EDGE_DATA_SECTION: Node number out of range: %d",
                      j);
             if (i == j)
                 eprintf("EDGE_DATA_SECTION: Illegal edge: %d to %d",
                         i, j);
-            if (ProblemType == ATSP)
-                j += Dimension / 2;
             Ni = &NodeSet[i];
             Nj = &NodeSet[j];
             if (WithWeights) {
@@ -671,24 +662,20 @@ static void Read_EDGE_DATA_SECTION()
         if (!fscanint(ProblemFile, &i))
             i = -1;
         while (i != -1) {
-            if (i <= 0 ||
-                (ProblemType != ATSP ? Dimension : Dimension / 2))
+            if (i <= 0 || Dimension)
                 eprintf
                     ("EDGE_DATA_SECTION: Node number out of range: %d",
                      i);
             Ni = &NodeSet[i];
             fscanint(ProblemFile, &j);
             while (j != -1) {
-                if (j <= 0 ||
-                    (ProblemType != ATSP ? Dimension : Dimension / 2))
+                if (j <= 0 || Dimension)
                     eprintf
                         ("EDGE_DATA_SECTION: Node number out of range: %d",
                          j);
                 if (i == j)
                     eprintf("EDGE_DATA_SECTION: Illgal edge: %d to %d",
                             i, j);
-                if (ProblemType == ATSP)
-                    j += Dimension / 2;
                 Nj = &NodeSet[j];
                 AddCandidate(Ni, Nj, 0, 1);
                 AddCandidate(Nj, Ni, 0, 1);
@@ -700,10 +687,6 @@ static void Read_EDGE_DATA_SECTION()
         eprintf("EDGE_DATA_SECTION: No EDGE_DATA_FORMAT specified");
     if (ProblemType == HPP)
         Dimension++;
-    if (ProblemType == ATSP) {
-        for (i = 1; i <= DimensionSaved; i++)
-            FixEdge(&NodeSet[i], &NodeSet[i + DimensionSaved]);
-    }
     WeightType = -1;
     MaxCandidates = ExtraCandidates = 0;
     Distance = WithWeights ? Distance_LARGE : Distance_1;
@@ -744,57 +727,35 @@ static void Read_EDGE_WEIGHT_FORMAT()
 static void Read_EDGE_WEIGHT_SECTION()
 {
     Node *Ni, *Nj;
-    int i, j, n, W;
+    int i, j, W;
 
     CheckSpecificationPart();
     if (!FirstNode)
         CreateNodes();
-    if (ProblemType != ATSP) {
-        CostMatrix = (int *) calloc((size_t) Dimension * (Dimension - 1) / 2,
-                                    sizeof(int));
-        Ni = FirstNode->Suc;
-        do {
-            Ni->C =
-                &CostMatrix[(size_t) (Ni->Id - 1) * (Ni->Id - 2) / 2] - 1;
-        }
-        while ((Ni = Ni->Suc) != FirstNode);
-    } else {
-        n = Dimension / 2;
-        CostMatrix = (int *) calloc((size_t) n * n, sizeof(int));
-        for (Ni = FirstNode; Ni->Id <= n; Ni = Ni->Suc)
-            Ni->C = &CostMatrix[(size_t) (Ni->Id - 1) * n] - 1;
+
+    CostMatrix = (int *) calloc((size_t) Dimension * (Dimension - 1) / 2,
+                                sizeof(int));
+    Ni = FirstNode->Suc;
+    do {
+        Ni->C =
+            &CostMatrix[(size_t) (Ni->Id - 1) * (Ni->Id - 2) / 2] - 1;
     }
+    while ((Ni = Ni->Suc) != FirstNode);
+
     if (ProblemType == HPP)
         Dimension--;
     switch (WeightFormat) {
     case FULL_MATRIX:
-        if (ProblemType == ATSP) {
-            n = Dimension / 2;
-            for (i = 1; i <= n; i++) {
-                Ni = &NodeSet[i];
-                for (j = 1; j <= n; j++) {
-                    if (!fscanint(ProblemFile, &W))
-                        eprintf("EDGE_WEIGHT_SECTION: Missing weight");
+        for (i = 1, Ni = FirstNode; i <= Dimension; i++, Ni = Ni->Suc) {
+            for (j = 1; j <= Dimension; j++) {
+                if (!fscanint(ProblemFile, &W))
+                    eprintf("EDGE_WEIGHT_SECTION: Missing weight");
+                if (j == i)
+                    continue;
+                if (j < i)
                     Ni->C[j] = W;
-                    if (i != j && W > M)
-                        M = W;
-                }
-                Nj = &NodeSet[i + n];
-                FixEdge(Ni, Nj);
             }
-            Distance = Distance_ATSP;
-            WeightType = -1;
-        } else
-            for (i = 1, Ni = FirstNode; i <= Dimension; i++, Ni = Ni->Suc) {
-                for (j = 1; j <= Dimension; j++) {
-                    if (!fscanint(ProblemFile, &W))
-                        eprintf("EDGE_WEIGHT_SECTION: Missing weight");
-                    if (j == i)
-                        continue;
-                    if (j < i)
-                        Ni->C[j] = W;
-                }
-            }
+        }
         break;
     case UPPER_ROW:
         for (i = 1, Ni = FirstNode; i < Dimension; i++, Ni = Ni->Suc) {
@@ -1001,19 +962,17 @@ static void Read_FIXED_EDGES_SECTION()
     if (!fscanint(ProblemFile, &i))
         i = -1;
     while (i != -1) {
-        if (i <= 0
-            || i > (ProblemType != ATSP ? Dimension : Dimension / 2))
+        if (i <= 0 || i > Dimension)
             eprintf("FIXED_EDGES_SECTION: Node number out of range: %d",
                     i);
         fscanint(ProblemFile, &j);
-        if (j <= 0
-            || j > (ProblemType != ATSP ? Dimension : Dimension / 2))
+        if (j <= 0 || j > Dimension)
             eprintf("FIXED_EDGES_SECTION: Node number out of range: %d",
                     j);
         if (i == j)
             eprintf("FIXED_EDGES_SECTION: Illegal edge: %d to %d", i, j);
         Ni = &NodeSet[i];
-        Nj = &NodeSet[ProblemType == ATSP ? j + Dimension / 2 : j];
+        Nj = &NodeSet[j];
         if (!FixEdge(Ni, Nj))
             eprintf("FIXED_EDGES_SECTION: Illegal fix: %d to %d", i, j);
         /* Cycle check */
@@ -1123,8 +1082,6 @@ static void Read_TYPE()
         Type[i] = (char) toupper(Type[i]);
     if (!strcmp(Type, "TSP"))
         ProblemType = TSP;
-    else if (!strcmp(Type, "ATSP"))
-        ProblemType = ATSP;
     else if (!strcmp(Type, "SOP")) {
         ProblemType = SOP;
         eprintf("TYPE: Type not implemented: %s", Type);

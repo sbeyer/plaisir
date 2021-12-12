@@ -102,7 +102,7 @@ static GainType BestKOptMoveRec(int k, GainType G0)
             t[2 * k] = t4;
             G2 = G1 + C(t3, t4);
             G3 = MINUS_INFINITY;
-            if (t4 != t1 && !Forbidden(t4, t1) && !Added(t4, t1) &&
+            if (t4 != t1 && !Added(t4, t1) &&
                 (!c || G2 - c(t4, t1) > 0) &&
                 (G3 = G2 - C(t4, t1)) > 0 && FeasibleKOptMove(k)) {
                 UnmarkAdded(t2, t3);
@@ -121,7 +121,7 @@ static GainType BestKOptMoveRec(int k, GainType G0)
                 }
                 incl[incl[1] = 2 * k] = 1;
             }
-            if (t4 != t1 && !Forbidden(t4, t1) &&
+            if (t4 != t1 &&
                 k + 1 < NonsequentialMoveType &&
                 PatchingC >= 2 && PatchingA >= 1 &&
                 (Swaps == 0 || SubsequentPatching)) {
@@ -200,7 +200,7 @@ static GainType BestKOptMoveRec(int k, GainType G0)
         for (i = 2 * k - 4; i >= 2; i--) {
             if (t3 == t[i]) {
                 t4 = t[i ^ 1];
-                if (t4 == t1 || Forbidden(t4, t1) || FixedOrCommon(t3, t4)
+                if (t4 == t1 || FixedOrCommon(t3, t4)
                     || Added(t4, t1))
                     continue;
                 G2 = G1 + C(t3, t4);

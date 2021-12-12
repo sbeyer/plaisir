@@ -69,7 +69,7 @@ GainType Gain23()
                     G2 = G1 + C(s3, s4);
                     /* Try any gainful nonfeasible 2-opt move
                      followed by a 2-, 3- or 4-opt move */
-                    if (X4 == 1 && s4 != s1 && !Forbidden(s4, s1) &&
+                    if (X4 == 1 && s4 != s1 &&
                         2 * SegmentSize(s2, s3) <= Dimension &&
                         (!c || G2 - c(s4, s1) > 0) &&
                         (G3 = G2 - C(s4, s1)) > 0 &&
@@ -77,7 +77,6 @@ GainType Gain23()
                                            G3)) > 0)
                         return Gain;
                     if (X4 == 2 &&
-                        !Forbidden(s4, s1) &&
                         (!c || G2 - c(s4, s1) > 0) &&
                         (Gain = G2 - C(s4, s1)) > 0) {
                         Swap1(s1, s2, s3);
@@ -123,8 +122,7 @@ GainType Gain23()
                                 continue;
                             G4 = G3 + C(s5, s6);
                             Gain6 = 0;
-                            if (!Forbidden(s6, s1) &&
-                                (!c || G4 - c(s6, s1) > 0) &&
+                            if ((!c || G4 - c(s6, s1) > 0) &&
                                 (Gain6 = G4 - C(s6, s1)) > 0) {
                                 if (Case6 <= 2 || Case6 == 5 || Case6 == 6) {
                                     Make3OptMove(s1, s2, s3, s4, s5, s6,
@@ -217,8 +215,7 @@ GainType Gain23()
                                         (s7 == s3 && s8 == s4) ||
                                         (s7 == s4 && s8 == s3))
                                         continue;
-                                    if (FixedOrCommon(s7, s8)
-                                        || Forbidden(s8, s1))
+                                    if (FixedOrCommon(s7, s8))
                                         continue;
                                     G6 = G5 + C(s7, s8);
                                     if ((!c || G6 - c(s8, s1) > 0) &&

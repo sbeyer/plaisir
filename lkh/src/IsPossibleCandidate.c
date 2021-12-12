@@ -9,8 +9,6 @@
 
 int IsPossibleCandidate(Node * From, Node * To)
 {
-    if (Forbidden(From, To))
-        return 0;
     if (InInitialTour(From, To) ||
         From->SubproblemSuc == To || To->SubproblemSuc == From ||
         FixedOrCommon(From, To))

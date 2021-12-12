@@ -63,12 +63,12 @@ Node *Best3OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
         if (++Breadth2 > MaxBreadth)
             break;
         /* Choose t4 as one of t3's two neighbors on the tour */
-        for (X4 = ProblemType == ATSP ? 2 : 1; X4 <= 2; X4++) {
+        for (X4 = 1; X4 <= 2; X4++) {
             t4 = X4 == 1 ? PRED(t3) : SUC(t3);
             if (FixedOrCommon(t3, t4))
                 continue;
             G2 = G1 + C(t3, t4);
-            if (X4 == 1 && !Forbidden(t4, t1) &&
+            if (X4 == 1 &&
                 (!c || G2 - c(t4, t1) > 0) && (*Gain = G2 - C(t4, t1)) > 0)
             {
                 Swap1(t1, t2, t3);
@@ -100,8 +100,7 @@ Node *Best3OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                     if (FixedOrCommon(t5, t6))
                         continue;
                     G4 = G3 + C(t5, t6);
-                    if (!Forbidden(t6, t1) &&
-                        (!c || G4 - c(t6, t1) > 0) &&
+                    if ((!c || G4 - c(t6, t1) > 0) &&
                         (*Gain = G4 - C(t6, t1)) > 0) {
                         Make3OptMove(t1, t2, t3, t4, t5, t6, Case6);
                         return 0;

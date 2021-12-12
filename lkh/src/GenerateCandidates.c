@@ -102,7 +102,7 @@ void GenerateCandidates(int MaxCandidates, GainType MaxAlpha,
             if (FixedOrCommon(From, To))
                 a = INT_MIN;
             else {
-                if (From->FixedTo2 || To->FixedTo2 || Forbidden(From, To))
+                if (From->FixedTo2 || To->FixedTo2)
                     continue;
                 if (InInputTour(From, To)) {
                     a = 0;
