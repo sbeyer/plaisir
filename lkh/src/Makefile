@@ -26,7 +26,7 @@ _OBJ = Activate.o AddCandidate.o AddExtraCandidates.o                  \
        Flip.o Flip_SL.o Flip_SSL.o FreeStructures.o        \
        fscanint.o Gain23.o GenerateCandidates.o Genetic.o              \
        GeoConversion.o GetTime.o GreedyTour.o Hashing.o Heap.o         \
-       IsBackboneCandidate.o IsCandidate.o \
+       IsCandidate.o \
        IsPossibleCandidate.o KSwapKick.o LinKernighan.o LKHmain.o      \
        Make2OptMove.o Make3OptMove.o Make4OptMove.o Make5OptMove.o     \
        MakeKOptMove.o MergeTourWithBestTour.o MergeWithTourIPT.o       \

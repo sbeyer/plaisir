@@ -36,8 +36,6 @@ void CreateCandidateSet()
              (FirstNode->InitialSuc || InitialTourAlgorithm == SIERPINSKI ||
               InitialTourAlgorithm == MOORE))) {
         AddTourCandidates();
-        if (ProblemType == HCP || ProblemType == HPP)
-            Ascent();
         goto End_CreateCandidateSet;
     }
     if (TraceLevel >= 2)

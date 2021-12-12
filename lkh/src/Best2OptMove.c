@@ -47,8 +47,7 @@ Node *Best2OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
     /* Choose (t2,t3) as a candidate edge emanating from t2 */
     for (Nt2 = t2->CandidateSet; (t3 = Nt2->To); Nt2++) {
         if (t3 == t2->Pred || t3 == t2->Suc ||
-            ((G1 = *G0 - Nt2->Cost) <= 0 && GainCriterionUsed &&
-             ProblemType != HCP && ProblemType != HPP))
+            ((G1 = *G0 - Nt2->Cost) <= 0 && GainCriterionUsed))
             continue;
         /* Choose t4 (only one choice gives a closed tour) */
         t4 = PRED(t3);

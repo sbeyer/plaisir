@@ -60,8 +60,7 @@ Node *Best4OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
     /* Choose (t2,t3) as a candidate edge emanating from t2 */
     for (Nt2 = t2->CandidateSet; (t3 = Nt2->To); Nt2++) {
         if (t3 == t2->Pred || t3 == t2->Suc ||
-            ((G1 = *G0 - Nt2->Cost) <= 0 && GainCriterionUsed &&
-             ProblemType != HCP && ProblemType != HPP))
+            ((G1 = *G0 - Nt2->Cost) <= 0 && GainCriterionUsed))
             continue;
         if (++Breadth2 > MaxBreadth)
             break;
@@ -83,8 +82,7 @@ Node *Best4OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
             /* Choose (t4,t5) as a candidate edge emanating from t4 */
             for (Nt4 = t4->CandidateSet; (t5 = Nt4->To); Nt4++) {
                 if (t5 == t4->Pred || t5 == t4->Suc ||
-                    ((G3 = G2 - Nt4->Cost) <= 0 && GainCriterionUsed &&
-                     ProblemType != HCP && ProblemType != HPP))
+                    ((G3 = G2 - Nt4->Cost) <= 0 && GainCriterionUsed))
                     continue;
                 if (++Breadth4 > MaxBreadth)
                     break;
@@ -132,8 +130,7 @@ Node *Best4OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                             (t6 == t2 && t7 == t3) ||
                             (t6 == t3 && t7 == t2) ||
                             ((G5 = G4 - Nt6->Cost) <= 0 &&
-                             GainCriterionUsed &&
-                             ProblemType != HCP && ProblemType != HPP))
+                             GainCriterionUsed))
                             continue;
                         if (++Breadth6 > MaxBreadth)
                             break;
@@ -208,8 +205,6 @@ Node *Best4OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                                     /* Ignore the move if the gain does 
                                        not vary */
                                     if (RestrictedSearch &&
-                                        ProblemType != HCP &&
-                                        ProblemType != HPP &&
                                         G2 - t4->Pi == G4 - t6->Pi &&
                                         G4 - t6->Pi == G6 - t8->Pi &&
                                         G3 + t5->Pi == G1 + t3->Pi &&

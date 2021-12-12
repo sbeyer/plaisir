@@ -139,7 +139,6 @@ int CandidateSetSymmetric, CandidateSetType,
     MoorePartitioning,
     PatchingAExtended, PatchingARestricted,
     PatchingCExtended, PatchingCRestricted,
-    ProblemType,
     RohePartitioning, SierpinskiPartitioning,
     SubproblemBorders, SubproblemsCompressed, WeightType, WeightFormat;
 

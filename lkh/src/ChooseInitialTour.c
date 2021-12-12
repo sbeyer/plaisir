@@ -104,8 +104,7 @@ void ChooseInitialTour()
                 FirstAlternative = NextN;
             }
         }
-        if (Alternatives == 0 && Trial > 1 &&
-            ProblemType != HCP && ProblemType != HPP) {
+        if (Alternatives == 0 && Trial > 1) {
             /* Case C */
             for (NN = N->CandidateSet; NN && (NextN = NN->To); NN++) {
                 if (!NextN->V && FixedOrCommonCandidates(NextN) < 2 &&

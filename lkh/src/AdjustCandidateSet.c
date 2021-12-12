@@ -29,9 +29,6 @@ void AdjustCandidateSet()
         /* Extend */
         for (To = From->Pred; To; To = To == From->Pred ? From->Suc : 0) {
             int Count = 0;
-            if ((ProblemType == HCP || ProblemType == HPP) &&
-                !IsBackboneCandidate(From, To))
-                continue;
             for (NFrom = From->CandidateSet; NFrom->To && NFrom->To != To;
                  NFrom++)
                 Count++;

@@ -39,7 +39,6 @@
     { Link((a)->Pred, (a)->Suc); Link(a, a); Link((b)->Pred, a); Link(a, b); }
 #define SLink(a, b) { (a)->Suc = (b); (b)->Pred = (a); }
 
-enum Types { TSP, HCP, HPP };
 enum CoordTypes { TWOD_COORDS, THREED_COORDS, NO_COORDS };
 enum EdgeWeightTypes { EXPLICIT, EUC_2D, EUC_3D, MAX_2D, MAX_3D, MAN_2D,
     MAN_3D, CEIL_2D, CEIL_3D, FLOOR_2D, FLOOR_3D,
@@ -299,7 +298,6 @@ extern int CandidateSetSymmetric, CandidateSetType,
            MoorePartitioning,
            PatchingAExtended, PatchingARestricted,
            PatchingCExtended, PatchingCRestricted,
-           ProblemType,
            RohePartitioning, SierpinskiPartitioning,
            WeightType, WeightFormat;
 

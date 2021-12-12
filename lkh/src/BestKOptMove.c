@@ -85,8 +85,7 @@ static GainType BestKOptMoveRec(int k, GainType G0)
     /* Choose (t2,t3) as a candidate edge emanating from t2 */
     for (Nt2 = t2->CandidateSet; (t3 = Nt2->To); Nt2++) {
         if (t3 == t2->Pred || t3 == t2->Suc ||
-            ((G1 = G0 - Nt2->Cost) <= 0 && GainCriterionUsed &&
-             ProblemType != HCP && ProblemType != HPP) ||
+            ((G1 = G0 - Nt2->Cost) <= 0 && GainCriterionUsed) ||
             Added(t2, t3))
             continue;
         if (++Breadth2 > MaxBreadth)
@@ -146,8 +145,7 @@ static GainType BestKOptMoveRec(int k, GainType G0)
                           Near(T[2 * K - 1], T[2 * K]))) &&
                         Swaps < MaxSwaps &&
                         Excludable(t3, t4) && !InInputTour(t3, t4)) {
-                        if (RestrictedSearch && K > 2 &&
-                            ProblemType != HCP && ProblemType != HPP) {
+                        if (RestrictedSearch && K > 2) {
                             /* Ignore the move if the gain does not vary */
                             G[0] = G[2 * K - 2];
                             G[1] = G[2 * K - 1];

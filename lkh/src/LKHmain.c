@@ -412,11 +412,9 @@ int run()
             ApplyCrossover(Parent1, Parent2);
             N = FirstNode;
             do {
-                if (ProblemType != HCP && ProblemType != HPP) {
-                    int d = C(N, N->Suc);
-                    AddCandidate(N, N->Suc, d, INT_MAX);
-                    AddCandidate(N->Suc, N, d, INT_MAX);
-                }
+                int d = C(N, N->Suc);
+                AddCandidate(N, N->Suc, d, INT_MAX);
+                AddCandidate(N->Suc, N, d, INT_MAX);
                 N = N->InitialSuc = N->Suc;
             }
             while (N != FirstNode);

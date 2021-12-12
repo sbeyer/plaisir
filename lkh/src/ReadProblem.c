@@ -28,12 +28,6 @@
  * NAME : <string>e
  * Identifies the data file.
  *
- * TYPE : <string>
- * Specifies the type of data. Possible types are
- * TSP          Data for a symmetric traveling salesman problem
- * HCP          Hamiltonian cycle problem data
- * HPP          Hamiltonian path problem data (not available in TSPLIB)
- *
  * COMMENT : <string>
  * Additional comments (usually the name of the contributor or the creator of
  * the problem instance is given here).
@@ -213,7 +207,6 @@ static void Read_GRID_SIZE(void);
 static void Read_NAME(void);
 static void Read_NODE_COORD_SECTION(void);
 static void Read_NODE_COORD_TYPE(void);
-static void Read_TYPE(void);
 static int TwoDWeightType(void);
 static int ThreeDWeightType(void);
 
@@ -231,7 +224,7 @@ void ReadProblem()
 
     FreeStructures();
     FirstNode = 0;
-    WeightType = WeightFormat = ProblemType = -1;
+    WeightType = WeightFormat = -1;
     CoordType = NO_COORDS;
     Name = Copy("Unnamed");
     Type = EdgeWeightType = EdgeWeightFormat = 0;
@@ -274,8 +267,6 @@ void ReadProblem()
             Read_NODE_COORD_SECTION();
         else if (!strcmp(Keyword, "NODE_COORD_TYPE"))
             Read_NODE_COORD_TYPE();
-        else if (!strcmp(Keyword, "TYPE"))
-            Read_TYPE();
         else
             eprintf("Unknown keyword: %s", Keyword);
     }
@@ -324,12 +315,8 @@ void ReadProblem()
         do {
             Ni->C =
                 &CostMatrix[(size_t) (Ni->Id - 1) * (Ni->Id - 2) / 2] - 1;
-            if (ProblemType != HPP || Ni->Id < Dimension)
-                for (Nj = FirstNode; Nj != Ni; Nj = Nj->Suc)
-                    Ni->C[Nj->Id] = Fixed(Ni, Nj) ? 0 : Distance(Ni, Nj);
-            else
-                for (Nj = FirstNode; Nj != Ni; Nj = Nj->Suc)
-                    Ni->C[Nj->Id] = 0;
+            for (Nj = FirstNode; Nj != Ni; Nj = Nj->Suc)
+                Ni->C[Nj->Id] = Fixed(Ni, Nj) ? 0 : Distance(Ni, Nj);
         }
         while ((Ni = Ni->Suc) != FirstNode);
         WeightType = EXPLICIT;
@@ -374,8 +361,6 @@ void ReadProblem()
         BestSubsequentMove = SubsequentMoveType <= 5 ?
             BestOptMove[SubsequentMoveType] : BestKOptMove;
     }
-    if (ProblemType == HCP || ProblemType == HPP)
-        MaxCandidates = 0;
     if (TraceLevel >= 1) {
         printff("done\n");
     }
@@ -406,12 +391,9 @@ static int ThreeDWeightType()
 
 static void CheckSpecificationPart()
 {
-    if (ProblemType == -1)
-        eprintf("TYPE is missing");
     if (Dimension < 3)
         eprintf("DIMENSION < 3 or not specified");
-    if (WeightType == -1 && ProblemType != HCP &&
-        ProblemType != HPP && !EdgeWeightType)
+    if (WeightType == -1 && !EdgeWeightType)
         eprintf("EDGE_WEIGHT_TYPE is missing");
     if (WeightType == EXPLICIT && WeightFormat == -1 && !EdgeWeightFormat)
         eprintf("EDGE_WEIGHT_FORMAT is missing");
@@ -489,11 +471,6 @@ static void CreateNodes()
 
     if (Dimension <= 0)
         eprintf("DIMENSION is not positive (or not specified)");
-    if (ProblemType == HPP) {
-        Dimension++;
-        if (Dimension > MaxMatrixDimension)
-            eprintf("Dimension too large in HPP problem");
-    }
     NodeSet = (Node *) calloc(Dimension + 1, sizeof(Node));
     for (i = 1; i <= Dimension; i++, Prev = N) {
         N = &NodeSet[i];
@@ -544,8 +521,6 @@ static void Read_DISPLAY_DATA_SECTION()
     int Id, i;
 
     CheckSpecificationPart();
-    if (ProblemType == HPP)
-        Dimension--;
     if (!DisplayDataType || strcmp(DisplayDataType, "TWOD_DISPLAY"))
         eprintf
             ("DISPLAY_DATA_SECTION conflicts with DISPLAY_DATA_TYPE: %s",
@@ -583,8 +558,6 @@ static void Read_DISPLAY_DATA_SECTION()
     if (!N->V)
         eprintf("DIPLAY_DATA_SECTION: No coordinates given for node %d",
                 N->Id);
-    if (ProblemType == HPP)
-        Dimension++;
 }
 
 static void Read_DISPLAY_DATA_TYPE()
@@ -625,8 +598,6 @@ static void Read_EDGE_DATA_SECTION()
         eprintf("Missing EDGE_DATA_FORMAT specification");
     if (!FirstNode)
         CreateNodes();
-    if (ProblemType == HPP)
-        Dimension--;
     if (!strcmp(EdgeDataFormat, "EDGE_LIST")) {
         Line = ReadLine(ProblemFile);
         if (sscanf(Line, "%d %d %d\n", &i, &j, &W) == 3)
@@ -685,8 +656,6 @@ static void Read_EDGE_DATA_SECTION()
         }
     } else
         eprintf("EDGE_DATA_SECTION: No EDGE_DATA_FORMAT specified");
-    if (ProblemType == HPP)
-        Dimension++;
     WeightType = -1;
     MaxCandidates = ExtraCandidates = 0;
     Distance = WithWeights ? Distance_LARGE : Distance_1;
@@ -742,8 +711,6 @@ static void Read_EDGE_WEIGHT_SECTION()
     }
     while ((Ni = Ni->Suc) != FirstNode);
 
-    if (ProblemType == HPP)
-        Dimension--;
     switch (WeightFormat) {
     case FULL_MATRIX:
         for (i = 1, Ni = FirstNode; i <= Dimension; i++, Ni = Ni->Suc) {
@@ -840,8 +807,6 @@ static void Read_EDGE_WEIGHT_SECTION()
         }
         break;
     }
-    if (ProblemType == HPP)
-        Dimension++;
 }
 
 static void Read_EDGE_WEIGHT_TYPE()
@@ -957,8 +922,6 @@ static void Read_FIXED_EDGES_SECTION()
     CheckSpecificationPart();
     if (!FirstNode)
         CreateNodes();
-    if (ProblemType == HPP)
-        Dimension--;
     if (!fscanint(ProblemFile, &i))
         i = -1;
     while (i != -1) {
@@ -988,8 +951,6 @@ static void Read_FIXED_EDGES_SECTION()
         if (!fscanint(ProblemFile, &i))
             i = -1;
     }
-    if (ProblemType == HPP)
-        Dimension++;
 }
 
 static void Read_GRID_SIZE()
@@ -1017,8 +978,6 @@ static void Read_NODE_COORD_SECTION()
     do
         N->V = 0;
     while ((N = N->Suc) != FirstNode);
-    if (ProblemType == HPP)
-        Dimension--;
     for (i = 1; i <= Dimension; i++) {
         if (!fscanint(ProblemFile, &Id))
             eprintf("NODE_COORD_SECTION: Missing nodes");
@@ -1050,8 +1009,6 @@ static void Read_NODE_COORD_SECTION()
     if (!N->V)
         eprintf("NODE_COORD_SECTION: No coordinates given for node %d",
                 N->Id);
-    if (ProblemType == HPP)
-        Dimension++;
 }
 
 static void Read_NODE_COORD_TYPE()
@@ -1070,22 +1027,4 @@ static void Read_NODE_COORD_TYPE()
         CoordType = NO_COORDS;
     else
         eprintf("Unknown NODE_COORD_TYPE: %s", NodeCoordType);
-}
-
-static void Read_TYPE()
-{
-    unsigned int i;
-
-    if (!(Type = Copy(strtok(0, Delimiters))))
-        eprintf("TYPE: string expected");
-    for (i = 0; i < strlen(Type); i++)
-        Type[i] = (char) toupper(Type[i]);
-    if (!strcmp(Type, "TSP"))
-        ProblemType = TSP;
-    else if (!strcmp(Type, "HCP"))
-        ProblemType = HCP;
-    else if (!strcmp(Type, "HPP"))
-        ProblemType = HPP;
-    else
-        eprintf("Unknown TYPE: %s", Type);
 }
