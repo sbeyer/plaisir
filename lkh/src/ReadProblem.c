@@ -53,43 +53,10 @@
  *      <integer> <real> <real>
  *
  * The real numbers are the associated coordinates.
- *
- * EDGE_DATA_SECTION :
- * Edges of the graph are specified in either of the two formats allowed in
- * the EDGE_DATA_FORMAT entry. If the type is EDGE_LIST, then the edges are
- * given as a sequence of lines of one of the forms
- *
- *      <integer> <integer>
- *      <integer> <integer> <integer>
- *
- * each entry giving the terminal nodes of some edge, and if three integers are
- * given, the last one specifies its weight. The list is terminated by a -1.
- * If the type is ADJ_LIST, the section consists of adjacency lists for nodes.
- * The adjacency list of a node x is specified as
- *
- *      <integer> <integer> ... <integer> -1
- *
- * where the first integer gives the number of node x and the following
- * integers (terminated by -1) the numbers of the nodes adjacent to x.
- * The list of adjacency lists are terminated by an additional -1.
- *
- * FIXED_EDGES_SECTION :
- * In this section, edges are listed that are required to appear in each
- * solution to the problem. The edges to be fixed are given in the form
- * (per line)
- *
- *      <integer> <integer>
- *
- * meaning that the edge (arc) from the first node to the second node has
- * to be contained in a solution. This section is terminated by a -1.
  */
 
 static const char Delimiters[] = " :=\n\t\r\f\v\xef\xbb\xbf";
-static char *Copy(char *S);
 static void CreateNodes(void);
-static int FixEdge(Node * Na, Node * Nb);
-static void Read_EDGE_DATA_FORMAT(void);
-static void Read_FIXED_EDGES_SECTION(void);
 static void Read_GRID_SIZE(void);
 static void Read_NODE_COORD_SECTION(void);
 
@@ -108,19 +75,15 @@ void ReadProblem()
     FreeStructures();
     FirstNode = 0;
     Type = 0;
-    EdgeDataFormat = NodeCoordType = 0;
+    NodeCoordType = 0;
     GridSize = 1000000.0;
     while ((Line = ReadLine(ProblemFile))) {
         if (!(Keyword = strtok(Line, Delimiters)))
             continue;
         for (i = 0; i < (int) strlen(Keyword); i++)
             Keyword[i] = (char) toupper(Keyword[i]);
-        if (!strcmp(Keyword, "EDGE_DATA_FORMAT"))
-            Read_EDGE_DATA_FORMAT();
-        else if (!strcmp(Keyword, "EOF"))
+        if (!strcmp(Keyword, "EOF"))
             break;
-        else if (!strcmp(Keyword, "FIXED_EDGES_SECTION"))
-            Read_FIXED_EDGES_SECTION();
         else if (!strcmp(Keyword, "GRID_SIZE"))
             Read_GRID_SIZE();
         else if (!strcmp(Keyword, "NODE_COORD_SECTION"))
@@ -199,17 +162,6 @@ void ReadProblem()
     LastLine = 0;
 }
 
-static char *Copy(char *S)
-{
-    char *Buffer;
-
-    if (!S || strlen(S) == 0)
-        return 0;
-    Buffer = (char *) malloc(strlen(S) + 1);
-    strcpy(Buffer, S);
-    return Buffer;
-}
-
 static void CreateNodes()
 {
     Node *Prev = 0, *N = 0;
@@ -225,150 +177,6 @@ static void CreateNodes()
         N->Id = i;
     }
     Link(N, FirstNode);
-}
-
-static int FixEdge(Node * Na, Node * Nb)
-{
-    if (!Na->FixedTo1 || Na->FixedTo1 == Nb)
-        Na->FixedTo1 = Nb;
-    else if (!Na->FixedTo2 || Na->FixedTo2 == Nb)
-        Na->FixedTo2 = Nb;
-    else
-        return 0;
-    if (!Nb->FixedTo1 || Nb->FixedTo1 == Na)
-        Nb->FixedTo1 = Na;
-    else if (!Nb->FixedTo2 || Nb->FixedTo1 == Na)
-        Nb->FixedTo2 = Na;
-    else
-        return 0;
-    return 1;
-}
-
-static void Read_EDGE_DATA_FORMAT()
-{
-    unsigned int i;
-
-    if (!(EdgeDataFormat = Copy(strtok(0, Delimiters))))
-        eprintf("EDGE_DATA_FORMAT: string expected");
-    for (i = 0; i < strlen(EdgeDataFormat); i++)
-        EdgeDataFormat[i] = (char) toupper(EdgeDataFormat[i]);
-    if (strcmp(EdgeDataFormat, "EDGE_LIST") &&
-        strcmp(EdgeDataFormat, "ADJ_LIST"))
-        eprintf("Unknown EDGE_DATA_FORMAT: %s", EdgeDataFormat);
-}
-
-/*
-static void Read_EDGE_DATA_SECTION()
-{
-    Node *Ni, *Nj;
-    int i, j, W = 0, WithWeights = 0, FirstLine = 1;
-    char *Line;
-
-    CheckSpecificationPart();
-    if (!EdgeDataFormat)
-        eprintf("Missing EDGE_DATA_FORMAT specification");
-    if (!FirstNode)
-        CreateNodes();
-    if (!strcmp(EdgeDataFormat, "EDGE_LIST")) {
-        Line = ReadLine(ProblemFile);
-        if (sscanf(Line, "%d %d %d\n", &i, &j, &W) == 3)
-            WithWeights = 1;
-        while (i != -1) {
-            if (i <= 0 ||
-                i > Dimension)
-                eprintf("EDGE_DATA_SECTION: Node number out of range: %d",
-                        i);
-            if (!FirstLine)
-                fscanint(ProblemFile, &j);
-            if (j <= 0 || j > Dimension)
-                eprintf
-                    ("EDGE_DATA_SECTION: Node number out of range: %d",
-                     j);
-            if (i == j)
-                eprintf("EDGE_DATA_SECTION: Illegal edge: %d to %d",
-                        i, j);
-            Ni = &NodeSet[i];
-            Nj = &NodeSet[j];
-            if (WithWeights) {
-                if (!FirstLine)
-                    fscanint(ProblemFile, &W);
-                W *= Precision;
-            }
-            AddCandidate(Ni, Nj, W, 1);
-            AddCandidate(Nj, Ni, W, 1);
-            FirstLine = 0;
-            if (!fscanint(ProblemFile, &i))
-                i = -1;
-        }
-    } else if (!strcmp(EdgeDataFormat, "ADJ_LIST")) {
-        if (!fscanint(ProblemFile, &i))
-            i = -1;
-        while (i != -1) {
-            if (i <= 0 || Dimension)
-                eprintf
-                    ("EDGE_DATA_SECTION: Node number out of range: %d",
-                     i);
-            Ni = &NodeSet[i];
-            fscanint(ProblemFile, &j);
-            while (j != -1) {
-                if (j <= 0 || Dimension)
-                    eprintf
-                        ("EDGE_DATA_SECTION: Node number out of range: %d",
-                         j);
-                if (i == j)
-                    eprintf("EDGE_DATA_SECTION: Illgal edge: %d to %d",
-                            i, j);
-                Nj = &NodeSet[j];
-                AddCandidate(Ni, Nj, 0, 1);
-                AddCandidate(Nj, Ni, 0, 1);
-                fscanint(ProblemFile, &j);
-            }
-            fscanint(ProblemFile, &i);
-        }
-    } else
-        eprintf("EDGE_DATA_SECTION: No EDGE_DATA_FORMAT specified");
-    WeightType = -1;
-    MaxCandidates = ExtraCandidates = 0;
-    Distance = WithWeights ? Distance_LARGE : Distance_1;
-}
-*/
-
-static void Read_FIXED_EDGES_SECTION()
-{
-    Node *Ni, *Nj, *N, *NPrev = 0, *NNext;
-    int i, j, Count = 0;
-
-    if (!FirstNode)
-        CreateNodes();
-    if (!fscanint(ProblemFile, &i))
-        i = -1;
-    while (i != -1) {
-        if (i <= 0 || i > Dimension)
-            eprintf("FIXED_EDGES_SECTION: Node number out of range: %d",
-                    i);
-        fscanint(ProblemFile, &j);
-        if (j <= 0 || j > Dimension)
-            eprintf("FIXED_EDGES_SECTION: Node number out of range: %d",
-                    j);
-        if (i == j)
-            eprintf("FIXED_EDGES_SECTION: Illegal edge: %d to %d", i, j);
-        Ni = &NodeSet[i];
-        Nj = &NodeSet[j];
-        if (!FixEdge(Ni, Nj))
-            eprintf("FIXED_EDGES_SECTION: Illegal fix: %d to %d", i, j);
-        /* Cycle check */
-        N = Ni;
-        Count = 0;
-        do {
-            NNext = N->FixedTo1 != NPrev ? N->FixedTo1 : N->FixedTo2;
-            NPrev = N;
-            Count++;
-        } while ((N = NNext) && N != Ni);
-        if (N == Ni && Count != Dimension)
-            eprintf("FIXED_EDGES_SECTION: Illegal fix: %d to %d", i, j);
-        if (!fscanint(ProblemFile, &i))
-            i = -1;
-    }
 }
 
 static void Read_GRID_SIZE()

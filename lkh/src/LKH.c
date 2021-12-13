@@ -127,8 +127,7 @@ int Trial;      /* Ordinal number of the current trial */
 /* The following variables are read by the functions ReadParameters and 
    ReadProblem: */
 
-char *Type,
-    *EdgeDataFormat, *NodeCoordType;
+char *Type, *NodeCoordType;
 int CandidateSetSymmetric, CandidateSetType,
     DelaunayPartitioning, DelaunayPure,
     ExtraCandidateSetSymmetric, ExtraCandidateSetType,

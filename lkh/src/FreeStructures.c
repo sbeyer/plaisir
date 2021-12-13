@@ -29,7 +29,6 @@ void FreeStructures()
     Free(CacheSig);
     Free(CacheVal);
     Free(Type);
-    Free(EdgeDataFormat);
     Free(NodeCoordType);
     Free(Heap);
     Free(t);
