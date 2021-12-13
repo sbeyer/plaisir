@@ -149,8 +149,6 @@ GainType LinKernighan()
                     break;
                 }
                 RestoreTour();
-                if (Dimension != DimensionSaved && SUC(t1) != SUCt1)
-                    Reversed ^= 1;
             }
         }
         if (HashSearch(HTable, Hash, Cost))

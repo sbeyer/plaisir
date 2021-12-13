@@ -315,7 +315,6 @@ int run(int dimension)
     double Time, LastTime;
 
     Dimension = dimension;
-    DimensionSaved = Dimension;
     if (Dimension < 3)
         eprintf("DIMENSION < 3 or not specified");
 

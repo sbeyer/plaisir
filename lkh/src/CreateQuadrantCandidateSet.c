@@ -42,10 +42,10 @@ void CreateQuadrantCandidateSet(int K)
     if (TraceLevel >= 2)
         printff("Creating quadrant candidate set ... ");
     KDTree = BuildKDTree(1);
-    XMin = (double *) malloc((1 + DimensionSaved) * sizeof(double));
-    XMax = (double *) malloc((1 + DimensionSaved) * sizeof(double));
-    YMin = (double *) malloc((1 + DimensionSaved) * sizeof(double));
-    YMax = (double *) malloc((1 + DimensionSaved) * sizeof(double));
+    XMin = (double *) malloc((1 + Dimension) * sizeof(double));
+    XMax = (double *) malloc((1 + Dimension) * sizeof(double));
+    YMin = (double *) malloc((1 + Dimension) * sizeof(double));
+    YMax = (double *) malloc((1 + Dimension) * sizeof(double));
     ComputeBounds(0, Dimension - 1);
     L = 4;
     CandPerQ = K / L;
@@ -105,10 +105,10 @@ void CreateNearestNeighborCandidateSet(int K)
     if (TraceLevel >= 2)
         printff("Creating nearest neighbor candidate set ... ");
     KDTree = BuildKDTree(1);
-    XMin = (double *) malloc((1 + DimensionSaved) * sizeof(double));
-    XMax = (double *) malloc((1 + DimensionSaved) * sizeof(double));
-    YMin = (double *) malloc((1 + DimensionSaved) * sizeof(double));
-    YMax = (double *) malloc((1 + DimensionSaved) * sizeof(double));
+    XMin = (double *) malloc((1 + Dimension) * sizeof(double));
+    XMax = (double *) malloc((1 + Dimension) * sizeof(double));
+    YMin = (double *) malloc((1 + Dimension) * sizeof(double));
+    YMax = (double *) malloc((1 + Dimension) * sizeof(double));
     ComputeBounds(0, Dimension - 1);
     CandidateSet = (Candidate *) malloc((K + 1) * sizeof(Candidate));
 

@@ -22,7 +22,7 @@ void RecordBetterTour()
         BetterTour[i++] = N->Id;
     while ((N = N->Suc) != Stop);
 
-    BetterTour[0] = BetterTour[DimensionSaved];
+    BetterTour[0] = BetterTour[Dimension];
     N = FirstNode;
     do {
         N->NextBestSuc = N->BestSuc;

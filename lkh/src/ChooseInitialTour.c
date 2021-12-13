@@ -84,8 +84,6 @@ void ChooseInitialTour()
             Follow(N, Last);
     }
 
-    if (Dimension != DimensionSaved && FirstNode->Id <= DimensionSaved)
-        FirstNode += DimensionSaved;
     /* Mark FirstNode as chosen */
     FirstNode->V = 1;
     N = FirstNode;

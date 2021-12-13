@@ -23,7 +23,6 @@ int *CacheSig;  /* Table of the signatures of cached
 int CandidateFiles;     /* Number of CANDIDATE_FILEs */
 int *CostMatrix;        /* Cost matrix */
 int Dimension;  /* Number of nodes in the problem */
-int DimensionSaved;     /* Saved value of Dimension */
 int EdgeFiles;          /* Number of EDGE_FILEs */
 double Excess;  /* Maximum alpha-value allowed for any 
                    candidate edge is set to Excess times the 

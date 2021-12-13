@@ -14,6 +14,6 @@ void RecordBestTour()
 {
     int i;
 
-    for (i = 0; i <= DimensionSaved; i++)
+    for (i = 0; i <= Dimension; i++)
         BestTour[i] = BetterTour[i];
 }

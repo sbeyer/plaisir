@@ -29,7 +29,7 @@ GainType FindTour()
     do
         t->OldPred = t->OldSuc = t->NextBestSuc = t->BestSuc = 0;
     while ((t = t->Suc) != FirstNode);
-    if (Run == 1 && Dimension == DimensionSaved) {
+    if (Run == 1) {
         OrdinalTourCost = 0;
         for (i = 1; i < Dimension; i++)
             OrdinalTourCost += C(&NodeSet[i], &NodeSet[i + 1])
@@ -53,11 +53,7 @@ GainType FindTour()
             break;
         }
         /* Choose FirstNode at random */
-        if (Dimension == DimensionSaved)
-            FirstNode = &NodeSet[1 + Random() % Dimension];
-        else
-            for (i = Random() % Dimension; i > 0; i--)
-                FirstNode = FirstNode->Suc;
+        FirstNode = &NodeSet[1 + Random() % Dimension];
         ChooseInitialTour();
         Cost = LinKernighan();
         if (FirstNode->BestSuc) {
@@ -66,7 +62,7 @@ GainType FindTour()
             while ((t = t->Next = t->BestSuc) != FirstNode);
             Cost = MergeWithTour();
         }
-        if (Dimension == DimensionSaved && Cost >= OrdinalTourCost &&
+        if (Cost >= OrdinalTourCost &&
             BetterCost > OrdinalTourCost) {
             /* Merge tour with ordinal tour */
             for (i = 1; i < Dimension; i++)

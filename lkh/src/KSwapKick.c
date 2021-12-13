@@ -60,13 +60,7 @@ static Node *RandomNode()
     Node *N;
     int Count;
 
-    if (Dimension == DimensionSaved)
-        N = &NodeSet[1 + Random() % Dimension];
-    else {
-        N = FirstNode;
-        for (Count = Random() % Dimension; Count > 0; Count--)
-            N = N->Suc;
-    }
+    N = &NodeSet[1 + Random() % Dimension];
     Count = 0;
     while ((N->V || FixedOrCommon(N, N->Suc)) && Count < Dimension) {
         N = N->Suc;

@@ -179,7 +179,6 @@ extern int *CacheSig;  /* Table of the signatures of cached
 extern int CandidateFiles;     /* Number of CANDIDATE_FILEs */
 extern int *CostMatrix;        /* Cost matrix */
 extern int Dimension;  /* Number of nodes in the problem */
-extern int DimensionSaved;     /* Saved value of Dimension */
 extern int EdgeFiles;          /* Number of EDGE_FILEs */
 extern double Excess;  /* Maximum alpha-value allowed for any 
                           candidate edge is set to Excess times the 

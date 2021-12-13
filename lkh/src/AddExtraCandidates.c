@@ -18,7 +18,7 @@ void AddExtraCandidates(int K, int CandidateSetType, int Symmetric)
     Node *t;
 
     SavedCandidateSet =
-        (Candidate **) malloc((1 + DimensionSaved) *
+        (Candidate **) malloc((1 + Dimension) *
                                   sizeof(Candidate *));
     t = FirstNode;
     do {
