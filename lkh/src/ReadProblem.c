@@ -74,8 +74,6 @@ void ReadProblem()
 
     FreeStructures();
     FirstNode = 0;
-    Type = 0;
-    NodeCoordType = 0;
     GridSize = 1000000.0;
     while ((Line = ReadLine(ProblemFile))) {
         if (!(Keyword = strtok(Line, Delimiters)))

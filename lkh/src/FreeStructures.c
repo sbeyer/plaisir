@@ -28,8 +28,6 @@ void FreeStructures()
     Free(Rand);
     Free(CacheSig);
     Free(CacheVal);
-    Free(Type);
-    Free(NodeCoordType);
     Free(Heap);
     Free(t);
     Free(T);
