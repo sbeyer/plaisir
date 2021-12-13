@@ -21,7 +21,7 @@ _OBJ = Activate.o AddCandidate.o AddExtraCandidates.o                  \
        ChooseInitialTour.o Connect.o CreateCandidateSet.o              \
        CreateDelaunayCandidateSet.o CreateNNCandidateSet.o             \
 	   Create_POPMUSIC_CandidateSet.o CreateQuadrantCandidateSet.o     \
-       Delaunay.o Distance.o Distance_SPECIAL.o eprintf.o ERXT.o       \
+       Delaunay.o Distance.o eprintf.o ERXT.o       \
        Excludable.o Exclude.o FindTour.o FixedOrCommonCandidates.o     \
        Flip.o Flip_SL.o Flip_SSL.o FreeStructures.o        \
        fscanint.o Gain23.o GenerateCandidates.o Genetic.o              \

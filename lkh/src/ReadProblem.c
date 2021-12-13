@@ -145,8 +145,6 @@ static void Read_EDGE_WEIGHT_SECTION(void);
 static void Read_FIXED_EDGES_SECTION(void);
 static void Read_GRID_SIZE(void);
 static void Read_NODE_COORD_SECTION(void);
-static int TwoDWeightType(void);
-static int ThreeDWeightType(void);
 
 static FILE *ProblemFile;
 
@@ -163,7 +161,7 @@ void ReadProblem()
     FreeStructures();
     FirstNode = 0;
     WeightFormat = -1;
-    Type = EdgeWeightType = EdgeWeightFormat = 0;
+    Type = EdgeWeightFormat = 0;
     EdgeDataFormat = NodeCoordType = DisplayDataType = 0;
     GridSize = 1000000.0;
     while ((Line = ReadLine(ProblemFile))) {
@@ -263,68 +261,11 @@ void ReadProblem()
     LastLine = 0;
 }
 
-static int TwoDWeightType()
-{
-    return 1;
-}
-
-static int ThreeDWeightType()
-{
-    return 0;
-}
-
 static void CheckSpecificationPart()
 {
     if (WeightFormat != -1
         && WeightFormat != FUNCTION)
-        eprintf("Conflicting EDGE_WEIGHT_TYPE and EDGE_WEIGHT_FORMAT");
-    if (CandidateSetType == DELAUNAY && !TwoDWeightType()
-        && MaxCandidates > 0)
-        eprintf
-            ("Illegal EDGE_WEIGHT_TYPE for CANDIDATE_SET_TYPE = DELAUNAY");
-    if (CandidateSetType == NN && !TwoDWeightType()
-        && !ThreeDWeightType() && MaxCandidates > 0)
-        eprintf
-            ("Illegal EDGE_WEIGHT_TYPE for CANDIDATE_SET_TYPE = "
-             "NEAREST-NEIGHBOR");
-    if (CandidateSetType == QUADRANT && !TwoDWeightType()
-        && !ThreeDWeightType() && MaxCandidates + ExtraCandidates > 0)
-        eprintf
-            ("Illegal EDGE_WEIGHT_TYPE for CANDIDATE_SET_TYPE = QUADRANT");
-    if (ExtraCandidateSetType == NN && !TwoDWeightType()
-        && !ThreeDWeightType() && ExtraCandidates > 0)
-        eprintf
-            ("Illegal EDGE_WEIGHT_TYPE for EXTRA_CANDIDATE_SET_TYPE = "
-             "NEAREST-NEIGHBOR");
-    if (ExtraCandidateSetType == QUADRANT && !TwoDWeightType()
-        && !ThreeDWeightType()
-        && ExtraCandidates > 0)
-        eprintf
-            ("Illegal EDGE_WEIGHT_TYPE for EXTRA_CANDIDATE_SET_TYPE = "
-             "QUADRANT");
-    if (InitialTourAlgorithm == QUICK_BORUVKA && !TwoDWeightType()
-        && !ThreeDWeightType())
-        eprintf
-            ("Illegal EDGE_WEIGHT_TYPE for INITIAL_TOUR_ALGORITHM = "
-             "QUICK-BORUVKA");
-    if (InitialTourAlgorithm == SIERPINSKI && !TwoDWeightType())
-        eprintf
-            ("Illegal EDGE_WEIGHT_TYPE for INITIAL_TOUR_ALGORITHM = "
-             "SIERPINSKI");
-    if (DelaunayPartitioning && !TwoDWeightType())
-        eprintf("Illegal EDGE_WEIGHT_TYPE for DELAUNAY specification");
-    if (KarpPartitioning && !TwoDWeightType() && !ThreeDWeightType())
-        eprintf("Illegal EDGE_WEIGHT_TYPE for KARP specification");
-    if (KCenterPartitioning && !TwoDWeightType() && !ThreeDWeightType())
-        eprintf("Illegal EDGE_WEIGHT_TYPE for K-CENTER specification");
-    if (KMeansPartitioning && !TwoDWeightType() && !ThreeDWeightType())
-        eprintf("Illegal EDGE_WEIGHT_TYPE for K-MEANS specification");
-    if (MoorePartitioning && !TwoDWeightType())
-        eprintf("Illegal EDGE_WEIGHT_TYPE for MOORE specification");
-    if (RohePartitioning && !TwoDWeightType() && !ThreeDWeightType())
-        eprintf("Illegal EDGE_WEIGHT_TYPE for ROHE specification");
-    if (SierpinskiPartitioning && !TwoDWeightType())
-        eprintf("Illegal EDGE_WEIGHT_TYPE for SIERPINSKI specification");
+        eprintf("Unsupported EDGE_WEIGHT_FORMAT");
 }
 
 static char *Copy(char *S)
