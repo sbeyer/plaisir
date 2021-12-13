@@ -87,7 +87,7 @@ void GenerateCandidates(int MaxCandidates, GainType MaxAlpha,
         do {
             if (To == From)
                 continue;
-            d = c && !FixedOrCommon(From, To) ? c(From, To) : D(From, To);
+            d = !FixedOrCommon(From, To) ? c(From, To) : D(From, To);
             if (From == FirstNode)
                 a = To == From->Dad ? 0 : d - From->NextCost;
             else if (To == FirstNode)
@@ -106,9 +106,8 @@ void GenerateCandidates(int MaxCandidates, GainType MaxAlpha,
                     continue;
                 if (InInputTour(From, To)) {
                     a = 0;
-                    if (c)
-                        d = D(From, To);
-                } else if (c) {
+                    d = D(From, To);
+                } else {
                     if (a > MaxAlpha ||
                         (Count == MaxCandidates &&
                          (a > (NFrom - 1)->Alpha ||

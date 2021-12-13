@@ -19,7 +19,6 @@ void CreateCandidateSet()
 {
     GainType Cost, MaxAlpha, A;
     Node *Na;
-    int i;
     double EntryTime = GetTime();
 
     Norm = 9999;
