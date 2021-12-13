@@ -25,28 +25,6 @@
  *
  * Below is given a list of all available keywords.
  *
- * EDGE-WEIGHT_FORMAT : <string>
- * Describes the format of the edge weights if they are given explicitly.
- * The values are
- * FUNCTION         Weights are given by a function (see above)
- * FULL_MATRIX      Weights are given by a full matrix
- * UPPER_ROW        Upper triangular matrix
- *                      (row-wise without diagonal entries)
- * LOWER_ROW        Lower triangular matrix
- *                      (row-wise without diagonal entries)
- * UPPER_DIAG_ROW   Upper triangular matrix
- *                      (row-wise including diagonal entries)
- * LOWER_DIAG_ROW   Lower triangular matrix
- *                      (row-wise including diagonal entries)
- * UPPER_COL        Upper triangular matrix
- *                      (column-wise without diagonal entries)
- * LOWER_COL        Lower triangular matrix
- *                      (column-wise without diagonal entries)
- * UPPER_DIAG_COL   Upper triangular matrix
- *                      (column-wise including diagonal entries)
- * LOWER_DIAG_COL   Lower triangular matrix
- *                      (column-wise including diagonal entries)
- *
  * EDGE_DATA_FORMAT : <string>
  * Describes the format in which the edges of a graph are given, if the
  * graph is not complete. The values are
@@ -133,14 +111,12 @@
  */
 
 static const char Delimiters[] = " :=\n\t\r\f\v\xef\xbb\xbf";
-static void CheckSpecificationPart(void);
 static char *Copy(char *S);
 static void CreateNodes(void);
 static int FixEdge(Node * Na, Node * Nb);
 static void Read_DISPLAY_DATA_SECTION(void);
 static void Read_DISPLAY_DATA_TYPE(void);
 static void Read_EDGE_DATA_FORMAT(void);
-static void Read_EDGE_WEIGHT_FORMAT(void);
 static void Read_EDGE_WEIGHT_SECTION(void);
 static void Read_FIXED_EDGES_SECTION(void);
 static void Read_GRID_SIZE(void);
@@ -160,8 +136,7 @@ void ReadProblem()
 
     FreeStructures();
     FirstNode = 0;
-    WeightFormat = -1;
-    Type = EdgeWeightFormat = 0;
+    Type = 0;
     EdgeDataFormat = NodeCoordType = DisplayDataType = 0;
     GridSize = 1000000.0;
     while ((Line = ReadLine(ProblemFile))) {
@@ -175,8 +150,6 @@ void ReadProblem()
             Read_DISPLAY_DATA_TYPE();
         else if (!strcmp(Keyword, "EDGE_DATA_FORMAT"))
             Read_EDGE_DATA_FORMAT();
-        else if (!strcmp(Keyword, "EDGE_WEIGHT_FORMAT"))
-            Read_EDGE_WEIGHT_FORMAT();
         else if (!strcmp(Keyword, "EDGE_WEIGHT_SECTION"))
             Read_EDGE_WEIGHT_SECTION();
         else if (!strcmp(Keyword, "EOF"))
@@ -261,13 +234,6 @@ void ReadProblem()
     LastLine = 0;
 }
 
-static void CheckSpecificationPart()
-{
-    if (WeightFormat != -1
-        && WeightFormat != FUNCTION)
-        eprintf("Unsupported EDGE_WEIGHT_FORMAT");
-}
-
 static char *Copy(char *S)
 {
     char *Buffer;
@@ -318,7 +284,6 @@ static void Read_DISPLAY_DATA_SECTION()
     Node *N;
     int Id, i;
 
-    CheckSpecificationPart();
     if (!DisplayDataType || strcmp(DisplayDataType, "TWOD_DISPLAY"))
         eprintf
             ("DISPLAY_DATA_SECTION conflicts with DISPLAY_DATA_TYPE: %s",
@@ -458,44 +423,10 @@ static void Read_EDGE_DATA_SECTION()
 }
 */
 
-static void Read_EDGE_WEIGHT_FORMAT()
-{
-    unsigned int i;
-
-    if (!(EdgeWeightFormat = Copy(strtok(0, Delimiters))))
-        eprintf("EDGE_WEIGHT_FORMAT: string expected");
-    for (i = 0; i < strlen(EdgeWeightFormat); i++)
-        EdgeWeightFormat[i] = (char) toupper(EdgeWeightFormat[i]);
-    if (!strcmp(EdgeWeightFormat, "FUNCTION"))
-        WeightFormat = FUNCTION;
-    else if (!strcmp(EdgeWeightFormat, "FULL_MATRIX"))
-        WeightFormat = FULL_MATRIX;
-    else if (!strcmp(EdgeWeightFormat, "UPPER_ROW"))
-        WeightFormat = UPPER_ROW;
-    else if (!strcmp(EdgeWeightFormat, "LOWER_ROW"))
-        WeightFormat = LOWER_ROW;
-    else if (!strcmp(EdgeWeightFormat, "UPPER_DIAG_ROW"))
-        WeightFormat = UPPER_DIAG_ROW;
-    else if (!strcmp(EdgeWeightFormat, "LOWER_DIAG_ROW"))
-        WeightFormat = LOWER_DIAG_ROW;
-    else if (!strcmp(EdgeWeightFormat, "UPPER_COL"))
-        WeightFormat = UPPER_COL;
-    else if (!strcmp(EdgeWeightFormat, "LOWER_COL"))
-        WeightFormat = LOWER_COL;
-    else if (!strcmp(EdgeWeightFormat, "UPPER_DIAG_COL"))
-        WeightFormat = UPPER_DIAG_COL;
-    else if (!strcmp(EdgeWeightFormat, "LOWER_DIAG_COL"))
-        WeightFormat = LOWER_DIAG_COL;
-    else
-        eprintf("Unknown EDGE_WEIGHT_FORMAT: %s", EdgeWeightFormat);
-}
-
 static void Read_EDGE_WEIGHT_SECTION()
 {
-    Node *Ni, *Nj;
-    int i, j, W;
+    Node *Ni;
 
-    CheckSpecificationPart();
     if (!FirstNode)
         CreateNodes();
 
@@ -507,103 +438,6 @@ static void Read_EDGE_WEIGHT_SECTION()
             &CostMatrix[(size_t) (Ni->Id - 1) * (Ni->Id - 2) / 2] - 1;
     }
     while ((Ni = Ni->Suc) != FirstNode);
-
-    switch (WeightFormat) {
-    case FULL_MATRIX:
-        for (i = 1, Ni = FirstNode; i <= Dimension; i++, Ni = Ni->Suc) {
-            for (j = 1; j <= Dimension; j++) {
-                if (!fscanint(ProblemFile, &W))
-                    eprintf("EDGE_WEIGHT_SECTION: Missing weight");
-                if (j == i)
-                    continue;
-                if (j < i)
-                    Ni->C[j] = W;
-            }
-        }
-        break;
-    case UPPER_ROW:
-        for (i = 1, Ni = FirstNode; i < Dimension; i++, Ni = Ni->Suc) {
-            for (j = i + 1, Nj = Ni->Suc; j <= Dimension;
-                 j++, Nj = Nj->Suc) {
-                if (!fscanint(ProblemFile, &W))
-                    eprintf("EDGE_WEIGHT_SECTION: Missing weight");
-                Nj->C[i] = W;
-            }
-        }
-        break;
-    case LOWER_ROW:
-        for (i = 2, Ni = FirstNode->Suc; i <= Dimension; i++, Ni = Ni->Suc) {
-            for (j = 1; j < i; j++) {
-                if (!fscanint(ProblemFile, &W))
-                    eprintf("EDGE_WEIGHT_SECTION: Missing weight");
-                Ni->C[j] = W;
-            }
-        }
-        break;
-    case UPPER_DIAG_ROW:
-        for (i = 1, Ni = FirstNode; i <= Dimension; i++, Ni = Ni->Suc) {
-            for (j = i, Nj = Ni; j <= Dimension; j++, Nj = Nj->Suc) {
-                if (!fscanint(ProblemFile, &W))
-                    eprintf("EDGE_WEIGHT_SECTION: Missing weight");
-                if (j == i)
-                    continue;
-                Nj->C[i] = W;
-            }
-        }
-        break;
-    case LOWER_DIAG_ROW:
-        for (i = 1, Ni = FirstNode; i <= Dimension; i++, Ni = Ni->Suc) {
-            for (j = 1; j <= i; j++) {
-                if (!fscanint(ProblemFile, &W))
-                    eprintf("EDGE_WEIGHT_SECTION: Missing weight");
-                if (j == i)
-                    continue;
-                Ni->C[j] = W;
-            }
-        }
-        break;
-    case UPPER_COL:
-        for (j = 2, Nj = FirstNode->Suc; j <= Dimension; j++, Nj = Nj->Suc) {
-            for (i = 1; i < j; i++) {
-                if (!fscanint(ProblemFile, &W))
-                    eprintf("EDGE_WEIGHT_SECTION: Missing weight");
-                Nj->C[i] = W;
-            }
-        }
-        break;
-    case LOWER_COL:
-        for (j = 1, Nj = FirstNode; j < Dimension; j++, Nj = Nj->Suc) {
-            for (i = j + 1, Ni = Nj->Suc; i <= Dimension;
-                 i++, Ni = Ni->Suc) {
-                if (!fscanint(ProblemFile, &W))
-                    eprintf("EDGE_WEIGHT_SECTION: Missing weight");
-                Ni->C[j] = W;
-            }
-        }
-        break;
-    case UPPER_DIAG_COL:
-        for (j = 1, Nj = FirstNode; j <= Dimension; j++, Nj = Nj->Suc) {
-            for (i = 1; i <= j; i++) {
-                if (!fscanint(ProblemFile, &W))
-                    eprintf("EDGE_WEIGHT_SECTION: Missing weight");
-                if (j == i)
-                    continue;
-                Nj->C[i] = W;
-            }
-        }
-        break;
-    case LOWER_DIAG_COL:
-        for (j = 1, Nj = FirstNode; j <= Dimension; j++, Nj = Nj->Suc) {
-            for (i = j, Ni = Nj; i <= Dimension; i++, Ni = Ni->Suc) {
-                if (!fscanint(ProblemFile, &W))
-                    eprintf("EDGE_WEIGHT_SECTION: Missing weight");
-                if (j == i)
-                    continue;
-                Ni->C[j] = W;
-            }
-        }
-        break;
-    }
 }
 
 static void Read_FIXED_EDGES_SECTION()
@@ -611,7 +445,6 @@ static void Read_FIXED_EDGES_SECTION()
     Node *Ni, *Nj, *N, *NPrev = 0, *NNext;
     int i, j, Count = 0;
 
-    CheckSpecificationPart();
     if (!FirstNode)
         CreateNodes();
     if (!fscanint(ProblemFile, &i))
@@ -660,7 +493,6 @@ static void Read_NODE_COORD_SECTION()
     Node *N;
     int Id, i;
 
-    CheckSpecificationPart();
     if (!FirstNode)
         CreateNodes();
     N = FirstNode;

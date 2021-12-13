@@ -128,7 +128,7 @@ int Trial;      /* Ordinal number of the current trial */
 /* The following variables are read by the functions ReadParameters and 
    ReadProblem: */
 
-char *Type, *EdgeWeightFormat,
+char *Type,
     *EdgeDataFormat, *NodeCoordType, *DisplayDataType;
 int CandidateSetSymmetric, CandidateSetType,
     DelaunayPartitioning, DelaunayPure,
@@ -139,7 +139,7 @@ int CandidateSetSymmetric, CandidateSetType,
     PatchingAExtended, PatchingARestricted,
     PatchingCExtended, PatchingCRestricted,
     RohePartitioning, SierpinskiPartitioning,
-    SubproblemBorders, SubproblemsCompressed, WeightFormat;
+    SubproblemBorders, SubproblemsCompressed;
 
 FILE *ParameterFile, *ProblemFile, *PiFile, *InputTourFile,
     *TourFile, *InitialTourFile, *SubproblemTourFile, **MergeTourFile;

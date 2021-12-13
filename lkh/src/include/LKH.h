@@ -39,10 +39,6 @@
     { Link((a)->Pred, (a)->Suc); Link(a, a); Link((b)->Pred, a); Link(a, b); }
 #define SLink(a, b) { (a)->Suc = (b); (b)->Pred = (a); }
 
-enum EdgeWeightFormats { FUNCTION, FULL_MATRIX, UPPER_ROW, LOWER_ROW,
-    UPPER_DIAG_ROW, LOWER_DIAG_ROW, UPPER_COL, LOWER_COL,
-    UPPER_DIAG_COL, LOWER_DIAG_COL
-};
 enum CandidateSetTypes { ALPHA, DELAUNAY, NN, POPMUSIC, QUADRANT };
 enum InitialTourAlgorithms { BORUVKA, GREEDY, MOORE, NEAREST_NEIGHBOR,
     QUICK_BORUVKA, SIERPINSKI, WALK
@@ -280,7 +276,7 @@ extern int Trial;      /* Ordinal number of the current trial */
 /* The following variables are read by the functions ReadParameters and 
    ReadProblem: */
 
-extern char *Type, *EdgeWeightFormat,
+extern char *Type,
             *EdgeDataFormat, *NodeCoordType, *DisplayDataType;
 extern int CandidateSetSymmetric, CandidateSetType,
            DelaunayPartitioning, DelaunayPure,
@@ -290,8 +286,7 @@ extern int CandidateSetSymmetric, CandidateSetType,
            MoorePartitioning,
            PatchingAExtended, PatchingARestricted,
            PatchingCExtended, PatchingCRestricted,
-           RohePartitioning, SierpinskiPartitioning,
-           WeightFormat;
+           RohePartitioning, SierpinskiPartitioning;
 
 extern MoveFunction BestMove, BacktrackMove, BestSubsequentMove;
 extern MergeTourFunction MergeWithTour;

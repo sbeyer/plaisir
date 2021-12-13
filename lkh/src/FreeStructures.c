@@ -30,7 +30,6 @@ void FreeStructures()
     Free(CacheSig);
     Free(CacheVal);
     Free(Type);
-    Free(EdgeWeightFormat);
     Free(EdgeDataFormat);
     Free(NodeCoordType);
     Free(DisplayDataType);
