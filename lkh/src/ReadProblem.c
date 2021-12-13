@@ -103,11 +103,6 @@
  * The integers specify the respective nodes and the real numbers give the
  * associated coordinates. The contents of this section, however, has no
  * significance in the current implementation.
- *
- * EDGE_WEIGHT_SECTION :
- * The edge weights are given in the format specifies by the EDGE_WEIGHT_FORMAT
- * entry. At present, all explicit data are integral and is given in one of the
- * (self-explanatory) matrix formats, with explicitly known lengths.
  */
 
 static const char Delimiters[] = " :=\n\t\r\f\v\xef\xbb\xbf";
@@ -117,7 +112,6 @@ static int FixEdge(Node * Na, Node * Nb);
 static void Read_DISPLAY_DATA_SECTION(void);
 static void Read_DISPLAY_DATA_TYPE(void);
 static void Read_EDGE_DATA_FORMAT(void);
-static void Read_EDGE_WEIGHT_SECTION(void);
 static void Read_FIXED_EDGES_SECTION(void);
 static void Read_GRID_SIZE(void);
 static void Read_NODE_COORD_SECTION(void);
@@ -150,8 +144,6 @@ void ReadProblem()
             Read_DISPLAY_DATA_TYPE();
         else if (!strcmp(Keyword, "EDGE_DATA_FORMAT"))
             Read_EDGE_DATA_FORMAT();
-        else if (!strcmp(Keyword, "EDGE_WEIGHT_SECTION"))
-            Read_EDGE_WEIGHT_SECTION();
         else if (!strcmp(Keyword, "EOF"))
             break;
         else if (!strcmp(Keyword, "FIXED_EDGES_SECTION"))
@@ -422,23 +414,6 @@ static void Read_EDGE_DATA_SECTION()
     Distance = WithWeights ? Distance_LARGE : Distance_1;
 }
 */
-
-static void Read_EDGE_WEIGHT_SECTION()
-{
-    Node *Ni;
-
-    if (!FirstNode)
-        CreateNodes();
-
-    CostMatrix = (int *) calloc((size_t) Dimension * (Dimension - 1) / 2,
-                                sizeof(int));
-    Ni = FirstNode->Suc;
-    do {
-        Ni->C =
-            &CostMatrix[(size_t) (Ni->Id - 1) * (Ni->Id - 2) / 2] - 1;
-    }
-    while ((Ni = Ni->Suc) != FirstNode);
-}
 
 static void Read_FIXED_EDGES_SECTION()
 {

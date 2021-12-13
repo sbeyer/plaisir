@@ -21,7 +21,6 @@ int *CacheVal;  /* Table of cached distances */
 int *CacheSig;  /* Table of the signatures of cached 
                    distances */
 int CandidateFiles;     /* Number of CANDIDATE_FILEs */
-int *CostMatrix;        /* Cost matrix */
 int Dimension;  /* Number of nodes in the problem */
 int EdgeFiles;          /* Number of EDGE_FILEs */
 double Excess;  /* Maximum alpha-value allowed for any 

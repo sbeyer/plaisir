@@ -21,7 +21,6 @@ void FreeStructures()
         }
         Free(NodeSet);
     }
-    Free(CostMatrix);
     Free(BestTour);
     Free(BetterTour);
     Free(SwapStack);
