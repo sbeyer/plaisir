@@ -128,7 +128,7 @@ int Trial;      /* Ordinal number of the current trial */
    ReadProblem: */
 
 char *Type,
-    *EdgeDataFormat, *NodeCoordType, *DisplayDataType;
+    *EdgeDataFormat, *NodeCoordType;
 int CandidateSetSymmetric, CandidateSetType,
     DelaunayPartitioning, DelaunayPure,
     ExtraCandidateSetSymmetric, ExtraCandidateSetType,

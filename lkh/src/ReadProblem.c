@@ -31,17 +31,6 @@
  * EDGE_LIST    The graph is given by an edge list
  * ADJ_LIST     The graph is given by an adjacency list
  *
- * DISPLAY_DATA_TYPE : <string>
- * Specifies how a graphical display of the nodes can be obtained.
- * The values are
- * COORD_DISPLAY    Display is generated from the node coordinates
- * TWOD_DISPLAY     Explicit coordinates in 2-D are given
- * NO_DISPLAY       No graphical display is possible
- *
- * The default value is COORD_DISPLAY if node coordinates are specifies and
- * NO_DISPLAY otherwise. In the current implementation, however, the value
- * has no significance.
- *
  * GRID_SIZE : <real>
  * The grid size for toroidal instances.
  * Default: 1000000.0
@@ -93,24 +82,12 @@
  *
  * meaning that the edge (arc) from the first node to the second node has
  * to be contained in a solution. This section is terminated by a -1.
- *
- * DISPLAY_DATA_SECTION :
- * If DISPLAY_DATA_TYPE is TWOD_DISPLAY, the 2-dimensional coordinates from
- * which a display can be generated are given in the form (per line)
- *
- *      <integer> <real> <real>
- *
- * The integers specify the respective nodes and the real numbers give the
- * associated coordinates. The contents of this section, however, has no
- * significance in the current implementation.
  */
 
 static const char Delimiters[] = " :=\n\t\r\f\v\xef\xbb\xbf";
 static char *Copy(char *S);
 static void CreateNodes(void);
 static int FixEdge(Node * Na, Node * Nb);
-static void Read_DISPLAY_DATA_SECTION(void);
-static void Read_DISPLAY_DATA_TYPE(void);
 static void Read_EDGE_DATA_FORMAT(void);
 static void Read_FIXED_EDGES_SECTION(void);
 static void Read_GRID_SIZE(void);
@@ -131,18 +108,14 @@ void ReadProblem()
     FreeStructures();
     FirstNode = 0;
     Type = 0;
-    EdgeDataFormat = NodeCoordType = DisplayDataType = 0;
+    EdgeDataFormat = NodeCoordType = 0;
     GridSize = 1000000.0;
     while ((Line = ReadLine(ProblemFile))) {
         if (!(Keyword = strtok(Line, Delimiters)))
             continue;
         for (i = 0; i < (int) strlen(Keyword); i++)
             Keyword[i] = (char) toupper(Keyword[i]);
-        if (!strcmp(Keyword, "DISPLAY_DATA_SECTION"))
-            Read_DISPLAY_DATA_SECTION();
-        else if (!strcmp(Keyword, "DISPLAY_DATA_TYPE"))
-            Read_DISPLAY_DATA_TYPE();
-        else if (!strcmp(Keyword, "EDGE_DATA_FORMAT"))
+        if (!strcmp(Keyword, "EDGE_DATA_FORMAT"))
             Read_EDGE_DATA_FORMAT();
         else if (!strcmp(Keyword, "EOF"))
             break;
@@ -269,61 +242,6 @@ static int FixEdge(Node * Na, Node * Nb)
     else
         return 0;
     return 1;
-}
-
-static void Read_DISPLAY_DATA_SECTION()
-{
-    Node *N;
-    int Id, i;
-
-    if (!DisplayDataType || strcmp(DisplayDataType, "TWOD_DISPLAY"))
-        eprintf
-            ("DISPLAY_DATA_SECTION conflicts with DISPLAY_DATA_TYPE: %s",
-             DisplayDataType);
-    if (!FirstNode)
-        CreateNodes();
-    N = FirstNode;
-    do
-        N->V = 0;
-    while ((N = N->Suc) != FirstNode);
-    for (i = 1; i <= Dimension; i++) {
-        if (!fscanint(ProblemFile, &Id))
-            eprintf("DIPLAY_DATA_SECTION: Missing nodes");
-        if (Id <= 0 || Id > Dimension)
-            eprintf("DIPLAY_DATA_SECTION: Node number out of range: %d",
-                    Id);
-        N = &NodeSet[Id];
-        if (N->V == 1)
-            eprintf("DIPLAY_DATA_SECTION: Node number occurs twice: %d",
-                    N->Id);
-        N->V = 1;
-        if (!fscanf(ProblemFile, "%lf", &N->X))
-            eprintf("DISPLAY_DATA_SECTION: Missing X-coordinate");
-        if (!fscanf(ProblemFile, "%lf", &N->Y))
-            eprintf("DISPLAY_DATA_SECTION: Missing Y-coordinate");
-    }
-    N = FirstNode;
-    do
-        if (!N->V)
-            break;
-    while ((N = N->Suc) != FirstNode);
-    if (!N->V)
-        eprintf("DIPLAY_DATA_SECTION: No coordinates given for node %d",
-                N->Id);
-}
-
-static void Read_DISPLAY_DATA_TYPE()
-{
-    unsigned int i;
-
-    if (!(DisplayDataType = Copy(strtok(0, Delimiters))))
-        eprintf("DISPLAY_DATA_TYPE: string expected");
-    for (i = 0; i < strlen(DisplayDataType); i++)
-        DisplayDataType[i] = (char) toupper(DisplayDataType[i]);
-    if (strcmp(DisplayDataType, "COORD_DISPLAY") &&
-        strcmp(DisplayDataType, "TWOD_DISPLAY") &&
-        strcmp(DisplayDataType, "NO_DISPLAY"))
-        eprintf("Unknown DISPLAY_DATA_TYPE: %s", DisplayDataType);
 }
 
 static void Read_EDGE_DATA_FORMAT()

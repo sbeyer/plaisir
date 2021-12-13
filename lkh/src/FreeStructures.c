@@ -31,7 +31,6 @@ void FreeStructures()
     Free(Type);
     Free(EdgeDataFormat);
     Free(NodeCoordType);
-    Free(DisplayDataType);
     Free(Heap);
     Free(t);
     Free(T);

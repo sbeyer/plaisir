@@ -276,7 +276,7 @@ extern int Trial;      /* Ordinal number of the current trial */
    ReadProblem: */
 
 extern char *Type,
-            *EdgeDataFormat, *NodeCoordType, *DisplayDataType;
+            *EdgeDataFormat, *NodeCoordType;
 extern int CandidateSetSymmetric, CandidateSetType,
            DelaunayPartitioning, DelaunayPure,
            ExtraCandidateSetSymmetric, ExtraCandidateSetType,
