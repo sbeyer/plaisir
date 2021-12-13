@@ -191,7 +191,6 @@ extern SSegment *FirstSSegment;  /* A pointer to the first super segment in
 extern int Gain23Used; /* Specifies whether Gain23 is used */
 extern int GainCriterionUsed;  /* Specifies whether L&K's gain criterion is 
                                   used */
-extern double GridSize;        /* The grid size of toroidal instances */
 extern int GroupSize;  /* Desired initial size of each segment */
 extern int SGroupSize; /* Desired initial size of each super segment */
 extern int Groups;     /* Current number of segments */

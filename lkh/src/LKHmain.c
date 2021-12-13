@@ -72,7 +72,6 @@ void setup()
      * Specifies whether Lin and Kernighan's gain criterion is used.
      */
     GainCriterionUsed = 1;
-    GridSize = 1000000.0;
     /*
      * INITIAL_PERIOD = <integer of at least 0>
      * The length of the first period in the ascent.

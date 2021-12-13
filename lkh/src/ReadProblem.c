@@ -25,10 +25,6 @@
  *
  * Below is given a list of all available keywords.
  *
- * GRID_SIZE : <real>
- * The grid size for toroidal instances.
- * Default: 1000000.0
- *
  * EOF
  * Terminates input data. The entry is optional.
  *
@@ -51,7 +47,6 @@
 
 static const char Delimiters[] = " :=\n\t\r\f\v\xef\xbb\xbf";
 static void CreateNodes(void);
-static void Read_GRID_SIZE(void);
 static void Read_NODE_COORD_SECTION(void);
 
 static FILE *ProblemFile;
@@ -68,7 +63,6 @@ void ReadProblem()
 
     FreeStructures();
     FirstNode = 0;
-    GridSize = 1000000.0;
     while ((Line = ReadLine(ProblemFile))) {
         if (!(Keyword = strtok(Line, Delimiters)))
             continue;
@@ -76,8 +70,6 @@ void ReadProblem()
             Keyword[i] = (char) toupper(Keyword[i]);
         if (!strcmp(Keyword, "EOF"))
             break;
-        else if (!strcmp(Keyword, "GRID_SIZE"))
-            Read_GRID_SIZE();
         else if (!strcmp(Keyword, "NODE_COORD_SECTION"))
             Read_NODE_COORD_SECTION();
         else
@@ -169,16 +161,6 @@ static void CreateNodes()
         N->Id = i;
     }
     Link(N, FirstNode);
-}
-
-static void Read_GRID_SIZE()
-{
-    char *Token = strtok(0, Delimiters);
-
-    if (!Token || !sscanf(Token, "%lf", &GridSize))
-        eprintf("GRID_SIZE: real expected");
-    if (GridSize < 0)
-        eprintf("GRID_SIZE: non-negative real expected");
 }
 
 static void Read_NODE_COORD_SECTION()

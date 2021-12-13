@@ -39,7 +39,6 @@ SSegment *FirstSSegment;        /* A pointer to the first super segment in
 int Gain23Used; /* Specifies whether Gain23 is used */
 int GainCriterionUsed;  /* Specifies whether L&K's gain criterion is 
                            used */
-double GridSize;        /* The grid size of toroidal instances */
 int GroupSize;  /* Desired initial size of each segment */
 int SGroupSize; /* Desired initial size of each super segment */
 int Groups;     /* Current number of segments */
