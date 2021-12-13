@@ -25,12 +25,6 @@
  *
  * Below is given a list of all available keywords.
  *
- * EDGE_DATA_FORMAT : <string>
- * Describes the format in which the edges of a graph are given, if the
- * graph is not complete. The values are
- * EDGE_LIST    The graph is given by an edge list
- * ADJ_LIST     The graph is given by an adjacency list
- *
  * GRID_SIZE : <real>
  * The grid size for toroidal instances.
  * Default: 1000000.0
