@@ -25,9 +25,6 @@
  *
  * Below is given a list of all available keywords.
  *
- * DIMENSION : < integer>
- * The number of nodes.
- *
  * EDGE-WEIGHT_FORMAT : <string>
  * Describes the format of the edge weights if they are given explicitly.
  * The values are
@@ -140,7 +137,6 @@ static void CheckSpecificationPart(void);
 static char *Copy(char *S);
 static void CreateNodes(void);
 static int FixEdge(Node * Na, Node * Nb);
-static void Read_DIMENSION(void);
 static void Read_DISPLAY_DATA_SECTION(void);
 static void Read_DISPLAY_DATA_TYPE(void);
 static void Read_EDGE_DATA_FORMAT(void);
@@ -175,9 +171,7 @@ void ReadProblem()
             continue;
         for (i = 0; i < (int) strlen(Keyword); i++)
             Keyword[i] = (char) toupper(Keyword[i]);
-        if (!strcmp(Keyword, "DIMENSION"))
-            Read_DIMENSION();
-        else if (!strcmp(Keyword, "DISPLAY_DATA_SECTION"))
+        if (!strcmp(Keyword, "DISPLAY_DATA_SECTION"))
             Read_DISPLAY_DATA_SECTION();
         else if (!strcmp(Keyword, "DISPLAY_DATA_TYPE"))
             Read_DISPLAY_DATA_TYPE();
@@ -281,8 +275,6 @@ static int ThreeDWeightType()
 
 static void CheckSpecificationPart()
 {
-    if (Dimension < 3)
-        eprintf("DIMENSION < 3 or not specified");
     if (WeightFormat != -1
         && WeightFormat != FUNCTION)
         eprintf("Conflicting EDGE_WEIGHT_TYPE and EDGE_WEIGHT_FORMAT");
@@ -351,8 +343,6 @@ static void CreateNodes()
     Node *Prev = 0, *N = 0;
     int i;
 
-    if (Dimension <= 0)
-        eprintf("DIMENSION is not positive (or not specified)");
     NodeSet = (Node *) calloc(Dimension + 1, sizeof(Node));
     for (i = 1; i <= Dimension; i++, Prev = N) {
         N = &NodeSet[i];
@@ -380,15 +370,6 @@ static int FixEdge(Node * Na, Node * Nb)
     else
         return 0;
     return 1;
-}
-
-static void Read_DIMENSION()
-{
-    char *Token = strtok(0, Delimiters);
-
-    if (!Token || !sscanf(Token, "%d", &Dimension))
-        eprintf("DIMENSION: integer expected");
-    DimensionSaved = Dimension;
 }
 
 static void Read_DISPLAY_DATA_SECTION()

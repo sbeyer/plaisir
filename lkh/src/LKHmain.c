@@ -305,10 +305,19 @@ void setup()
     TraceLevel = 1;
 }
 
-int run()
+/*
+ * Parameters:
+ * dimension = number of nodes
+ */
+int run(int dimension)
 {
     GainType Cost, OldOptimum;
     double Time, LastTime;
+
+    Dimension = dimension;
+    DimensionSaved = Dimension;
+    if (Dimension < 3)
+        eprintf("DIMENSION < 3 or not specified");
 
     /* Read the specification of the problem */
     StartTime = LastTime = GetTime();
