@@ -123,9 +123,6 @@ int TraceLevel; /* Specifies the level of detail of the output
                    information is given */
 int Trial;      /* Ordinal number of the current trial */
 
-/* The following variables are read by the functions ReadParameters and 
-   ReadProblem: */
-
 int CandidateSetSymmetric, CandidateSetType,
     DelaunayPartitioning, DelaunayPure,
     ExtraCandidateSetSymmetric, ExtraCandidateSetType,

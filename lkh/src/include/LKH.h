@@ -372,8 +372,6 @@ GainType PatchCycles(int k, GainType Gain);
 void printff(char *fmt, ...);
 void PrintStatistics(void);
 unsigned Random(void);
-char *ReadLine(FILE * InputFile);
-void ReadProblem(void);
 void RecordBestTour(void);
 void RecordBetterTour(void);
 Node *RemoveFirstActive(void);

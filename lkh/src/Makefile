@@ -8,7 +8,7 @@ ODIR = obj
 CFLAGS = -O3 -Wall -I$(IDIR) -D$(TREE_TYPE) -g
 
 _DEPS = Delaunay.h GainType.h Genetic.h GeoConversion.h Hashing.h      \
-        Heap.h LKH.h Segment.h Sequence.h gpx.h
+        Heap.h libLKH.h LKH.h Segment.h Sequence.h gpx.h
 
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
@@ -33,8 +33,8 @@ _OBJ = Activate.o AddCandidate.o AddExtraCandidates.o                  \
        Minimum1TreeCost.o MinimumSpanningTree.o NormalizeNodeList.o    \
        NormalizeSegmentList.o OrderCandidateSet.o PatchCycles.o        \
        printff.o \
-       Random.o ReadLine.o                \
-	   ReadProblem.o RecordBestTour.o \
+       Random.o \
+	   RecordBestTour.o \
 	   RecordBetterTour.o RemoveFirstActive.o                          \
        ResetCandidateSet.o RestoreTour.o SegmentSize.o Sequence.o      \
        SFCTour.o \

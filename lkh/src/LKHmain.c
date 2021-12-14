@@ -1,11 +1,13 @@
+#include "libLKH.h"
 #include "LKH.h"
 #include "Genetic.h"
+#include "Heap.h"
 
 /*
  * This file contains the interface functions
  */
 
-void setup()
+static void ResetParameters()
 {
     /*
      * ASCENT_CANDIDATES = <integer of at least 2>
@@ -304,14 +306,122 @@ void setup()
     TraceLevel = 1;
 }
 
-/*
- * Parameters:
- * dimension = number of nodes
- */
-int run(int dimension)
+static void AdjustParameters()
+{
+    int K;
+
+    if (Seed == 0)
+        Seed = (unsigned) time(0);
+    if (Precision == 0)
+        Precision = 100;
+    if (InitialStepSize == 0)
+        InitialStepSize = 1;
+    if (MaxSwaps < 0)
+        MaxSwaps = Dimension;
+    if (KickType > Dimension / 2)
+        KickType = Dimension / 2;
+    if (Runs == 0)
+        Runs = 10;
+    if (MaxCandidates > Dimension - 1)
+        MaxCandidates = Dimension - 1;
+    if (ExtraCandidates > Dimension - 1)
+        ExtraCandidates = Dimension - 1;
+    if (AscentCandidates > Dimension - 1)
+        AscentCandidates = Dimension - 1;
+    if (InitialPeriod < 0) {
+        InitialPeriod = Dimension / 2;
+        if (InitialPeriod < 100)
+            InitialPeriod = 100;
+    }
+    if (Excess < 0)
+        Excess = 1.0 / Dimension;
+    if (MaxTrials == -1)
+        MaxTrials = Dimension;
+    MakeHeap(Dimension);
+    if (POPMUSIC_MaxNeighbors > Dimension - 1)
+        POPMUSIC_MaxNeighbors = Dimension - 1;
+    if (POPMUSIC_SampleSize > Dimension)
+        POPMUSIC_SampleSize = Dimension;
+    if (SubsequentMoveType == 0)
+        SubsequentMoveType = MoveType;
+    K = MoveType >= SubsequentMoveType
+        || !SubsequentPatching ? MoveType : SubsequentMoveType;
+    if (PatchingC > K)
+        PatchingC = K;
+    if (PatchingA > 1 && PatchingA >= PatchingC)
+        PatchingA = PatchingC > 2 ? PatchingC - 1 : 1;
+    if (NonsequentialMoveType == -1 ||
+            NonsequentialMoveType > K + PatchingC + PatchingA - 1)
+        NonsequentialMoveType = K + PatchingC + PatchingA - 1;
+    if (PatchingC >= 1) {
+        BestMove = BestSubsequentMove = BestKOptMove;
+        if (!SubsequentPatching && SubsequentMoveType <= 5) {
+            MoveFunction BestOptMove[] =
+            { 0, 0, Best2OptMove, Best3OptMove,
+                Best4OptMove, Best5OptMove
+            };
+            BestSubsequentMove = BestOptMove[SubsequentMoveType];
+        }
+    } else {
+        MoveFunction BestOptMove[] = { 0, 0, Best2OptMove, Best3OptMove,
+            Best4OptMove, Best5OptMove
+        };
+        BestMove = MoveType <= 5 ? BestOptMove[MoveType] : BestKOptMove;
+        BestSubsequentMove = SubsequentMoveType <= 5 ?
+            BestOptMove[SubsequentMoveType] : BestKOptMove;
+    }
+}
+
+static void CreateNodes()
+{
+    Node *Prev = 0, *N = 0;
+    int i;
+
+    NodeSet = (Node *) calloc(Dimension + 1, sizeof(Node));
+    for (i = 1; i <= Dimension; i++, Prev = N) {
+        N = &NodeSet[i];
+        if (i == 1)
+            FirstNode = N;
+        else
+            Link(Prev, N);
+        N->Id = i;
+    }
+    Link(N, FirstNode);
+}
+
+static void ReadCoords(struct NodeCoords const * coords)
+{
+    Node *N;
+    int i;
+
+    if (!FirstNode)
+        CreateNodes();
+    N = FirstNode;
+    do
+        N->V = 0;
+    while ((N = N->Suc) != FirstNode);
+    for (i = 1; i <= Dimension; i++) {
+        N = &NodeSet[i];
+        N->V = 1;
+        N->X = coords[i].x; // get x and y from input
+        N->Y = coords[i].y;
+    }
+    N = FirstNode;
+    do
+        if (!N->V && N->Id <= Dimension)
+            break;
+    while ((N = N->Suc) != FirstNode);
+    if (!N->V)
+        eprintf("No coordinates given for node %d",
+                N->Id);
+}
+
+int run(int dimension, struct NodeCoords const * coords)
 {
     GainType Cost, OldOptimum;
     double Time, LastTime;
+
+    ResetParameters();
 
     Dimension = dimension;
     if (Dimension < 3)
@@ -322,7 +432,11 @@ int run(int dimension)
     MaxMatrixDimension = 20000;
     MergeWithTour = Recombination == IPT ? MergeWithTourIPT :
         MergeWithTourGPX2;
-    ReadProblem();
+    FreeStructures();
+    FirstNode = 0;
+    ReadCoords(coords);
+    Swaps = 0;
+    AdjustParameters();
 
     AllocateStructures();
     CreateCandidateSet();
