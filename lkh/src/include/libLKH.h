@@ -10,7 +10,10 @@ struct NodeCoords {
  * Parameters:
  * dimension = number of nodes
  * coords = coordinates of all nodes
+ *
+ * Return value:
+ * a tour (int array of dimension elements)
  */
-int run(int dimension, struct NodeCoords const * coords);
+int const *run(int dimension, struct NodeCoords const * coords);
 
 #endif

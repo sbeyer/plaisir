@@ -389,7 +389,7 @@ static void ReadCoords(struct NodeCoords const * coords)
     Link(N, FirstNode);
 }
 
-int run(int dimension, struct NodeCoords const * coords)
+int const *run(int dimension, struct NodeCoords const * coords)
 {
     GainType Cost;
     double Time, LastTime;
@@ -493,5 +493,5 @@ int run(int dimension, struct NodeCoords const * coords)
         SRandom(++Seed);
     }
     PrintStatistics();
-    return EXIT_SUCCESS;
+    return BestTour;
 }
