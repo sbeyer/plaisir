@@ -106,7 +106,6 @@ int StopAtOptimum;      /* Specifies whether a run will be terminated if
                            the tour length becomes equal to Optimum */
 int Subgradient;        /* Specifies whether the Pi-values should be 
                            determined by subgradient optimization */
-int SubproblemSize;     /* Number of nodes in a subproblem */
 int SubsequentMoveType; /* Specifies the move type to be used for all 
                            moves following the first move in a sequence 
                            of moves. The value K >= 2 signifies that a 
