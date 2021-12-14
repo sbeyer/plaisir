@@ -377,6 +377,5 @@ void SRandom(unsigned seed);
 void SymmetrizeCandidateSet(void);
 void TrimCandidateSet(int MaxCandidates);
 void UpdateStatistics(GainType Cost, double Time);
-void WriteTour(char * FileName, int * Tour, GainType Cost);
 
 #endif

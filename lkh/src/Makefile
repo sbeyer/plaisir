@@ -40,7 +40,7 @@ _OBJ = Activate.o AddCandidate.o AddExtraCandidates.o                  \
        SFCTour.o \
        Statistics.o StoreTour.o SymmetrizeCandidateSet.o               \
        TrimCandidateSet.o \
-       WriteTour.o MergeWithTourGPX2.o gpx.o LKH.o
+       MergeWithTourGPX2.o gpx.o LKH.o
 
 all:
 	$(MAKE) LKH

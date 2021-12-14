@@ -423,7 +423,6 @@ int run(int dimension, struct NodeCoords const * coords)
         UpdateStatistics(BestCost, GetTime() - LastTime);
         RecordBetterTour();
         RecordBestTour();
-        WriteTour("solution", BestTour, BestCost); // TODO
         Runs = 0;
     }
 
@@ -465,7 +464,6 @@ int run(int dimension, struct NodeCoords const * coords)
             BestCost = Cost;
             RecordBetterTour();
             RecordBestTour();
-            WriteTour("solution", BestTour, BestCost);
         }
         Time = fabs(GetTime() - LastTime);
         UpdateStatistics(Cost, Time);
