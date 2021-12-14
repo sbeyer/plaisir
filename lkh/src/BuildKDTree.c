@@ -8,7 +8,7 @@ static void Swap(int i, int j);
 static Node **KDTree;
 static int cutoff;
 
-#define Coord(N, axis) (axis == 0 ? (N)->X : axis == 1 ? (N)->Y : (N)->Z)
+#define Coord(N, axis) (axis == 0 ? (N)->X : (N)->Y)
 
 /*
  * The BuildKDTree function builds a balanced K-d tree of all nodes.
@@ -106,12 +106,11 @@ static char FindMaxSpread(int start, int end)
 {
     int i, axis;
     Node *N;
-    double Min[3], Max[3];
+    double Min[2], Max[2];
 
     N = KDTree[start];
     Min[0] = Max[0] = N->X;
     Min[1] = Max[1] = N->Y;
-    Min[2] = Max[2] = N->Z;
     for (i = start + 1; i <= end; i++) {
         for (axis = 1; axis >= 0; axis--) {
             N = KDTree[i];

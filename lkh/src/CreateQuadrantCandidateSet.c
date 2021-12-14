@@ -168,7 +168,7 @@ static void ComputeBounds(int start, int end)
 }
 
 
-#define Coord(N, axis) (axis == 0 ? (N)->X : axis == 1 ? (N)->Y : (N)->Z)
+#define Coord(N, axis) (axis == 0 ? (N)->X : (N)->Y)
 
 /*
  * The Contains2D function returns 1 if T belongs to 2-D quadrant Q
@@ -300,7 +300,6 @@ static void NQN(Node * N, int Q, int start, int end, int K)
         double diff = Coord(T, axis) - Coord(N, axis);
         P.X = axis == 0 ? T->X : N->X;
         P.Y = axis == 1 ? T->Y : N->Y;
-        P.Z = axis == 2 ? T->Z : N->Z;
         P.Pi = 0;
         if (diff >= 0) {
             if (Overlaps(Q, diff, 0, axis))
