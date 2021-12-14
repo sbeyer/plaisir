@@ -372,7 +372,7 @@ static void AdjustParameters()
     }
 }
 
-static void CreateNodes()
+static void ReadCoords(struct NodeCoords const * coords)
 {
     Node *Prev = 0, *N = 0;
     int i;
@@ -380,6 +380,10 @@ static void CreateNodes()
     NodeSet = (Node *) calloc(Dimension + 1, sizeof(Node));
     for (i = 1; i <= Dimension; i++, Prev = N) {
         N = &NodeSet[i];
+        N->V = 1;
+        N->X = coords[i].x;
+        N->Y = coords[i].y;
+
         if (i == 1)
             FirstNode = N;
         else
@@ -387,33 +391,6 @@ static void CreateNodes()
         N->Id = i;
     }
     Link(N, FirstNode);
-}
-
-static void ReadCoords(struct NodeCoords const * coords)
-{
-    Node *N;
-    int i;
-
-    if (!FirstNode)
-        CreateNodes();
-    N = FirstNode;
-    do
-        N->V = 0;
-    while ((N = N->Suc) != FirstNode);
-    for (i = 1; i <= Dimension; i++) {
-        N = &NodeSet[i];
-        N->V = 1;
-        N->X = coords[i].x; // get x and y from input
-        N->Y = coords[i].y;
-    }
-    N = FirstNode;
-    do
-        if (!N->V && N->Id <= Dimension)
-            break;
-    while ((N = N->Suc) != FirstNode);
-    if (!N->V)
-        eprintf("No coordinates given for node %d",
-                N->Id);
 }
 
 int run(int dimension, struct NodeCoords const * coords)
