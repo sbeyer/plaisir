@@ -22,7 +22,7 @@
 GainType Ascent()
 {
     Node *t;
-    GainType BestW, W, W0, Alpha, MaxAlpha;
+    GainType BestW, W, W0, MaxAlpha;
     int T, Period, P, InitialPhase, BestNorm;
 
   Start:
@@ -59,15 +59,12 @@ GainType Ascent()
     if (MaxCandidates > 0) {
         /* Generate symmetric candididate sets for all nodes */
         MaxAlpha = INT_MAX;
-        if (Optimum != MINUS_INFINITY
-            && (Alpha = Optimum * Precision - W) >= 0)
-            MaxAlpha = Alpha;
         if (CandidateSetType != DELAUNAY && CandidateSetType != POPMUSIC)
             GenerateCandidates(AscentCandidates, MaxAlpha, 1);
         else {
             OrderCandidateSet(AscentCandidates, MaxAlpha, 1);
             W = Minimum1TreeCost(1);
-            if (!Norm || W / Precision == Optimum)
+            if (!Norm)
                 return W;
         }
     }

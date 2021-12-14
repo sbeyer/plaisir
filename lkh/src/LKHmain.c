@@ -162,10 +162,6 @@ static void ResetParameters()
      */
     NonsequentialMoveType = -1;
 
-    // Rmeove
-    Optimum = MINUS_INFINITY;
-    StopAtOptimum = 1;
-
     /*
      * PATCHING_A = <integer of at least 0> [ RESTRICTED | EXTENDED ]
      * The maximum number of disjoint alternating cycles to be used for
@@ -395,7 +391,7 @@ static void ReadCoords(struct NodeCoords const * coords)
 
 int run(int dimension, struct NodeCoords const * coords)
 {
-    GainType Cost, OldOptimum;
+    GainType Cost;
     double Time, LastTime;
 
     ResetParameters();
@@ -423,8 +419,8 @@ int run(int dimension, struct NodeCoords const * coords)
         BestCost = PLUS_INFINITY;
     else {
         /* The ascent has solved the problem! */
-        Optimum = BestCost = (GainType) LowerBound;
-        UpdateStatistics(Optimum, GetTime() - LastTime);
+        BestCost = (GainType) LowerBound;
+        UpdateStatistics(BestCost, GetTime() - LastTime);
         RecordBetterTour();
         RecordBestTour();
         WriteTour("solution", BestTour, BestCost); // TODO
@@ -447,12 +443,8 @@ int run(int dimension, struct NodeCoords const * coords)
                 GainType OldCost = Cost;
                 Cost = MergeTourWithIndividual(i);
                 if (TraceLevel >= 1 && Cost < OldCost) {
-                    printff("  Merged with %d: Cost = " GainFormat, i + 1,
+                    printff("  Merged with %d: Cost = " GainFormat "\n", i + 1,
                             Cost);
-                    if (Optimum != MINUS_INFINITY && Optimum != 0)
-                        printff(", Gap = %0.4f%%",
-                                100.0 * (Cost - Optimum) / Optimum);
-                    printff("\n");
                 }
             }
             if (!HasFitness(Cost)) {
@@ -475,28 +467,11 @@ int run(int dimension, struct NodeCoords const * coords)
             RecordBestTour();
             WriteTour("solution", BestTour, BestCost);
         }
-        OldOptimum = Optimum;
-        if (Cost < Optimum) {
-            if (FirstNode->InputSuc) {
-                Node *N = FirstNode;
-                while ((N = N->InputSuc = N->Suc) != FirstNode);
-            }
-            Optimum = Cost;
-            printff("*** New optimum = " GainFormat " ***\n", Optimum);
-        }
         Time = fabs(GetTime() - LastTime);
         UpdateStatistics(Cost, Time);
         if (TraceLevel >= 1 && Cost != PLUS_INFINITY) {
             printff("Run %d: Cost = " GainFormat, Run, Cost);
-            if (Optimum != MINUS_INFINITY && Optimum != 0)
-                printff(", Gap = %0.4f%%",
-                        100.0 * (Cost - Optimum) / Optimum);
-            printff(", Time = %0.2f sec. %s\n\n", Time,
-                    Cost < Optimum ? "<" : Cost == Optimum ? "=" : "");
-        }
-        if (StopAtOptimum && Cost == OldOptimum && MaxPopulationSize >= 1) {
-            Runs = Run;
-            break;
+            printff(", Time = %0.2f sec.\n\n", Time);
         }
         if (PopulationSize >= 2 &&
             (PopulationSize == MaxPopulationSize ||

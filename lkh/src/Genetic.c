@@ -155,11 +155,7 @@ void PrintPopulation()
     int i;
     printff("Population:\n");
     for (i = 0; i < PopulationSize; i++) {
-        printff("%3d: " GainFormat, i + 1, Fitness[i]);
-        if (Optimum != MINUS_INFINITY && Optimum != 0)
-            printff(", Gap = %0.4f%%",
-                    100.0 * (Fitness[i] - Optimum) / Optimum);
-        printff("\n");
+        printff("%3d: " GainFormat "\n", i + 1, Fitness[i]);
     }
 }
 

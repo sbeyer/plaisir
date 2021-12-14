@@ -88,10 +88,7 @@ GainType LinKernighan()
     Cost /= Precision;
     if (TraceLevel >= 3 || (TraceLevel == 2 && Cost < BetterCost)) {
         printff("Cost = " GainFormat, Cost);
-        if (Optimum != MINUS_INFINITY && Optimum != 0)
-            printff(", Gap = %0.4f%%", 100.0 * (Cost - Optimum) / Optimum);
-        printff(", Time = %0.2f sec. %s\n", fabs(GetTime() - EntryTime),
-                Cost < Optimum ? "<" : Cost == Optimum ? "=" : "");
+        printff(", Time = %0.2f sec.\n", fabs(GetTime() - EntryTime));
     }
     PredSucCostAvailable = 1;
 
@@ -133,13 +130,8 @@ GainType LinKernighan()
                     if (TraceLevel >= 3 ||
                         (TraceLevel == 2 && Cost < BetterCost)) {
                         printff("Cost = " GainFormat, Cost);
-                        if (Optimum != MINUS_INFINITY && Optimum != 0)
-                            printff(", Gap = %0.4f%%",
-                                    100.0 * (Cost - Optimum) / Optimum);
-                        printff(", Time = %0.2f sec. %s\n",
-                                fabs(GetTime() - EntryTime),
-                                Cost < Optimum ? "<" : Cost ==
-                                Optimum ? "=" : "");
+                        printff(", Time = %0.2f sec.\n",
+                                fabs(GetTime() - EntryTime));
                     }
                     StoreTour();
                     if (HashSearch(HTable, Hash, Cost))
@@ -167,12 +159,8 @@ GainType LinKernighan()
             StoreTour();
             if (TraceLevel >= 3 || (TraceLevel == 2 && Cost < BetterCost)) {
                 printff("Cost = " GainFormat, Cost);
-                if (Optimum != MINUS_INFINITY && Optimum != 0)
-                    printff(", Gap = %0.4f%%",
-                            100.0 * (Cost - Optimum) / Optimum);
-                printff(", Time = %0.2f sec. + %s\n",
-                        fabs(GetTime() - EntryTime),
-                        Cost < Optimum ? "<" : Cost == Optimum ? "=" : "");
+                printff(", Time = %0.2f sec. +\n",
+                        fabs(GetTime() - EntryTime));
             }
             if (HashSearch(HTable, Hash, Cost))
                 goto End_LinKernighan;

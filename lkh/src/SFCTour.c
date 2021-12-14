@@ -94,8 +94,6 @@ GainType SFCTour(int CurveType)
     while ((N = N->Suc) != FirstNode);
     if (TraceLevel >= 1) {
         printff(GainFormat, Cost);
-        if (Optimum != MINUS_INFINITY && Optimum != 0)
-            printff(", Gap = %0.1f%%", 100.0 * (Cost - Optimum) / Optimum);
         printff(", Time = %0.2f sec.\n", fabs(GetTime() - EntryTime));
     }
     return Cost;

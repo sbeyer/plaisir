@@ -17,7 +17,7 @@
 
 void CreateCandidateSet()
 {
-    GainType Cost, MaxAlpha, A;
+    GainType Cost, MaxAlpha;
     Node *Na;
     double EntryTime = GetTime();
 
@@ -57,16 +57,10 @@ void CreateCandidateSet()
     LowerBound = (double) Cost / Precision;
     if (TraceLevel >= 1) {
         printff("Lower bound = %0.1f", LowerBound);
-        if (Optimum != MINUS_INFINITY && Optimum != 0)
-            printff(", Gap = %0.2f%%",
-                    100.0 * (Optimum - LowerBound) / Optimum);
-        printff(", Ascent time = %0.2f sec.",
+        printff(", Ascent time = %0.2f sec.\n",
                 fabs(GetTime() - EntryTime));
-        printff("\n");
     }
     MaxAlpha = (GainType) fabs(Excess * Cost);
-    if ((A = Optimum * Precision - Cost) > 0 && A < MaxAlpha)
-        MaxAlpha = A;
     if (CandidateSetType == DELAUNAY ||
             CandidateSetType == POPMUSIC ||
             MaxCandidates == 0)

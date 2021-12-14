@@ -128,9 +128,6 @@ void Create_POPMUSIC_CandidateSet(int K)
         cost = length_path(n, solution);
         if (TraceLevel >= 2) {
             printff("%d: Initial cost:  %lld, ", no_res, cost);
-            if (Optimum != MINUS_INFINITY && Optimum != 0)
-                printff("Gap = %0.2f%%, ",
-                        100.0 * (cost - Optimum) / Optimum);
             printff("Time: %0.2f sec.\n", GetTime() - startTime);
         }
         startTime = GetTime();
@@ -140,9 +137,6 @@ void Create_POPMUSIC_CandidateSet(int K)
         cost = length_path(n, solution);
         if (TraceLevel >= 2) {
             printff("%d: Improved cost: %lld, ", no_res, cost);
-            if (Optimum != MINUS_INFINITY && Optimum != 0)
-                printff("Gap = %0.2f%%, ",
-                        100.0 * (cost - Optimum) / Optimum);
             printff("Time: %0.2f sec.\n", GetTime() - startTime);
         }
         costSum += cost;
@@ -167,12 +161,6 @@ void Create_POPMUSIC_CandidateSet(int K)
         printff
             ("Cost.min = " GainFormat ", Cost.avg = %0.2f, Cost.max = "
              GainFormat "\n", costMin, (double) costSum / NB_RES, costMax);
-        if (Optimum != MINUS_INFINITY && Optimum != 0)
-            printff
-                ("Gap.min = %0.2f%%, Gap.avg = %0.2f%%, Gap.max = %0.2f%%\n",
-                 100.0 * (costMin - Optimum) / Optimum,
-                 100.0 * ((double) costSum / NB_RES - Optimum) / Optimum,
-                 100.0 * (costMax - Optimum) / Optimum);
     }
     free(solution);
     free(node);

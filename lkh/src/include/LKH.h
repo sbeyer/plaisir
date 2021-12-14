@@ -222,10 +222,6 @@ extern int NonsequentialMoveType; /* Specifies the nonsequential move type to
                                      be used in local search. A value 
                                      L >= 4 signifies that nonsequential
                                     l-opt moves are tried for l <= L */
-extern GainType Optimum;       /* Known optimal tour length. 
-                                  If StopAtOptimum is 1, a run will be 
-                                  terminated as soon as a tour length 
-                                  becomes equal this value */
 extern int PatchingA;  /* Specifies the maximum number of alternating
                           cycles to be used for patching disjunct cycles */
 extern int PatchingC;  /* Specifies the maximum number of disjoint cycles to be 
@@ -250,8 +246,6 @@ extern int Run;        /* Current run number */
 extern int Runs;       /* Total number of runs */
 extern unsigned Seed;  /* Initial seed for random number generation */
 extern double StartTime;       /* Time when execution starts */
-extern int StopAtOptimum;      /* Specifies whether a run will be terminated if 
-                                  the tour length becomes equal to Optimum */
 extern int Subgradient;        /* Specifies whether the Pi-values should be 
                                   determined by subgradient optimization */
 extern int SubsequentMoveType; /* Specifies the move type to be used for all 

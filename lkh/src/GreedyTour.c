@@ -231,9 +231,7 @@ GainType GreedyTour()
     To->Pred = From;
     Cost /= Precision;
     if (TraceLevel >= 1) {
-        printff(GainFormat, Cost);
-        if (Optimum != MINUS_INFINITY && Optimum != 0)
-            printff(", Gap = %0.1f%%", 100.0 * (Cost - Optimum) / Optimum);
+        printff(GainFormat , Cost);
         printff(", Time = %0.2f sec.\n", fabs(GetTime() - EntryTime));
     }
     return Cost;

@@ -73,17 +73,11 @@ GainType FindTour()
         if (Cost < BetterCost) {
             if (TraceLevel >= 1) {
                 printff("* %d: Cost = " GainFormat, Trial, Cost);
-                if (Optimum != MINUS_INFINITY && Optimum != 0)
-                    printff(", Gap = %0.4f%%",
-                            100.0 * (Cost - Optimum) / Optimum);
-                printff(", Time = %0.2f sec. %s\n",
-                        fabs(GetTime() - EntryTime),
-                        Cost < Optimum ? "<" : Cost == Optimum ? "=" : "");
+                printff(", Time = %0.2f sec.\n",
+                        fabs(GetTime() - EntryTime));
             }
             BetterCost = Cost;
             RecordBetterTour();
-            if (StopAtOptimum && BetterCost == Optimum)
-                break;
             AdjustCandidateSet();
             HashInitialize(HTable);
             HashInsert(HTable, Hash, Cost);
@@ -105,8 +99,7 @@ GainType FindTour()
     }
     if (BackboneTrials > 0 && BackboneTrials < MaxTrials) {
         if (Trial > BackboneTrials ||
-            (Trial == BackboneTrials &&
-             (!StopAtOptimum || BetterCost != Optimum)))
+            (Trial == BackboneTrials))
             SwapCandidateSets();
         t = FirstNode;
         do {

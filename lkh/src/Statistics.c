@@ -1,12 +1,12 @@
 #include "LKH.h"
 
-static int TrialsMin, TrialsMax, TrialSum, Successes;
+static int TrialsMin, TrialsMax, TrialSum;
 static GainType CostMin, CostMax, CostSum;
 static double TimeMin, TimeMax, TimeSum;
 
 void InitializeStatistics()
 {
-    TrialSum = Successes = 0;
+    TrialSum = 0;
     CostSum = 0;
     TimeSum = 0.0;
     TrialsMin = INT_MAX;
@@ -24,8 +24,6 @@ void UpdateStatistics(GainType Cost, double Time)
     if (Trial > TrialsMax)
         TrialsMax = Trial;
     TrialSum += Trial;
-    if (Cost <= Optimum)
-        Successes++;
     if (Cost < CostMin)
         CostMin = Cost;
     if (Cost > CostMax)
@@ -42,9 +40,9 @@ void PrintStatistics()
 {
     int _Runs = Run - 1, _TrialsMin = TrialsMin;
     double _TimeMin = TimeMin;
-    GainType _Optimum = Optimum;
+    GainType _Optimum = MINUS_INFINITY;
 
-    printff("Successes/Runs = %d/%d\n", Successes, Runs);
+    printff("Runs = %d\n", Runs);
     if (_Runs == 0)
         _Runs = 1;
     if (_TrialsMin > TrialsMax)
@@ -55,8 +53,7 @@ void PrintStatistics()
         printff
             ("Cost.min = " GainFormat ", Cost.avg = %0.2f, Cost.max = "
              GainFormat "\n", CostMin, (double) CostSum / _Runs, CostMax);
-        if (_Optimum == MINUS_INFINITY)
-            _Optimum = BestCost;
+        _Optimum = BestCost;
         if (_Optimum != 0)
             printff
                 ("Gap.min = %0.4f%%, Gap.avg = %0.4f%%, Gap.max = %0.4f%%\n",
