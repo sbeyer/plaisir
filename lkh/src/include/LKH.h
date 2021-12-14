@@ -114,7 +114,6 @@ struct Node {
     Segment *Parent;   /* Parent segment of a node when the two-level
                           tree representation is used */
     double X, Y;     /* Coordinates of the node */
-    double Xc, Yc;  /* Converted coordinates */
     char Axis;  /* The axis partitioned when the node is part of a KDTree */
     char OldPredExcluded, OldSucExcluded;  /* Booleans used for indicating 
                                               whether one (or both) of the 
