@@ -1,5 +1,5 @@
 [package]
-name = "irp"
+name = "lkh"
 version = "0.1.0"
 authors = ["Stephan Beyer <s-beyer@gmx.net>"]
 edition = "2018"
@@ -7,10 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-grb = "1.2"
-lkh = { path = "../lkh/" }
-thiserror = "1.0"
-partitions = "0.2"
+lkh-sys = { path = "../lkh-sys" }
 
 [dev-dependencies.cargo-husky]
 version = "1"

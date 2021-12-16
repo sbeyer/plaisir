@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
-    "plaisir",
     "lkh-sys",
+    "lkh",
+    "plaisir",
 ]
