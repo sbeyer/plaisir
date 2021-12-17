@@ -2,6 +2,9 @@ use lkh_sys::NodeCoords as Coords;
 use std::os::raw::c_int;
 
 pub fn run(coords: &[(usize, f64, f64)]) -> Vec<usize> {
+    // XXX: this method is not thread-safe because lkh_sys::run() modifies static data
+    // TODO: add stuff (e.g. mutexes) to make it safe to use with threads
+
     if coords.len() <= 3 {
         // handle trivial cases that lkh_sys will not handle
         coords.iter().map(|(id, _, _)| *id).collect()
