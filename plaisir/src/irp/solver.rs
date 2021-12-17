@@ -490,10 +490,10 @@ impl<'a> SolverData<'a> {
             routes.push(Vec::new());
 
             for v in 0..self.problem.num_vehicles {
-                routes[t].push(vec![Delivery {
+                let mut initial_route = vec![Delivery {
                     quantity: 0,
                     customer: 0,
-                }]);
+                }];
 
                 let mut i = 0; // last visited site
                 while let Some(j) = self.find_next_site(solution, t, v, i) {
@@ -503,7 +503,7 @@ impl<'a> SolverData<'a> {
 
                     let quantity = self.get_delivery_amount(solution, t, v, j);
                     if quantity > 0 {
-                        routes[t][v].push(Delivery {
+                        initial_route.push(Delivery {
                             quantity,
                             customer: j,
                         });
@@ -513,6 +513,8 @@ impl<'a> SolverData<'a> {
 
                     i = j
                 }
+
+                routes[t].push(initial_route);
             }
         }
 
