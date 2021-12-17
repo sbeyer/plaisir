@@ -18,3 +18,19 @@ pub fn run(dimension: usize) -> Vec<usize> {
         .map(|i| unsafe { *tour.add(i) } as usize - 1)
         .collect()
 }
+
+// use cargo test -- --nocapture to see output
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn run_on_ten_sites() {
+        let tour = run(10);
+        println!("Resulting tour:");
+        for site in tour.iter() {
+            println!(" * {}", site);
+        }
+        assert_eq!(tour.len(), 10);
+    }
+}

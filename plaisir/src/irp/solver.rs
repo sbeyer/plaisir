@@ -564,17 +564,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
 struct Solver {}
 
 impl Solver {
-    #[allow(unreachable_code, unused_variables)]
     fn solve(problem: &Problem, cpu: String) -> grb::Result<()> {
-        // for testing...
-        let tour = lkh::run(10);
-        println!("Resulting tour:");
-        for site in tour.iter() {
-            println!(" * {}", site);
-        }
-
-        return Ok(());
-
         let mut env = gurobi::Env::new("")?;
         env.set(grb::param::Threads, 1)?;
 
