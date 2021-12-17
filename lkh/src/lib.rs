@@ -12,7 +12,7 @@ pub fn run(coords: &[(usize, f64, f64)]) -> Vec<usize> {
     // Note that ownership of tour is kept by LKH (it's a global variable there)
 
     (0..coords.len())
-        .map(|i| unsafe { *tour.add(i) } as usize - 1)
+        .map(|i| coords[unsafe { *tour.add(i) } as usize - 1].0)
         .collect()
 }
 
@@ -38,6 +38,15 @@ mod tests {
         println!("Resulting tour:");
         for site in tour.iter() {
             println!(" * {}", site);
+        }
+
+        for (site, _, _) in coords.iter() {
+            assert!(
+                tour.contains(site),
+                "tour {:?} does not contain site {}",
+                tour,
+                site
+            );
         }
     }
 }
