@@ -16,7 +16,6 @@ pub fn run(coords: &[(usize, f64, f64)]) -> Vec<usize> {
         .collect()
 }
 
-// use cargo test -- --nocapture to see output
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -34,11 +33,6 @@ mod tests {
         ];
         let tour = run(&coords);
         assert_eq!(tour.len(), coords.len());
-
-        println!("Resulting tour:");
-        for site in tour.iter() {
-            println!(" * {}", site);
-        }
 
         for (site, _, _) in coords.iter() {
             assert!(
