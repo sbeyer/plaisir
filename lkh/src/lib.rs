@@ -20,17 +20,7 @@ pub fn run(coords: &[(usize, f64, f64)]) -> Vec<usize> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn run_on_many_sites() {
-        let coords = vec![
-            (12, 0.0, 0.0),
-            (42, 1.0, 0.0),
-            (7, 1.0, 1.0),
-            (113, 0.5, 1.5),
-            (2, 0.0, 2.0),
-            (13, 0.0, 1.0),
-            (29, 0.0, 0.5),
-        ];
+    fn verify(coords: &[(usize, f64, f64)]) {
         let tour = run(&coords);
         assert_eq!(tour.len(), coords.len());
 
@@ -42,5 +32,19 @@ mod tests {
                 site
             );
         }
+    }
+
+    #[test]
+    fn run_on_many_sites() {
+        let coords = vec![
+            (12, 0.0, 0.0),
+            (42, 1.0, 0.0),
+            (7, 1.0, 1.0),
+            (113, 0.5, 1.5),
+            (2, 0.0, 2.0),
+            (13, 0.0, 1.0),
+            (29, 0.0, 0.5),
+        ];
+        verify(&coords);
     }
 }
