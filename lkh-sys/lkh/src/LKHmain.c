@@ -377,8 +377,8 @@ static void ReadCoords(struct NodeCoords const * coords)
     for (i = 1; i <= Dimension; i++, Prev = N) {
         N = &NodeSet[i];
         N->V = 1;
-        N->X = coords[i].x;
-        N->Y = coords[i].y;
+        N->X = coords[i-1].x;
+        N->Y = coords[i-1].y;
 
         if (i == 1)
             FirstNode = N;
