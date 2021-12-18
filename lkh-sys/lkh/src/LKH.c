@@ -163,3 +163,8 @@ int n_partitions_size2, n_partitions_before_fusion,
 int n_partitions_after_fusion4, n_partitions_after_fusion5,
     n_partitions_after_fusionB;
 Node **Map2Node;
+
+/* Former static local variables now made global: */
+
+Node *sl_Gain23_s1;
+short sl_Gain23_OldReversed;

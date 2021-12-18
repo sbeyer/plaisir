@@ -300,6 +300,10 @@ static void ResetParameters()
      * Default: 1
      */
     TraceLevel = 1;
+
+    /* Reset former static local variables */
+    sl_Gain23_s1 = 0;
+    sl_Gain23_OldReversed = 0;
 }
 
 static void AdjustParameters()

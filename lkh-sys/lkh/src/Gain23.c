@@ -27,8 +27,8 @@
 
 /*
  The algorithm splits the set of possible moves up into a number disjoint
- subsets (called "cases"). When s1, s2, ..., s6 has been chosen, Case6 is
- used to discriminate between 7 cases. When s1, s2, ..., s8 has been
+ subsets (called "cases"). When sl_Gain23_s1, s2, ..., s6 has been chosen, Case6 is
+ used to discriminate between 7 cases. When sl_Gain23_s1, s2, ..., s8 has been
  chosen, Case8 is used to discriminate between 11 cases.
  
  A detailed description of the different cases can be found after the code.
@@ -36,24 +36,22 @@
 
 GainType Gain23()
 {
-    static Node *s1 = 0;
-    static short OldReversed = 0;
     Node *s2, *s3, *s4, *s5, *s6 = 0, *s7, *s8 = 0, *s1Stop;
     Candidate *Ns2, *Ns4, *Ns6;
     GainType G0, G1, G2, G3, G4, G5, G6, Gain, Gain6;
     int X2, X4, X6, X8, Case6 = 0, Case8 = 0;
     int Breadth2, Breadth4, Breadth6;
     
-    if (!s1 || s1->Subproblem != FirstNode->Subproblem)
-        s1 = FirstNode;
-    s1Stop = s1;
+    if (!sl_Gain23_s1 || sl_Gain23_s1->Subproblem != FirstNode->Subproblem)
+        sl_Gain23_s1 = FirstNode;
+    s1Stop = sl_Gain23_s1;
     for (X2 = 1; X2 <= 2; X2++) {
-        Reversed = X2 == 1 ? OldReversed : (OldReversed ^= 1);
+        Reversed = X2 == 1 ? sl_Gain23_OldReversed : (sl_Gain23_OldReversed ^= 1);
         do {
-            s2 = SUC(s1);
-            if (FixedOrCommon(s1, s2))
+            s2 = SUC(sl_Gain23_s1);
+            if (FixedOrCommon(sl_Gain23_s1, s2))
                 continue;
-            G0 = C(s1, s2);
+            G0 = C(sl_Gain23_s1, s2);
             Breadth2 = 0;
             /* Choose (s2,s3) as a candidate edge emanating from s2 */
             for (Ns2 = s2->CandidateSet; (s3 = Ns2->To); Ns2++) {
@@ -69,17 +67,17 @@ GainType Gain23()
                     G2 = G1 + C(s3, s4);
                     /* Try any gainful nonfeasible 2-opt move
                      followed by a 2-, 3- or 4-opt move */
-                    if (X4 == 1 && s4 != s1 &&
+                    if (X4 == 1 && s4 != sl_Gain23_s1 &&
                         2 * SegmentSize(s2, s3) <= Dimension &&
-                        (G2 - c(s4, s1) > 0) &&
-                        (G3 = G2 - C(s4, s1)) > 0 &&
-                        (Gain = BridgeGain(s1, s2, s3, s4, 0, 0, 0, 0, 0,
+                        (G2 - c(s4, sl_Gain23_s1) > 0) &&
+                        (G3 = G2 - C(s4, sl_Gain23_s1)) > 0 &&
+                        (Gain = BridgeGain(sl_Gain23_s1, s2, s3, s4, 0, 0, 0, 0, 0,
                                            G3)) > 0)
                         return Gain;
                     if (X4 == 2 &&
-                        (G2 - c(s4, s1) > 0) &&
-                        (Gain = G2 - C(s4, s1)) > 0) {
-                        Swap1(s1, s2, s3);
+                        (G2 - c(s4, sl_Gain23_s1) > 0) &&
+                        (Gain = G2 - C(s4, sl_Gain23_s1)) > 0) {
+                        Swap1(sl_Gain23_s1, s2, s3);
                         return Gain;
                     }
                     if (G2 - s4->Cost <= 0)
@@ -103,14 +101,14 @@ GainType Gain23()
                                 } else {
                                     s6 = s6 ==
                                     s5->Pred ? s5->Suc : s5->Pred;
-                                    if (s5 == s1 || s6 == s1)
+                                    if (s5 == sl_Gain23_s1 || s6 == sl_Gain23_s1)
                                         continue;
                                     Case6 += 2;
                                 }
                             } else if (BETWEEN(s2, s5, s3)) {
                                 Case6 = 4 + X6;
                                 s6 = X6 == 1 ? SUC(s5) : PRED(s5);
-                                if (s6 == s1)
+                                if (s6 == sl_Gain23_s1)
                                     continue;
                             } else {
                                 if (X6 == 2)
@@ -122,15 +120,15 @@ GainType Gain23()
                                 continue;
                             G4 = G3 + C(s5, s6);
                             Gain6 = 0;
-                            if ((G4 - c(s6, s1) > 0) &&
-                                (Gain6 = G4 - C(s6, s1)) > 0) {
+                            if ((G4 - c(s6, sl_Gain23_s1) > 0) &&
+                                (Gain6 = G4 - C(s6, sl_Gain23_s1)) > 0) {
                                 if (Case6 <= 2 || Case6 == 5 || Case6 == 6) {
-                                    Make3OptMove(s1, s2, s3, s4, s5, s6,
+                                    Make3OptMove(sl_Gain23_s1, s2, s3, s4, s5, s6,
                                                  Case6);
                                     return Gain6;
                                 }
                                 if ((Gain =
-                                     BridgeGain(s1, s2, s3, s4, s5, s6, 0,
+                                     BridgeGain(sl_Gain23_s1, s2, s3, s4, s5, s6, 0,
                                                 0, Case6, Gain6)) > 0)
                                     return Gain;
                             }
@@ -168,7 +166,7 @@ GainType Gain23()
                                                     s8 = SUC(s7);
                                                 else {
                                                     s8 = BETWEEN(s3, s7,
-                                                                 s1) ? PRED(s7)
+                                                                 sl_Gain23_s1) ? PRED(s7)
                                                     : SUC(s7);
                                                     Case8 = 17;
                                                 }
@@ -196,7 +194,7 @@ GainType Gain23()
                                                     s8 = SUC(s7);
                                                 else {
                                                     s8 = BETWEEN(s5, s7,
-                                                                 s1) ? PRED(s7)
+                                                                 sl_Gain23_s1) ? PRED(s7)
                                                     : SUC(s7);
                                                     Case8 = 19;
                                                 }
@@ -210,25 +208,25 @@ GainType Gain23()
                                         s7->Pred ? s7->Suc : s7->Pred;
                                         Case8 += 8;
                                     }
-                                    if (s8 == s1 ||
-                                        (s7 == s1 && s8 == s2) ||
+                                    if (s8 == sl_Gain23_s1 ||
+                                        (s7 == sl_Gain23_s1 && s8 == s2) ||
                                         (s7 == s3 && s8 == s4) ||
                                         (s7 == s4 && s8 == s3))
                                         continue;
                                     if (FixedOrCommon(s7, s8))
                                         continue;
                                     G6 = G5 + C(s7, s8);
-                                    if ((G6 - c(s8, s1) > 0) &&
-                                        (Gain = G6 - C(s8, s1)) > 0) {
+                                    if ((G6 - c(s8, sl_Gain23_s1) > 0) &&
+                                        (Gain = G6 - C(s8, sl_Gain23_s1)) > 0) {
                                         if (Case8 <= 15) {
-                                            Make4OptMove(s1, s2, s3, s4,
+                                            Make4OptMove(sl_Gain23_s1, s2, s3, s4,
                                                          s5, s6, s7, s8,
                                                          Case8);
                                             return Gain;
                                         }
                                         if (Gain > Gain6 &&
                                             (Gain =
-                                             BridgeGain(s1, s2, s3, s4, s5,
+                                             BridgeGain(sl_Gain23_s1, s2, s3, s4, s5,
                                                         s6, s7, s8, Case6,
                                                         Gain)) > 0)
                                             return Gain;
@@ -240,7 +238,7 @@ GainType Gain23()
                 }
             }
         }
-        while ((s1 = s2) != s1Stop);
+        while ((sl_Gain23_s1 = s2) != s1Stop);
     }
     return 0;
 }
@@ -258,7 +256,7 @@ GainType Gain23()
  
  12-43-
  
- contains the edges (s1,s2) and (s4,s3), in that order. A (*) signifies
+ contains the edges (sl_Gain23_s1,s2) and (s4,s3), in that order. A (*) signifies
  an infeasible solution. BridgeGain is called if the accumulated gain
  is possitive.
  

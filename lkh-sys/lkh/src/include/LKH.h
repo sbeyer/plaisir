@@ -278,6 +278,11 @@ extern int CandidateSetSymmetric, CandidateSetType,
 extern MoveFunction BestMove, BacktrackMove, BestSubsequentMove;
 extern MergeTourFunction MergeWithTour;
 
+/* Former static local variables now made global: */
+
+extern Node *sl_Gain23_s1;
+extern short sl_Gain23_OldReversed;
+
 /* Function prototypes: */
 
 int Distance(Node * Na, Node * Nb);
