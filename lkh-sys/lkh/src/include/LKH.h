@@ -6,7 +6,6 @@
  * macros and specifies data structures and function prototypes.
  */
 
-#undef NDEBUG
 #include <assert.h>
 #include <ctype.h>
 #include <float.h>
