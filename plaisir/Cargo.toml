@@ -1,5 +1,5 @@
 [package]
-name = "irp"
+name = "plaisir"
 version = "0.1.0"
 authors = ["Stephan Beyer <s-beyer@gmx.net>"]
 edition = "2018"
