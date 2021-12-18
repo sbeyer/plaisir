@@ -479,8 +479,12 @@ impl<'a> SolverData<'a> {
     }
 
     fn get_delivery_amount(&self, solution: &[f64], t: usize, v: usize, target: usize) -> usize {
-        let var_deliver = self.vars.deliver_index(t, v, target);
-        solution[var_deliver].round() as usize
+        if target == 0 {
+            0
+        } else {
+            let var_deliver = self.vars.deliver_index(t, v, target);
+            solution[var_deliver].round() as usize
+        }
     }
 
     fn get_routes(&self, solution: &[f64]) -> Routes {
@@ -514,7 +518,31 @@ impl<'a> SolverData<'a> {
                     i = j
                 }
 
-                routes[t].push(initial_route);
+                let tsp_instance: Vec<(usize, f64, f64)> = initial_route
+                    .iter()
+                    .map(|delivery| self.problem.id_with_coords(delivery.customer))
+                    .collect();
+                // println!("TSP INSTANCE: {:?}", tsp_instance);
+                let mut tsp_tour = lkh::run(&tsp_instance);
+                // println!("Resulting tour:");
+                // for site in tsp_tour.iter() {
+                //     println!(" * {}", site);
+                // }
+
+                let depot_position = tsp_tour
+                    .iter()
+                    .position(|site| *site == 0)
+                    .expect("Depot is expected to be in TSP tour");
+                tsp_tour.rotate_left(depot_position);
+                let heuristic_route = tsp_tour
+                    .iter()
+                    .map(|site| Delivery {
+                        quantity: self.get_delivery_amount(solution, t, v, *site),
+                        customer: *site,
+                    })
+                    .collect();
+
+                routes[t].push(heuristic_route);
             }
         }
 

@@ -162,6 +162,16 @@ impl Problem {
         }
     }
 
+    fn id_with_coords(&self, site: usize) -> (usize, f64, f64) {
+        let position = if site == 0 {
+            &self.depot.position
+        } else {
+            &self.customers[site - 1].position
+        };
+
+        (site, position.x, position.y)
+    }
+
     fn start_level(&self, site: usize) -> f64 {
         if site == 0 {
             self.depot.start_level
