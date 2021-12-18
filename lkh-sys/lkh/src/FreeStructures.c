@@ -12,15 +12,7 @@ void FreeStructures()
 {
     FreeCandidateSets();
     FreeSegments();
-    if (NodeSet) {
-        int i;
-        for (i = 1; i <= Dimension; i++) {
-            Node *N = &NodeSet[i];
-            Free(N->MergeSuc);
-            N->C = 0;
-        }
-        Free(NodeSet);
-    }
+    Free(NodeSet);
     Free(BestTour);
     Free(BetterTour);
     Free(SwapStack);

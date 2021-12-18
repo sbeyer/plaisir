@@ -77,7 +77,6 @@ struct Node {
     int Beta;   /* Beta-value (used for computing alpha-values) */
     int Subproblem;  /* Number of the subproblem the node is part of */
     int Sons;   /* Number of sons in the minimum spanning tree */
-    int *C;     /* A row in the cost matrix */
     Node *Pred, *Suc;  /* Predecessor and successor node in 
                           the two-way list of nodes */
     Node *OldPred, *OldSuc; /* Previous values of Pred and Suc */
@@ -104,7 +103,6 @@ struct Node {
     Node *SubBestPred; /* The best predecessor node in a subproblem */
     Node *SubBestSuc;  /* The best successor node in a subproblem */
     Node *MergePred;   /* Predecessor in the first MERGE_TOUR file */
-    Node **MergeSuc;   /* Successors in the MERGE_TOUR files */
     Node *Added1, *Added2; /* Pointers to the opposite end nodes
                               of added edges in a submove */
     Node *Deleted1, *Deleted2;  /* Pointers to the opposite end nodes

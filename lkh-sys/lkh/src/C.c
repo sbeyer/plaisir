@@ -5,15 +5,6 @@
  */
 
 /*
- * The C_EXPLICIT function returns the distance by looking it up in a table.
- */
-
-int C_EXPLICIT(Node * Na, Node * Nb)
-{
-    return Na->Id < Nb->Id ? Nb->C[Na->Id] : Na->C[Nb->Id];
-}
-
-/*
  * The C_FUNCTION function is used when the distance is defined by a
  * function (e.g. the Euclidean distance function). In order to speed
  * up the computations the following algorithm used:
@@ -74,12 +65,6 @@ int C(Node * Na, Node * Nb)
         return CacheVal[Index];
     CacheSig[Index] = i;
     return (CacheVal[Index] = D(Na, Nb));
-}
-
-int D_EXPLICIT(Node * Na, Node * Nb)
-{
-    return (Na->Id <
-            Nb->Id ? Nb->C[Na->Id] : Na->C[Nb->Id]) + Na->Pi + Nb->Pi;
 }
 
 int D(Node * Na, Node * Nb)
