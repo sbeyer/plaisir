@@ -304,6 +304,7 @@ static void ResetParameters()
     /* Reset former static local variables */
     sl_Gain23_s1 = 0;
     sl_Gain23_OldReversed = 0;
+    sl_NearestNeighbor_mark = 0;
 }
 
 static void AdjustParameters()

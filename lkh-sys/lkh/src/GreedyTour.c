@@ -254,7 +254,6 @@ GainType GreedyTour()
 
 static Node *NearestNeighbor(Node * From)
 {
-    static int mark = 0;
     Candidate *NN;
     Node *To, *N, *First = 0, *Last = 0, *Nearest = 0;
     int MaxLevel = Dimension, Min = INT_MAX, d;
@@ -268,9 +267,9 @@ static Node *NearestNeighbor(Node * From)
         }
     }
     From->Level = 0;
-    if (++mark == 0)
-        mark = 1;
-    From->Mark = mark;
+    if (++sl_NearestNeighbor_mark == 0)
+        sl_NearestNeighbor_mark = 1;
+    From->Mark = sl_NearestNeighbor_mark;
     /* Insert From into an empty queue */
     First = Last = From;
     From->OldSuc = 0;
@@ -282,8 +281,8 @@ static Node *NearestNeighbor(Node * From)
         else
             First = N->OldSuc;
         for (NN = N->CandidateSet; (To = NN->To); NN++) {
-            if (To->Mark != mark) {
-                To->Mark = mark;
+            if (To->Mark != sl_NearestNeighbor_mark) {
+                To->Mark = sl_NearestNeighbor_mark;
                 To->Level = N->Level + 1;
                 if (MayBeAddedToFragments(From, To) &&
                     (N == From ? (d = NN->Cost) < Min :

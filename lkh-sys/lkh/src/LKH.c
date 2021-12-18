@@ -168,3 +168,4 @@ Node **Map2Node;
 
 Node *sl_Gain23_s1;
 short sl_Gain23_OldReversed;
+int sl_NearestNeighbor_mark;

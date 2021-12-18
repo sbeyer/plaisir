@@ -282,6 +282,7 @@ extern MergeTourFunction MergeWithTour;
 
 extern Node *sl_Gain23_s1;
 extern short sl_Gain23_OldReversed;
+extern int sl_NearestNeighbor_mark;
 
 /* Function prototypes: */
 
