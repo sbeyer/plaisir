@@ -341,9 +341,15 @@ impl fmt::Display for Solution {
     }
 }
 
+enum SolverState {
+    StartHeuristic,
+    Normal,
+}
+
 struct SolverData<'a> {
     problem: &'a Problem,
     vars: Variables<'a>,
+    state: SolverState,
     varnames: Vec<String>,
     start_time: time::Instant,
     cpu: String,
@@ -366,6 +372,7 @@ impl<'a> SolverData<'a> {
         SolverData {
             problem,
             vars,
+            state: SolverState::StartHeuristic,
             varnames,
             start_time,
             cpu,
@@ -468,14 +475,30 @@ impl<'a> SolverData<'a> {
     }
 
     fn find_next_site(&self, solution: &[f64], t: usize, v: usize, i: usize) -> Option<usize> {
-        for j in (i + 1)..=self.problem.num_customers {
-            let var_deliver = self.vars.deliver_index(t, v, j);
-            if solution[var_deliver] > 0.5 {
-                return Some(j);
+        match self.state {
+            SolverState::StartHeuristic => {
+                // Simply find the next customer with a delivery
+                for j in (i + 1)..=self.problem.num_customers {
+                    let var_deliver = self.vars.deliver_index(t, v, j);
+                    if solution[var_deliver] > 0.5 {
+                        return Some(j);
+                    }
+                }
+                None
+            }
+            SolverState::Normal => {
+                // Find the next site by route variables
+                for j in 0..=self.problem.num_customers {
+                    if i != j {
+                        let var_route = self.vars.route_index(t, v, i, j);
+                        if solution[var_route] > 0.5 {
+                            return Some(j);
+                        }
+                    }
+                }
+                None
             }
         }
-
-        None
     }
 
     fn get_delivery_amount(&self, solution: &[f64], t: usize, v: usize, target: usize) -> usize {
@@ -518,31 +541,38 @@ impl<'a> SolverData<'a> {
                     i = j
                 }
 
-                let tsp_instance: Vec<(usize, f64, f64)> = initial_route
-                    .iter()
-                    .map(|delivery| self.problem.id_with_coords(delivery.customer))
-                    .collect();
-                // println!("TSP INSTANCE: {:?}", tsp_instance);
-                let mut tsp_tour = lkh::run(&tsp_instance);
-                // println!("Resulting tour:");
-                // for site in tsp_tour.iter() {
-                //     println!(" * {}", site);
-                // }
+                match self.state {
+                    SolverState::StartHeuristic => {
+                        let tsp_instance: Vec<(usize, f64, f64)> = initial_route
+                            .iter()
+                            .map(|delivery| self.problem.id_with_coords(delivery.customer))
+                            .collect();
+                        // println!("TSP INSTANCE: {:?}", tsp_instance);
+                        let mut tsp_tour = lkh::run(&tsp_instance);
+                        // println!("Resulting tour:");
+                        // for site in tsp_tour.iter() {
+                        //     println!(" * {}", site);
+                        // }
 
-                let depot_position = tsp_tour
-                    .iter()
-                    .position(|site| *site == 0)
-                    .expect("Depot is expected to be in TSP tour");
-                tsp_tour.rotate_left(depot_position);
-                let heuristic_route = tsp_tour
-                    .iter()
-                    .map(|site| Delivery {
-                        quantity: self.get_delivery_amount(solution, t, v, *site),
-                        customer: *site,
-                    })
-                    .collect();
+                        let depot_position = tsp_tour
+                            .iter()
+                            .position(|site| *site == 0)
+                            .expect("Depot is expected to be in TSP tour");
+                        tsp_tour.rotate_left(depot_position);
+                        let heuristic_route = tsp_tour
+                            .iter()
+                            .map(|site| Delivery {
+                                quantity: self.get_delivery_amount(solution, t, v, *site),
+                                customer: *site,
+                            })
+                            .collect();
 
-                routes[t].push(heuristic_route);
+                        routes[t].push(heuristic_route);
+                    }
+                    SolverState::Normal => {
+                        routes[t].push(initial_route);
+                    }
+                }
             }
         }
 
@@ -762,6 +792,8 @@ impl Solver {
         let solution = Solution::new(problem, routes, data.elapsed_time(), data.cpu.clone());
         eprintln!("# Start heuristic solution");
         eprintln!("{}", solution);
+
+        data.state = SolverState::Normal;
 
         // Populate route costs
         for t in 0..problem.num_days {
