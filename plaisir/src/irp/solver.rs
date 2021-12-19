@@ -804,8 +804,15 @@ impl Solver {
                             let var_route = data.vars.route(t, v, i, j);
                             let coeff = problem.distance(i, j).into();
                             lp.set_obj_attr(grb::attr::Obj, &var_route, coeff)?;
+                            lp.set_obj_attr(grb::attr::Start, &var_route, 0.0)?;
                         }
                     }
+                }
+                for deliveries in solution.routes[t][v].windows(2) {
+                    let var_route =
+                        data.vars
+                            .route(t, v, deliveries[0].customer, deliveries[1].customer);
+                    lp.set_obj_attr(grb::attr::Start, &var_route, 1.0)?;
                 }
             }
         }
