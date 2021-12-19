@@ -623,7 +623,7 @@ impl Solver {
 
         lp.set_objective(0, gurobi::ModelSense::Minimize)?;
 
-        let data = SolverData::new(problem, &mut lp, cpu);
+        let mut data = SolverData::new(problem, &mut lp, cpu);
 
         // route in-degree constraints
         for t in 0..problem.num_days {
@@ -754,10 +754,33 @@ impl Solver {
         }
 
         //lp.write("/tmp/foo.lp")?;
+        // Get start solution
         lp.optimize()?;
-
         Self::print_raw_solution(&data, &lp)?;
+        let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
+        let routes = data.get_routes(&assignment);
+        let solution = Solution::new(problem, routes, data.elapsed_time(), data.cpu.clone());
+        eprintln!("# Start heuristic solution");
+        eprintln!("{}", solution);
 
+        // Populate route costs
+        for t in 0..problem.num_days {
+            for v in 0..problem.num_vehicles {
+                for i in 0..=problem.num_customers {
+                    for j in 0..=problem.num_customers {
+                        if i != j {
+                            let var_route = data.vars.route(t, v, i, j);
+                            let coeff = problem.distance(i, j).into();
+                            lp.set_obj_attr(grb::attr::Obj, &var_route, coeff)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Get final solution
+        lp.optimize_with_callback(&mut data)?;
+        Self::print_raw_solution(&data, &lp)?;
         let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
         let routes = data.get_routes(&assignment);
         let solution = Solution::new(problem, routes, data.elapsed_time(), data.cpu);
