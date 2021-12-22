@@ -5,6 +5,7 @@ use std::time;
 extern crate partitions;
 
 const PRINT_VARIABLE_VALUES: bool = false;
+const PRINT_ELIMINATED_SUBTOURS: bool = false;
 
 struct Variables<'a> {
     problem: &'a Problem,
@@ -433,7 +434,7 @@ impl<'a> SolverData<'a> {
             }
         }
 
-        if false {
+        if PRINT_ELIMINATED_SUBTOURS {
             for set in sets.iter() {
                 eprintln!("# Add node set for all days and vehicles:");
                 for i in set.iter() {
