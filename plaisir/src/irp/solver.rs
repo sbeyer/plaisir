@@ -4,6 +4,8 @@ use std::time;
 
 extern crate partitions;
 
+const PRINT_VARIABLE_VALUES: bool = false;
+
 struct Variables<'a> {
     problem: &'a Problem,
     variables: Vec<gurobi::Var>,
@@ -386,11 +388,13 @@ impl<'a> SolverData<'a> {
     {
         let mut added = false;
 
-        self.varnames
-            .iter()
-            .zip(assignment.iter())
-            .filter(|(_, &value)| value > Self::EPSILON)
-            .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+        if PRINT_VARIABLE_VALUES {
+            self.varnames
+                .iter()
+                .zip(assignment.iter())
+                .filter(|(_, &value)| value > Self::EPSILON)
+                .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+        }
 
         // collect node sets of connected components for every day and every vehicle
         let mut sets: Vec<Vec<usize>> = Vec::new();
@@ -836,12 +840,13 @@ impl Solver {
         let objective = lp.get_attr(gurobi::attr::ObjVal)?;
         eprintln!("# MIP solution value: {}", objective);
 
-        // print raw solution:
-        for var in data.vars.variables.iter() {
-            let name = lp.get_obj_attr(grb::attr::VarName, var)?;
-            let value = lp.get_obj_attr(grb::attr::X, var)?;
-            if value > SolverData::EPSILON {
-                eprintln!("#   - {}: {}", name, value);
+        if PRINT_VARIABLE_VALUES {
+            for var in data.vars.variables.iter() {
+                let name = lp.get_obj_attr(grb::attr::VarName, var)?;
+                let value = lp.get_obj_attr(grb::attr::X, var)?;
+                if value > SolverData::EPSILON {
+                    eprintln!("#   - {}: {}", name, value);
+                }
             }
         }
 
