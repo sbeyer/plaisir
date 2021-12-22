@@ -47,7 +47,7 @@ impl<'a> Variables<'a> {
                     for j in 0..=problem.num_customers {
                         if i != j {
                             let name = format!("r_{}_{}_{}_{}", t, v, i, j);
-                            let coeff = 0.0;
+                            let coeff = problem.distance(i, j).into();
                             let bounds = (0.0, 1.0);
                             //let var = grb::add_binvar!(lp, name: &name, obj: coeff).unwrap();
                             let var = lp
@@ -344,15 +344,9 @@ impl fmt::Display for Solution {
     }
 }
 
-enum SolverState {
-    StartHeuristic,
-    Normal,
-}
-
 struct SolverData<'a> {
     problem: &'a Problem,
     vars: Variables<'a>,
-    state: SolverState,
     varnames: Vec<String>,
     start_time: time::Instant,
     cpu: String,
@@ -375,7 +369,6 @@ impl<'a> SolverData<'a> {
         SolverData {
             problem,
             vars,
-            state: SolverState::StartHeuristic,
             varnames,
             start_time,
             cpu,
@@ -479,30 +472,34 @@ impl<'a> SolverData<'a> {
         self.start_time.elapsed()
     }
 
-    fn find_next_site(&self, solution: &[f64], t: usize, v: usize, i: usize) -> Option<usize> {
-        match self.state {
-            SolverState::StartHeuristic => {
-                // Simply find the next customer with a delivery
-                for j in (i + 1)..=self.problem.num_customers {
-                    let var_deliver = self.vars.deliver_index(t, v, j);
-                    if solution[var_deliver] > 0.5 {
+    fn find_next_site(
+        &self,
+        solution: &[f64],
+        t: usize,
+        v: usize,
+        i: usize,
+        use_route_heuristic: bool,
+    ) -> Option<usize> {
+        if use_route_heuristic {
+            // Simply find the next customer with a delivery
+            for j in (i + 1)..=self.problem.num_customers {
+                let var_deliver = self.vars.deliver_index(t, v, j);
+                if solution[var_deliver] > 0.5 {
+                    return Some(j);
+                }
+            }
+            None
+        } else {
+            // Find the next site by route variables
+            for j in 0..=self.problem.num_customers {
+                if i != j {
+                    let var_route = self.vars.route_index(t, v, i, j);
+                    if solution[var_route] > 0.5 {
                         return Some(j);
                     }
                 }
-                None
             }
-            SolverState::Normal => {
-                // Find the next site by route variables
-                for j in 0..=self.problem.num_customers {
-                    if i != j {
-                        let var_route = self.vars.route_index(t, v, i, j);
-                        if solution[var_route] > 0.5 {
-                            return Some(j);
-                        }
-                    }
-                }
-                None
-            }
+            None
         }
     }
 
@@ -515,7 +512,7 @@ impl<'a> SolverData<'a> {
         }
     }
 
-    fn get_routes(&self, solution: &[f64]) -> Routes {
+    fn get_routes(&self, solution: &[f64], use_route_heuristic: bool) -> Routes {
         let mut routes = Vec::with_capacity(self.problem.num_days);
 
         for t in 0..self.problem.num_days {
@@ -528,7 +525,7 @@ impl<'a> SolverData<'a> {
                 }];
 
                 let mut i = 0; // last visited site
-                while let Some(j) = self.find_next_site(solution, t, v, i) {
+                while let Some(j) = self.find_next_site(solution, t, v, i, use_route_heuristic) {
                     if j == 0 {
                         break;
                     }
@@ -546,37 +543,29 @@ impl<'a> SolverData<'a> {
                     i = j
                 }
 
-                match self.state {
-                    SolverState::StartHeuristic => {
-                        let tsp_instance: Vec<(usize, f64, f64)> = initial_route
-                            .iter()
-                            .map(|delivery| self.problem.id_with_coords(delivery.customer))
-                            .collect();
-                        // println!("TSP INSTANCE: {:?}", tsp_instance);
-                        let mut tsp_tour = lkh::run(&tsp_instance);
-                        // println!("Resulting tour:");
-                        // for site in tsp_tour.iter() {
-                        //     println!(" * {}", site);
-                        // }
+                if use_route_heuristic {
+                    let tsp_instance: Vec<(usize, f64, f64)> = initial_route
+                        .iter()
+                        .map(|delivery| self.problem.id_with_coords(delivery.customer))
+                        .collect();
+                    let mut tsp_tour = lkh::run(&tsp_instance);
 
-                        let depot_position = tsp_tour
-                            .iter()
-                            .position(|site| *site == 0)
-                            .expect("Depot is expected to be in TSP tour");
-                        tsp_tour.rotate_left(depot_position);
-                        let heuristic_route = tsp_tour
-                            .iter()
-                            .map(|site| Delivery {
-                                quantity: self.get_delivery_amount(solution, t, v, *site),
-                                customer: *site,
-                            })
-                            .collect();
+                    let depot_position = tsp_tour
+                        .iter()
+                        .position(|site| *site == 0)
+                        .expect("Depot is expected to be in TSP tour");
+                    tsp_tour.rotate_left(depot_position);
+                    let heuristic_route = tsp_tour
+                        .iter()
+                        .map(|site| Delivery {
+                            quantity: self.get_delivery_amount(solution, t, v, *site),
+                            customer: *site,
+                        })
+                        .collect();
 
-                        routes[t].push(heuristic_route);
-                    }
-                    SolverState::Normal => {
-                        routes[t].push(initial_route);
-                    }
+                    routes[t].push(heuristic_route);
+                } else {
+                    routes[t].push(initial_route);
                 }
             }
         }
@@ -595,11 +584,19 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                 eprintln!("#    current obj: {}", ctx.obj()?);
                 eprintln!("#       best obj: {}", ctx.obj_best()?);
 
+                {
+                    let routes = self.get_routes(&assignment, true);
+                    let solution =
+                        Solution::new(self.problem, routes, self.elapsed_time(), self.cpu.clone());
+
+                    eprintln!("{}", solution);
+                }
+
                 let new_subtour_constraints =
                     self.integral_subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
 
                 if !new_subtour_constraints {
-                    let routes = self.get_routes(&assignment);
+                    let routes = self.get_routes(&assignment, false);
                     let solution =
                         Solution::new(self.problem, routes, self.elapsed_time(), self.cpu.clone());
 
@@ -788,45 +785,10 @@ impl Solver {
             }
         }
 
-        //lp.write("/tmp/foo.lp")?;
-        // Get start solution
-        lp.optimize()?;
-        Self::print_raw_solution(&data, &lp)?;
-        let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
-        let routes = data.get_routes(&assignment);
-        let solution = Solution::new(problem, routes, data.elapsed_time(), data.cpu.clone());
-        eprintln!("# Start heuristic solution");
-        eprintln!("{}", solution);
-
-        data.state = SolverState::Normal;
-
-        // Populate route costs
-        for t in 0..problem.num_days {
-            for v in 0..problem.num_vehicles {
-                for i in 0..=problem.num_customers {
-                    for j in 0..=problem.num_customers {
-                        if i != j {
-                            let var_route = data.vars.route(t, v, i, j);
-                            let coeff = problem.distance(i, j).into();
-                            lp.set_obj_attr(grb::attr::Obj, &var_route, coeff)?;
-                            lp.set_obj_attr(grb::attr::Start, &var_route, 0.0)?;
-                        }
-                    }
-                }
-                for deliveries in solution.routes[t][v].windows(2) {
-                    let var_route =
-                        data.vars
-                            .route(t, v, deliveries[0].customer, deliveries[1].customer);
-                    lp.set_obj_attr(grb::attr::Start, &var_route, 1.0)?;
-                }
-            }
-        }
-
-        // Get final solution
         lp.optimize_with_callback(&mut data)?;
         Self::print_raw_solution(&data, &lp)?;
         let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
-        let routes = data.get_routes(&assignment);
+        let routes = data.get_routes(&assignment, false);
         let solution = Solution::new(problem, routes, data.elapsed_time(), data.cpu);
         eprintln!("# Final solution");
         eprintln!("{}", solution);
