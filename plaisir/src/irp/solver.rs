@@ -472,35 +472,32 @@ impl<'a> SolverData<'a> {
         self.start_time.elapsed()
     }
 
-    fn find_next_site(
+    fn find_next_site_in_route(
         &self,
         solution: &[f64],
         t: usize,
         v: usize,
         i: usize,
-        use_route_heuristic: bool,
     ) -> Option<usize> {
-        if use_route_heuristic {
-            // Simply find the next customer with a delivery
-            for j in (i + 1)..=self.problem.num_customers {
-                let var_deliver = self.vars.deliver_index(t, v, j);
-                if solution[var_deliver] > 0.5 {
+        // Find the next site by route variables
+        for j in 0..=self.problem.num_customers {
+            if i != j {
+                let var_route = self.vars.route_index(t, v, i, j);
+                if solution[var_route] > 0.5 {
                     return Some(j);
                 }
             }
-            None
-        } else {
-            // Find the next site by route variables
-            for j in 0..=self.problem.num_customers {
-                if i != j {
-                    let var_route = self.vars.route_index(t, v, i, j);
-                    if solution[var_route] > 0.5 {
-                        return Some(j);
-                    }
-                }
-            }
-            None
         }
+        None
+    }
+
+    fn get_visited_customers(&self, solution: &[f64], t: usize, v: usize) -> Vec<usize> {
+        (1..=self.problem.num_customers)
+            .filter(|i| {
+                let var_deliver = self.vars.deliver_index(t, v, *i);
+                solution[var_deliver] > 0.5
+            })
+            .collect()
     }
 
     fn get_delivery_amount(&self, solution: &[f64], t: usize, v: usize, target: usize) -> usize {
@@ -519,34 +516,13 @@ impl<'a> SolverData<'a> {
             routes.push(Vec::new());
 
             for v in 0..self.problem.num_vehicles {
-                let mut initial_route = vec![Delivery {
-                    quantity: 0,
-                    customer: 0,
-                }];
-
-                let mut i = 0; // last visited site
-                while let Some(j) = self.find_next_site(solution, t, v, i, use_route_heuristic) {
-                    if j == 0 {
-                        break;
-                    }
-
-                    let quantity = self.get_delivery_amount(solution, t, v, j);
-                    if quantity > 0 {
-                        initial_route.push(Delivery {
-                            quantity,
-                            customer: j,
-                        });
-                    }
-                    // note that results may deviate from intermediate MIP results
-                    // because of the "if"
-
-                    i = j
-                }
-
                 if use_route_heuristic {
-                    let tsp_instance: Vec<(usize, f64, f64)> = initial_route
+                    let mut visited_sites = self.get_visited_customers(solution, t, v);
+                    visited_sites.push(0); // add depot
+
+                    let tsp_instance: Vec<(usize, f64, f64)> = visited_sites
                         .iter()
-                        .map(|delivery| self.problem.id_with_coords(delivery.customer))
+                        .map(|site| self.problem.id_with_coords(*site))
                         .collect();
                     let mut tsp_tour = lkh::run(&tsp_instance);
 
@@ -555,6 +531,7 @@ impl<'a> SolverData<'a> {
                         .position(|site| *site == 0)
                         .expect("Depot is expected to be in TSP tour");
                     tsp_tour.rotate_left(depot_position);
+
                     let heuristic_route = tsp_tour
                         .iter()
                         .map(|site| Delivery {
@@ -565,7 +542,31 @@ impl<'a> SolverData<'a> {
 
                     routes[t].push(heuristic_route);
                 } else {
-                    routes[t].push(initial_route);
+                    let mut route = vec![Delivery {
+                        quantity: 0,
+                        customer: 0,
+                    }];
+
+                    let mut i = 0; // last visited site
+                    while let Some(j) = self.find_next_site_in_route(solution, t, v, i) {
+                        if j == 0 {
+                            break;
+                        }
+
+                        let quantity = self.get_delivery_amount(solution, t, v, j);
+                        if quantity > 0 {
+                            route.push(Delivery {
+                                quantity,
+                                customer: j,
+                            });
+                        }
+                        // note that results may deviate from intermediate MIP results
+                        // because of the "if"
+
+                        i = j
+                    }
+
+                    routes[t].push(route);
                 }
             }
         }
