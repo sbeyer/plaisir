@@ -614,6 +614,19 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     );
                     eprintln!("#       best objective: {}", ctx.obj_best()?);
                     eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
+
+                    {
+                        let assignment = ctx.get_solution(&self.vars.variables)?;
+                        let routes = self.get_routes(&assignment, true);
+                        let solution = Solution::new(
+                            self.problem,
+                            routes,
+                            self.elapsed_time(),
+                            self.cpu.clone(),
+                        );
+
+                        eprintln!("{}", solution);
+                    }
                 }
             }
             _ => (),
