@@ -123,13 +123,35 @@ impl<'a> Variables<'a> {
             vars.inventory_range.1 - vars.inventory_range.0
         );
 
+        // For the deliver variables, we use an "epsilon heuristic" to ensure
+        // that the variables' values are integral.
+        // We compute epsilon and its fixed per-iteration change value delta
+        // beforehand such that these values will not interfere with the
+        // overall solution value.
+        let eps_amount = (problem.num_days * problem.num_vehicles * problem.num_customers) as f64;
+        // We want that the sum for i = 1..eps_amount of
+        //   problem.capacity * (epsilon + i * delta)
+        // is less than 0.001.
+        // Let's assume that i * delta <= (q - 1) epsilon for some reasonable q > 1.
+        let eps_q = 1.1;
+        // Then
+        //   sum_i=1..eps_amount (problem.capacity * q epsilon) < 0.001
+        //      q problem.capacity sum_i=1..eps_amount epsilon  < 0.001
+        //      q problem.capacity          eps_amount epsilon  < 0.001
+        let mut epsilon = 0.001 / eps_q / problem.capacity as f64 / eps_amount;
+        // To ensure our assumption for delta, we observe that
+        //   eps_amount * delta < (q - 1) epsilon
+        // implies that assumption.
+        let delta = (eps_q - 1.0) * epsilon / eps_amount;
+
         // deliver variables
         vars.deliver_range.0 = vars.inventory_range.1;
         for t in 0..problem.num_days {
             for v in 0..problem.num_vehicles {
                 for i in 1..=problem.num_customers {
                     let name = format!("d_{}_{}_{}", t, v, i);
-                    let coeff = 0.0;
+                    let coeff = epsilon;
+                    epsilon += delta;
                     let bounds = (0.0, problem.capacity.into());
                     let var = lp
                         .add_var(
