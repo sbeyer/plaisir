@@ -646,7 +646,11 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     eprintln!("#       best objective: {}", ctx.obj_best()?);
                     eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
 
-                    {
+                    // The following code is disabled because it produces wrong solutions:
+                    // In a relaxation it can happen that we visit the same customers on the
+                    // same day via different routes. It seems we need a further heuristic
+                    // to fix that.
+                    if false {
                         let assignment = ctx.get_solution(&self.vars.variables)?;
                         let routes = self.get_routes(&assignment, true);
                         let solution = Solution::new(
