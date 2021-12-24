@@ -608,6 +608,14 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                 eprintln!("#       best obj: {}", ctx.obj_best()?);
 
                 {
+                    if PRINT_VARIABLE_VALUES {
+                        self.varnames
+                            .iter()
+                            .zip(assignment.iter())
+                            .filter(|(_, &value)| value > Self::EPSILON)
+                            .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+                    }
+
                     let routes = self.get_routes(&assignment, true);
                     let solution =
                         Solution::new(self.problem, routes, self.elapsed_time(), self.cpu.clone());
