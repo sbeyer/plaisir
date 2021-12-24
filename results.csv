@@ -489,7 +489,7 @@ S_abs2n35_3_L3,4562.7,bdc7935,115.945,False
 S_abs2n35_3_L6,inf,bdc7935,inf,False
 S_abs2n35_4_H3,12406.02,bdc7935,56.002,False
 S_abs2n35_4_H6,inf,bdc7935,inf,False
-S_abs2n35_4_L3,5212.41,41c1c84,95.648,False
+S_abs2n35_4_L3,4924.99,249ba28,86.076,False
 S_abs2n35_4_L6,inf,bdc7935,inf,False
 S_abs2n35_5_H3,inf,bdc7935,inf,False
 S_abs2n35_5_H6,inf,bdc7935,inf,False
@@ -769,7 +769,7 @@ S_abs4n20_5_L3,7595.99,bdc7935,17.826,False
 S_abs4n20_5_L6,inf,bdc7935,inf,False
 S_abs4n25_2_H3,7159.82,bdc7935,45.011,True
 S_abs4n25_2_H6,inf,bdc7935,inf,False
-S_abs4n25_2_L3,3099.7,41c1c84,39.125,True
+S_abs4n25_2_L3,3099.7,249ba28,3.735,True
 S_abs4n25_2_L6,7904.3,bdc7935,82.912,False
 S_abs4n25_3_H3,7834.16,bdc7935,43.108,False
 S_abs4n25_3_H6,inf,bdc7935,inf,False
