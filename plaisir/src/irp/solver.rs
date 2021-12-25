@@ -272,6 +272,18 @@ struct Solution {
 }
 
 impl Solution {
+    fn empty() -> Self {
+        Self {
+            routes: Vec::new(),
+            cost_transportation: f64::INFINITY,
+            cost_inventory_depot: f64::INFINITY,
+            cost_inventory_customers: f64::INFINITY,
+            cost_total: f64::INFINITY,
+            processor: String::new(),
+            time: time::Duration::default(),
+        }
+    }
+
     fn new(problem: &Problem, routes: Routes, time: time::Duration, cpu: String) -> Self {
         let mut sol = Solution {
             routes,
@@ -373,6 +385,7 @@ struct SolverData<'a> {
     start_time: time::Instant,
     cpu: String,
     ncalls: usize,
+    best_solution: Solution,
 }
 
 impl<'a> SolverData<'a> {
@@ -388,6 +401,8 @@ impl<'a> SolverData<'a> {
             .map(|var| lp.get_obj_attr(grb::attr::VarName, var).unwrap())
             .collect();
 
+        let best_solution = Solution::empty();
+
         SolverData {
             problem,
             vars,
@@ -395,6 +410,7 @@ impl<'a> SolverData<'a> {
             start_time,
             cpu,
             ncalls: 0,
+            best_solution,
         }
     }
 
@@ -621,6 +637,10 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         Solution::new(self.problem, routes, self.elapsed_time(), self.cpu.clone());
 
                     eprintln!("{}", solution);
+
+                    if solution.cost_total < self.best_solution.cost_total {
+                        self.best_solution = solution
+                    }
                 }
 
                 let new_subtour_constraints =
@@ -643,7 +663,8 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         ctx.node_cnt()?,
                         status
                     );
-                    eprintln!("#       best objective: {}", ctx.obj_best()?);
+                    let best_objective = ctx.obj_best()?;
+                    eprintln!("#       best objective: {}", best_objective);
                     eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
 
                     // The following code is disabled because it produces wrong solutions:
@@ -661,6 +682,52 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         );
 
                         eprintln!("{}", solution);
+                    }
+
+                    if self.best_solution.cost_total < best_objective {
+                        let mut solution_assignment = vec![0.0; self.vars.variables.len()];
+                        for t in 0..self.problem.num_days {
+                            for v in 0..self.problem.num_vehicles {
+                                let route = &self.best_solution.routes[t][v];
+                                if route.len() > 1 {
+                                    for delivery in route.iter() {
+                                        let i = delivery.customer;
+                                        let visit_index = self.vars.visit_index(t, v, i);
+                                        solution_assignment[visit_index] = 1.0;
+                                        if i > 0 {
+                                            let deliver_index = self.vars.deliver_index(t, v, i);
+                                            solution_assignment[deliver_index] =
+                                                delivery.quantity as f64;
+                                        }
+                                    }
+                                    for deliveries in route.windows(2) {
+                                        let i = deliveries[0].customer;
+                                        let j = deliveries[1].customer;
+                                        let index = self.vars.route_index(t, v, i, j);
+                                        solution_assignment[index] = 1.0;
+                                    }
+                                    // Routes in our solutions do not end at the depot, but we want to
+                                    // go back to the depot at the end in the MIP solution.
+                                    {
+                                        let i = route[route.len() - 1].customer;
+                                        let j = 0;
+                                        let index = self.vars.route_index(t, v, i, j);
+                                        solution_assignment[index] = 1.0;
+                                    }
+                                }
+                            }
+                        }
+
+                        // We could use self.vars.variables.iter().zip(solution_assignment) if we
+                        // set the inventory variables... but we don't, so we have to set a subset:
+                        let set_input = (self.vars.route_range.0..self.vars.visit_range.1)
+                            .map(|i| (self.vars.variables[i], solution_assignment[i]));
+                        let set_result = ctx.set_solution(set_input)?;
+                        if let Some(value) = set_result {
+                            eprintln!("# New solution with value {} set successfully", value);
+                        } else {
+                            eprintln!("# No new solution set");
+                        }
                     }
                 }
             }
