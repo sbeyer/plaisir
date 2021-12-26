@@ -736,7 +736,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         eprintln!("{}", solution);
                     }
 
-                    if self.best_solution.cost_total < best_objective {
+                    if self.best_solution.cost_total < best_objective - 0.001 {
                         let best_solution_assignment = self.get_best_solution_variable_assignment();
                         let set_result = ctx.set_solution(
                             self.vars.variables.iter().zip(best_solution_assignment),
