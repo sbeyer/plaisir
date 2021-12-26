@@ -506,6 +506,58 @@ impl<'a> SolverData<'a> {
         Ok(added)
     }
 
+    fn get_best_solution_variable_assignment(&self) -> Vec<f64> {
+        // Inventory levels, necessary for inventory variables
+        let mut levels = (0..=self.problem.num_customers)
+            .map(|i| self.problem.start_level(i) as isize)
+            .collect::<Vec<_>>();
+
+        let mut assignment = vec![0.0; self.vars.variables.len()];
+        for t in 0..self.problem.num_days {
+            for v in 0..self.problem.num_vehicles {
+                let route = &self.best_solution.routes[t][v];
+                if route.len() > 1 {
+                    for delivery in route.iter() {
+                        let i = delivery.customer;
+                        let visit_index = self.vars.visit_index(t, v, i);
+                        assignment[visit_index] = 1.0;
+                        if i > 0 {
+                            let deliver_index = self.vars.deliver_index(t, v, i);
+                            assignment[deliver_index] = delivery.quantity as f64;
+
+                            levels[0] -= delivery.quantity as isize;
+                            levels[i] += delivery.quantity as isize;
+                        }
+                    }
+                    for deliveries in route.windows(2) {
+                        let i = deliveries[0].customer;
+                        let j = deliveries[1].customer;
+                        let index = self.vars.route_index(t, v, i, j);
+                        assignment[index] = 1.0;
+                    }
+                    // Routes in our solutions do not end at the depot, but we want to
+                    // go back to the depot at the end in the MIP solution.
+                    {
+                        let i = route[route.len() - 1].customer;
+                        let j = 0;
+                        let index = self.vars.route_index(t, v, i, j);
+                        assignment[index] = 1.0;
+                    }
+                }
+            }
+
+            // Set inventory variable values
+            #[allow(clippy::needless_range_loop)]
+            for i in 0..=self.problem.num_customers {
+                levels[i] += self.problem.daily_level_change(i) as isize;
+                let index = self.vars.inventory_index(t, i);
+                assignment[index] = levels[i] as f64;
+            }
+        }
+
+        assignment
+    }
+
     fn elapsed_time(&self) -> time::Duration {
         self.start_time.elapsed()
     }
@@ -685,44 +737,10 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     }
 
                     if self.best_solution.cost_total < best_objective {
-                        let mut solution_assignment = vec![0.0; self.vars.variables.len()];
-                        for t in 0..self.problem.num_days {
-                            for v in 0..self.problem.num_vehicles {
-                                let route = &self.best_solution.routes[t][v];
-                                if route.len() > 1 {
-                                    for delivery in route.iter() {
-                                        let i = delivery.customer;
-                                        let visit_index = self.vars.visit_index(t, v, i);
-                                        solution_assignment[visit_index] = 1.0;
-                                        if i > 0 {
-                                            let deliver_index = self.vars.deliver_index(t, v, i);
-                                            solution_assignment[deliver_index] =
-                                                delivery.quantity as f64;
-                                        }
-                                    }
-                                    for deliveries in route.windows(2) {
-                                        let i = deliveries[0].customer;
-                                        let j = deliveries[1].customer;
-                                        let index = self.vars.route_index(t, v, i, j);
-                                        solution_assignment[index] = 1.0;
-                                    }
-                                    // Routes in our solutions do not end at the depot, but we want to
-                                    // go back to the depot at the end in the MIP solution.
-                                    {
-                                        let i = route[route.len() - 1].customer;
-                                        let j = 0;
-                                        let index = self.vars.route_index(t, v, i, j);
-                                        solution_assignment[index] = 1.0;
-                                    }
-                                }
-                            }
-                        }
-
-                        // We could use self.vars.variables.iter().zip(solution_assignment) if we
-                        // set the inventory variables... but we don't, so we have to set a subset:
-                        let set_input = (self.vars.route_range.0..self.vars.visit_range.1)
-                            .map(|i| (self.vars.variables[i], solution_assignment[i]));
-                        let set_result = ctx.set_solution(set_input)?;
+                        let best_solution_assignment = self.get_best_solution_variable_assignment();
+                        let set_result = ctx.set_solution(
+                            self.vars.variables.iter().zip(best_solution_assignment),
+                        )?;
                         if let Some(value) = set_result {
                             eprintln!("# New solution with value {} set successfully", value);
                         } else {
