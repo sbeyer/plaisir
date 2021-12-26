@@ -4,6 +4,9 @@ use std::time;
 
 extern crate partitions;
 
+const PRINT_VARIABLE_VALUES: bool = false;
+const PRINT_ELIMINATED_SUBTOURS: bool = false;
+
 struct Variables<'a> {
     problem: &'a Problem,
     variables: Vec<gurobi::Var>,
@@ -120,13 +123,35 @@ impl<'a> Variables<'a> {
             vars.inventory_range.1 - vars.inventory_range.0
         );
 
+        // For the deliver variables, we use an "epsilon heuristic" to ensure
+        // that the variables' values are integral.
+        // We compute epsilon and its fixed per-iteration change value delta
+        // beforehand such that these values will not interfere with the
+        // overall solution value.
+        let eps_amount = (problem.num_days * problem.num_vehicles * problem.num_customers) as f64;
+        // We want that the sum for i = 1..eps_amount of
+        //   problem.capacity * (epsilon + i * delta)
+        // is less than 0.001.
+        // Let's assume that i * delta <= (q - 1) epsilon for some reasonable q > 1.
+        let eps_q = 1.1;
+        // Then
+        //   sum_i=1..eps_amount (problem.capacity * q epsilon) < 0.001
+        //      q problem.capacity sum_i=1..eps_amount epsilon  < 0.001
+        //      q problem.capacity          eps_amount epsilon  < 0.001
+        let mut epsilon = 0.001 / eps_q / problem.capacity as f64 / eps_amount;
+        // To ensure our assumption for delta, we observe that
+        //   eps_amount * delta < (q - 1) epsilon
+        // implies that assumption.
+        let delta = (eps_q - 1.0) * epsilon / eps_amount;
+
         // deliver variables
         vars.deliver_range.0 = vars.inventory_range.1;
         for t in 0..problem.num_days {
             for v in 0..problem.num_vehicles {
                 for i in 1..=problem.num_customers {
                     let name = format!("d_{}_{}_{}", t, v, i);
-                    let coeff = 0.0;
+                    let coeff = epsilon;
+                    epsilon += delta;
                     let bounds = (0.0, problem.capacity.into());
                     let var = lp
                         .add_var(
@@ -247,6 +272,18 @@ struct Solution {
 }
 
 impl Solution {
+    fn empty() -> Self {
+        Self {
+            routes: Vec::new(),
+            cost_transportation: f64::INFINITY,
+            cost_inventory_depot: f64::INFINITY,
+            cost_inventory_customers: f64::INFINITY,
+            cost_total: f64::INFINITY,
+            processor: String::new(),
+            time: time::Duration::default(),
+        }
+    }
+
     fn new(problem: &Problem, routes: Routes, time: time::Duration, cpu: String) -> Self {
         let mut sol = Solution {
             routes,
@@ -348,6 +385,7 @@ struct SolverData<'a> {
     start_time: time::Instant,
     cpu: String,
     ncalls: usize,
+    best_solution: Solution,
 }
 
 impl<'a> SolverData<'a> {
@@ -363,6 +401,8 @@ impl<'a> SolverData<'a> {
             .map(|var| lp.get_obj_attr(grb::attr::VarName, var).unwrap())
             .collect();
 
+        let best_solution = Solution::empty();
+
         SolverData {
             problem,
             vars,
@@ -370,6 +410,7 @@ impl<'a> SolverData<'a> {
             start_time,
             cpu,
             ncalls: 0,
+            best_solution,
         }
     }
 
@@ -379,11 +420,13 @@ impl<'a> SolverData<'a> {
     {
         let mut added = false;
 
-        self.varnames
-            .iter()
-            .zip(assignment.iter())
-            .filter(|(_, &value)| value > Self::EPSILON)
-            .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+        if PRINT_VARIABLE_VALUES {
+            self.varnames
+                .iter()
+                .zip(assignment.iter())
+                .filter(|(_, &value)| value > Self::EPSILON)
+                .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+        }
 
         // collect node sets of connected components for every day and every vehicle
         let mut sets: Vec<Vec<usize>> = Vec::new();
@@ -422,7 +465,7 @@ impl<'a> SolverData<'a> {
             }
         }
 
-        if false {
+        if PRINT_ELIMINATED_SUBTOURS {
             for set in sets.iter() {
                 eprintln!("# Add node set for all days and vehicles:");
                 for i in set.iter() {
@@ -463,11 +506,70 @@ impl<'a> SolverData<'a> {
         Ok(added)
     }
 
+    fn get_best_solution_variable_assignment(&self) -> Vec<f64> {
+        // Inventory levels, necessary for inventory variables
+        let mut levels = (0..=self.problem.num_customers)
+            .map(|i| self.problem.start_level(i) as isize)
+            .collect::<Vec<_>>();
+
+        let mut assignment = vec![0.0; self.vars.variables.len()];
+        for t in 0..self.problem.num_days {
+            for v in 0..self.problem.num_vehicles {
+                let route = &self.best_solution.routes[t][v];
+                if route.len() > 1 {
+                    for delivery in route.iter() {
+                        let i = delivery.customer;
+                        let visit_index = self.vars.visit_index(t, v, i);
+                        assignment[visit_index] = 1.0;
+                        if i > 0 {
+                            let deliver_index = self.vars.deliver_index(t, v, i);
+                            assignment[deliver_index] = delivery.quantity as f64;
+
+                            levels[0] -= delivery.quantity as isize;
+                            levels[i] += delivery.quantity as isize;
+                        }
+                    }
+                    for deliveries in route.windows(2) {
+                        let i = deliveries[0].customer;
+                        let j = deliveries[1].customer;
+                        let index = self.vars.route_index(t, v, i, j);
+                        assignment[index] = 1.0;
+                    }
+                    // Routes in our solutions do not end at the depot, but we want to
+                    // go back to the depot at the end in the MIP solution.
+                    {
+                        let i = route[route.len() - 1].customer;
+                        let j = 0;
+                        let index = self.vars.route_index(t, v, i, j);
+                        assignment[index] = 1.0;
+                    }
+                }
+            }
+
+            // Set inventory variable values
+            #[allow(clippy::needless_range_loop)]
+            for i in 0..=self.problem.num_customers {
+                levels[i] += self.problem.daily_level_change(i) as isize;
+                let index = self.vars.inventory_index(t, i);
+                assignment[index] = levels[i] as f64;
+            }
+        }
+
+        assignment
+    }
+
     fn elapsed_time(&self) -> time::Duration {
         self.start_time.elapsed()
     }
 
-    fn find_next_site(&self, solution: &[f64], t: usize, v: usize, i: usize) -> Option<usize> {
+    fn find_next_site_in_route(
+        &self,
+        solution: &[f64],
+        t: usize,
+        v: usize,
+        i: usize,
+    ) -> Option<usize> {
+        // Find the next site by route variables
         for j in 0..=self.problem.num_customers {
             if i != j {
                 let var_route = self.vars.route_index(t, v, i, j);
@@ -476,44 +578,85 @@ impl<'a> SolverData<'a> {
                 }
             }
         }
-
         None
     }
 
-    fn get_delivery_amount(&self, solution: &[f64], t: usize, v: usize, target: usize) -> usize {
-        let var_deliver = self.vars.deliver_index(t, v, target);
-        solution[var_deliver].round() as usize
+    fn get_visited_customers(&self, solution: &[f64], t: usize, v: usize) -> Vec<usize> {
+        (1..=self.problem.num_customers)
+            .filter(|i| {
+                let var_deliver = self.vars.deliver_index(t, v, *i);
+                solution[var_deliver] > 0.5
+            })
+            .collect()
     }
 
-    fn get_routes(&self, solution: &[f64]) -> Routes {
+    fn get_delivery_amount(&self, solution: &[f64], t: usize, v: usize, target: usize) -> usize {
+        if target == 0 {
+            0
+        } else {
+            let var_deliver = self.vars.deliver_index(t, v, target);
+            solution[var_deliver].round() as usize
+        }
+    }
+
+    fn get_routes(&self, solution: &[f64], use_route_heuristic: bool) -> Routes {
         let mut routes = Vec::with_capacity(self.problem.num_days);
 
         for t in 0..self.problem.num_days {
             routes.push(Vec::new());
 
             for v in 0..self.problem.num_vehicles {
-                routes[t].push(vec![Delivery {
-                    quantity: 0,
-                    customer: 0,
-                }]);
+                if use_route_heuristic {
+                    let mut visited_sites = self.get_visited_customers(solution, t, v);
+                    visited_sites.push(0); // add depot
 
-                let mut i = 0; // last visited site
-                while let Some(j) = self.find_next_site(solution, t, v, i) {
-                    if j == 0 {
-                        break;
+                    let tsp_instance: Vec<(usize, f64, f64)> = visited_sites
+                        .iter()
+                        .map(|site| self.problem.id_with_coords(*site))
+                        .collect();
+                    let mut tsp_tour = lkh::run(&tsp_instance);
+
+                    let depot_position = tsp_tour
+                        .iter()
+                        .position(|site| *site == 0)
+                        .expect("Depot is expected to be in TSP tour");
+                    tsp_tour.rotate_left(depot_position);
+
+                    let heuristic_route = tsp_tour
+                        .iter()
+                        .map(|site| Delivery {
+                            quantity: self.get_delivery_amount(solution, t, v, *site),
+                            customer: *site,
+                        })
+                        .collect();
+
+                    routes[t].push(heuristic_route);
+                } else {
+                    let mut route = vec![Delivery {
+                        quantity: 0,
+                        customer: 0,
+                    }];
+
+                    let mut i = 0; // last visited site
+                    while let Some(j) = self.find_next_site_in_route(solution, t, v, i) {
+                        if j == 0 {
+                            break;
+                        }
+
+                        let quantity = self.get_delivery_amount(solution, t, v, j);
+                        if quantity > 0 {
+                            route.push(Delivery {
+                                quantity,
+                                customer: j,
+                            });
+                        }
+                        // note that results may deviate from intermediate MIP results
+                        // because of the "if"
+
+                        i = j
                     }
 
-                    let quantity = self.get_delivery_amount(solution, t, v, j);
-                    if quantity > 0 {
-                        routes[t][v].push(Delivery {
-                            quantity,
-                            customer: j,
-                        });
-                    }
-                    // note that results may deviate from intermediate MIP results
-                    // because of the "if"
-
-                    i = j
+                    routes[t].push(route);
                 }
             }
         }
@@ -532,11 +675,31 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                 eprintln!("#    current obj: {}", ctx.obj()?);
                 eprintln!("#       best obj: {}", ctx.obj_best()?);
 
+                {
+                    if PRINT_VARIABLE_VALUES {
+                        self.varnames
+                            .iter()
+                            .zip(assignment.iter())
+                            .filter(|(_, &value)| value > Self::EPSILON)
+                            .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+                    }
+
+                    let routes = self.get_routes(&assignment, true);
+                    let solution =
+                        Solution::new(self.problem, routes, self.elapsed_time(), self.cpu.clone());
+
+                    eprintln!("{}", solution);
+
+                    if solution.cost_total < self.best_solution.cost_total {
+                        self.best_solution = solution
+                    }
+                }
+
                 let new_subtour_constraints =
                     self.integral_subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
 
                 if !new_subtour_constraints {
-                    let routes = self.get_routes(&assignment);
+                    let routes = self.get_routes(&assignment, false);
                     let solution =
                         Solution::new(self.problem, routes, self.elapsed_time(), self.cpu.clone());
 
@@ -552,8 +715,38 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         ctx.node_cnt()?,
                         status
                     );
-                    eprintln!("#       best objective: {}", ctx.obj_best()?);
+                    let best_objective = ctx.obj_best()?;
+                    eprintln!("#       best objective: {}", best_objective);
                     eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
+
+                    // The following code is disabled because it produces wrong solutions:
+                    // In a relaxation it can happen that we visit the same customers on the
+                    // same day via different routes. It seems we need a further heuristic
+                    // to fix that.
+                    if false {
+                        let assignment = ctx.get_solution(&self.vars.variables)?;
+                        let routes = self.get_routes(&assignment, true);
+                        let solution = Solution::new(
+                            self.problem,
+                            routes,
+                            self.elapsed_time(),
+                            self.cpu.clone(),
+                        );
+
+                        eprintln!("{}", solution);
+                    }
+
+                    if self.best_solution.cost_total < best_objective - 0.001 {
+                        let best_solution_assignment = self.get_best_solution_variable_assignment();
+                        let set_result = ctx.set_solution(
+                            self.vars.variables.iter().zip(best_solution_assignment),
+                        )?;
+                        if let Some(value) = set_result {
+                            eprintln!("# New solution with value {} set successfully", value);
+                        } else {
+                            eprintln!("# No new solution set");
+                        }
+                    }
                 }
             }
             _ => (),
@@ -725,13 +918,10 @@ impl Solver {
             }
         }
 
-        //lp.write("/tmp/foo.lp")?;
         lp.optimize_with_callback(&mut data)?;
-
         Self::print_raw_solution(&data, &lp)?;
-
         let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
-        let routes = data.get_routes(&assignment);
+        let routes = data.get_routes(&assignment, false);
         let solution = Solution::new(problem, routes, data.elapsed_time(), data.cpu);
         eprintln!("# Final solution");
         eprintln!("{}", solution);
@@ -746,12 +936,13 @@ impl Solver {
         let objective = lp.get_attr(gurobi::attr::ObjVal)?;
         eprintln!("# MIP solution value: {}", objective);
 
-        // print raw solution:
-        for var in data.vars.variables.iter() {
-            let name = lp.get_obj_attr(grb::attr::VarName, var)?;
-            let value = lp.get_obj_attr(grb::attr::X, var)?;
-            if value > SolverData::EPSILON {
-                eprintln!("#   - {}: {}", name, value);
+        if PRINT_VARIABLE_VALUES {
+            for var in data.vars.variables.iter() {
+                let name = lp.get_obj_attr(grb::attr::VarName, var)?;
+                let value = lp.get_obj_attr(grb::attr::X, var)?;
+                if value > SolverData::EPSILON {
+                    eprintln!("#   - {}: {}", name, value);
+                }
             }
         }
 

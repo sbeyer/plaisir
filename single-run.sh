@@ -23,5 +23,5 @@ logfile="$resultdir/$(echo "$basename" | sed -e 's/^\(.*\)\.dat$/out_\1.log/')"
 resultfile="$resultdir/$(echo "$basename" | sed -e 's/^\(.*\)\.dat$/out_\1.txt/')"
 
 echo "Running $timeout seconds for input $filename and writing to $resultfile"
-timeout $timeout ./target/release/irp "$filename" 2>"$resultfile" >"$logfile"
+timeout $timeout ./target/release/plaisir "$filename" 2>"$resultfile" >"$logfile"
 echo "Finished $filename"
