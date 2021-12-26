@@ -284,14 +284,14 @@ impl Solution {
         }
     }
 
-    fn new(problem: &Problem, routes: Routes, time: time::Duration, cpu: String) -> Self {
+    fn new(problem: &Problem, routes: Routes, time: time::Duration, cpu: &str) -> Self {
         let mut sol = Solution {
             routes,
             cost_transportation: 0.,
             cost_inventory_depot: 0.,
             cost_inventory_customers: 0.,
             cost_total: 0.,
-            processor: cpu,
+            processor: cpu.to_string(),
             time,
         };
 
@@ -383,7 +383,7 @@ struct SolverData<'a> {
     vars: Variables<'a>,
     varnames: Vec<String>,
     start_time: time::Instant,
-    cpu: String,
+    cpu: &'a str,
     ncalls: usize,
     best_solution: Solution,
 }
@@ -391,7 +391,7 @@ struct SolverData<'a> {
 impl<'a> SolverData<'a> {
     const EPSILON: f64 = 1e-7;
 
-    fn new(problem: &'a Problem, lp: &mut gurobi::Model, cpu: String) -> Self {
+    fn new(problem: &'a Problem, lp: &mut gurobi::Model, cpu: &'a str) -> Self {
         let start_time = time::Instant::now();
         let vars = Variables::new(problem, lp);
         lp.update().unwrap(); // update to access variable names
@@ -686,7 +686,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
 
                     let routes = self.get_routes(&assignment, true);
                     let solution =
-                        Solution::new(self.problem, routes, self.elapsed_time(), self.cpu.clone());
+                        Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
 
                     eprintln!("{}", solution);
 
@@ -701,7 +701,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                 if !new_subtour_constraints {
                     let routes = self.get_routes(&assignment, false);
                     let solution =
-                        Solution::new(self.problem, routes, self.elapsed_time(), self.cpu.clone());
+                        Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
 
                     eprintln!("{}", solution);
                 }
@@ -726,12 +726,8 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     if false {
                         let assignment = ctx.get_solution(&self.vars.variables)?;
                         let routes = self.get_routes(&assignment, true);
-                        let solution = Solution::new(
-                            self.problem,
-                            routes,
-                            self.elapsed_time(),
-                            self.cpu.clone(),
-                        );
+                        let solution =
+                            Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
 
                         eprintln!("{}", solution);
                     }
@@ -788,7 +784,7 @@ impl Solver {
 
         lp.set_objective(0, gurobi::ModelSense::Minimize)?;
 
-        let mut data = SolverData::new(problem, &mut lp, cpu);
+        let mut data = SolverData::new(problem, &mut lp, &cpu);
 
         // route in-degree constraints
         for t in 0..problem.num_days {
