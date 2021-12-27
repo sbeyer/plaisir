@@ -20,13 +20,10 @@ struct Variables<'a> {
 #[allow(clippy::many_single_char_names)]
 impl<'a> Variables<'a> {
     fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> Self {
-        let num_variables_route = problem.num_days
-            * problem.num_vehicles
-            * (problem.num_customers + 1)
-            * problem.num_customers;
-        let num_variables_visit =
-            problem.num_days * problem.num_vehicles * (problem.num_customers + 1);
-        let num_variables_inventory = problem.num_days * (problem.num_customers + 1);
+        let num_variables_route =
+            problem.num_days * problem.num_vehicles * problem.num_sites * problem.num_customers;
+        let num_variables_visit = problem.num_days * problem.num_vehicles * problem.num_sites;
+        let num_variables_inventory = problem.num_days * problem.num_sites;
         let num_variables_deliver = problem.num_days * problem.num_vehicles * problem.num_customers;
         let num_variables = num_variables_route
             + num_variables_visit
@@ -42,28 +39,26 @@ impl<'a> Variables<'a> {
         };
 
         // route variables
-        for t in 0..problem.num_days {
-            for v in 0..problem.num_vehicles {
-                for i in 0..=problem.num_customers {
-                    for j in 0..=problem.num_customers {
-                        if i != j {
-                            let name = format!("r_{}_{}_{}_{}", t, v, i, j);
-                            let coeff = problem.distance(i, j).into();
-                            let bounds = (0.0, 1.0);
-                            //let var = grb::add_binvar!(lp, name: &name, obj: coeff).unwrap();
-                            let var = lp
-                                .add_var(
-                                    &name,
-                                    gurobi::VarType::Binary,
-                                    coeff,
-                                    bounds.0,
-                                    bounds.1,
-                                    std::iter::empty(),
-                                )
-                                .unwrap();
-                            debug_assert_eq!(vars.variables.len(), vars.route_index(t, v, i, j));
-                            vars.variables.push(var);
-                        }
+        for t in problem.all_days() {
+            for v in problem.all_vehicles() {
+                for i in problem.all_sites() {
+                    for j in problem.all_sites_except(i) {
+                        let name = format!("r_{}_{}_{}_{}", t, v, i, j);
+                        let coeff = problem.distance(i, j).into();
+                        let bounds = (0.0, 1.0);
+                        //let var = grb::add_binvar!(lp, name: &name, obj: coeff).unwrap();
+                        let var = lp
+                            .add_var(
+                                &name,
+                                gurobi::VarType::Binary,
+                                coeff,
+                                bounds.0,
+                                bounds.1,
+                                std::iter::empty(),
+                            )
+                            .unwrap();
+                        debug_assert_eq!(vars.variables.len(), vars.route_index(t, v, i, j));
+                        vars.variables.push(var);
                     }
                 }
             }
@@ -73,9 +68,9 @@ impl<'a> Variables<'a> {
 
         // visit variables
         vars.visit_range.0 = vars.route_range.1;
-        for t in 0..problem.num_days {
-            for v in 0..problem.num_vehicles {
-                for i in 0..=problem.num_customers {
+        for t in problem.all_days() {
+            for v in problem.all_vehicles() {
+                for i in problem.all_sites() {
                     let name = format!("v_{}_{}_{}", t, v, i);
                     let coeff = 0.0;
                     let bounds = (0.0, 1.0);
@@ -99,18 +94,19 @@ impl<'a> Variables<'a> {
 
         // inventory variables
         vars.inventory_range.0 = vars.visit_range.1;
-        for t in 0..problem.num_days {
-            for i in 0..=problem.num_customers {
+        for t in problem.all_days() {
+            for i in problem.all_sites() {
+                let site = problem.site(i);
                 let name = format!("i_{}_{}", t, i);
-                let coeff = problem.site(i).cost();
-                let bounds = problem.site(i).level_bounds();
+                let coeff = site.cost();
+                let bounds = site.level_bounds();
                 let var = lp
                     .add_var(
                         &name,
                         gurobi::VarType::Continuous,
                         coeff,
                         bounds.0,
-                        bounds.1 + problem.site(i).level_change(),
+                        bounds.1 + site.level_change(),
                         std::iter::empty(),
                     )
                     .unwrap();
@@ -148,9 +144,9 @@ impl<'a> Variables<'a> {
 
         // deliver variables
         vars.deliver_range.0 = vars.inventory_range.1;
-        for t in 0..problem.num_days {
-            for v in 0..problem.num_vehicles {
-                for i in 1..=problem.num_customers {
+        for t in problem.all_days() {
+            for v in problem.all_vehicles() {
+                for i in problem.all_customers() {
                     let name = format!("d_{}_{}_{}", t, v, i);
                     let coeff = epsilon;
                     epsilon += delta;
@@ -207,7 +203,7 @@ impl<'a> Variables<'a> {
         debug_assert!(v < self.problem.num_vehicles);
         debug_assert!(i <= self.problem.num_customers);
 
-        let i_block_size = self.problem.num_customers + 1;
+        let i_block_size = self.problem.num_sites;
         let v_i_block_size = self.problem.num_vehicles * i_block_size;
         let offset = self.visit_range.0 + t * v_i_block_size + v * i_block_size;
         let result = offset + i;
@@ -224,7 +220,7 @@ impl<'a> Variables<'a> {
         debug_assert!(t < self.problem.num_days);
         debug_assert!(i <= self.problem.num_customers);
 
-        let i_block_size = self.problem.num_customers + 1;
+        let i_block_size = self.problem.num_sites;
         let offset = self.inventory_range.0 + t * i_block_size;
         let result = offset + i;
         debug_assert!(result < self.inventory_range.1);
@@ -311,10 +307,11 @@ impl Solution {
         }
 
         // inventory cost
-        let mut inventory: Vec<f64> = (0..=problem.num_customers)
+        let mut inventory: Vec<f64> = problem
+            .all_sites()
             .map(|i| problem.site(i).level_start())
             .collect();
-        let mut cost_inventory = vec![0.; problem.num_customers + 1];
+        let mut cost_inventory = vec![0.; problem.num_sites];
 
         for day_routes in sol.routes.iter() {
             // step one: deliveries
@@ -327,12 +324,12 @@ impl Solution {
 
             // step two: daily change (production at depot, consumption at customers)
             #[allow(clippy::needless_range_loop)]
-            for i in 0..=problem.num_customers {
+            for i in problem.all_sites() {
                 inventory[i] += problem.site(i).level_change();
             }
 
             // update inventory costs
-            for i in 0..=problem.num_customers {
+            for i in problem.all_sites() {
                 cost_inventory[i] += problem.site(i).cost() * inventory[i]
             }
         }
@@ -432,17 +429,15 @@ impl<'a> SolverData<'a> {
 
         // collect node sets of connected components for every day and every vehicle
         let mut sets: Vec<Vec<usize>> = Vec::new();
-        for t in 0..self.problem.num_days {
-            for v in 0..self.problem.num_vehicles {
+        for t in self.problem.all_days() {
+            for v in self.problem.all_vehicles() {
                 // find connected components with union-find data structure
-                let mut uf = partitions::partition_vec![(); self.problem.num_customers + 1];
-                for i in 0..=self.problem.num_customers {
-                    for j in 0..=self.problem.num_customers {
-                        if i != j {
-                            let idx = self.vars.route_index(t, v, i, j);
-                            if assignment[idx] > 0.5 {
-                                uf.union(i, j);
-                            }
+                let mut uf = partitions::partition_vec![(); self.problem.num_sites];
+                for i in self.problem.all_sites() {
+                    for j in self.problem.all_sites_except(i) {
+                        let idx = self.vars.route_index(t, v, i, j);
+                        if assignment[idx] > 0.5 {
+                            uf.union(i, j);
                         }
                     }
                 }
@@ -478,8 +473,8 @@ impl<'a> SolverData<'a> {
 
         // now add all sets (whether violated or not) to all days and vehicles
         if added {
-            for t in 0..self.problem.num_days {
-                for v in 0..self.problem.num_vehicles {
+            for t in self.problem.all_days() {
+                for v in self.problem.all_vehicles() {
                     // add subtour elimination constraints if necessary
                     for set in sets.iter() {
                         for k in set.iter() {
@@ -510,13 +505,15 @@ impl<'a> SolverData<'a> {
 
     fn get_best_solution_variable_assignment(&self) -> Vec<f64> {
         // Inventory levels, necessary for inventory variables
-        let mut levels = (0..=self.problem.num_customers)
+        let mut levels = self
+            .problem
+            .all_sites()
             .map(|i| self.problem.site(i).level_start() as isize)
             .collect::<Vec<_>>();
 
         let mut assignment = vec![0.0; self.vars.variables.len()];
-        for t in 0..self.problem.num_days {
-            for v in 0..self.problem.num_vehicles {
+        for t in self.problem.all_days() {
+            for v in self.problem.all_vehicles() {
                 let route = &self.best_solution.routes[t][v];
                 if route.len() > 1 {
                     for delivery in route.iter() {
@@ -550,7 +547,7 @@ impl<'a> SolverData<'a> {
 
             // Set inventory variable values
             #[allow(clippy::needless_range_loop)]
-            for i in 0..=self.problem.num_customers {
+            for i in self.problem.all_sites() {
                 levels[i] += self.problem.site(i).level_change() as isize;
                 let index = self.vars.inventory_index(t, i);
                 assignment[index] = levels[i] as f64;
@@ -572,19 +569,18 @@ impl<'a> SolverData<'a> {
         i: usize,
     ) -> Option<usize> {
         // Find the next site by route variables
-        for j in 0..=self.problem.num_customers {
-            if i != j {
-                let var_route = self.vars.route_index(t, v, i, j);
-                if solution[var_route] > 0.5 {
-                    return Some(j);
-                }
+        for j in self.problem.all_sites_except(i) {
+            let var_route = self.vars.route_index(t, v, i, j);
+            if solution[var_route] > 0.5 {
+                return Some(j);
             }
         }
         None
     }
 
     fn get_visited_customers(&self, solution: &[f64], t: usize, v: usize) -> Vec<usize> {
-        (1..=self.problem.num_customers)
+        self.problem
+            .all_customers()
             .filter(|i| {
                 let var_deliver = self.vars.deliver_index(t, v, *i);
                 solution[var_deliver] > 0.5
@@ -604,10 +600,10 @@ impl<'a> SolverData<'a> {
     fn get_routes(&self, solution: &[f64], use_route_heuristic: bool) -> Routes {
         let mut routes = Vec::with_capacity(self.problem.num_days);
 
-        for t in 0..self.problem.num_days {
+        for t in self.problem.all_days() {
             routes.push(Vec::new());
 
-            for v in 0..self.problem.num_vehicles {
+            for v in self.problem.all_vehicles() {
                 if use_route_heuristic {
                     let mut visited_sites = self.get_visited_customers(solution, t, v);
                     visited_sites.push(0); // add depot
@@ -794,16 +790,14 @@ impl Solver {
         let mut data = SolverData::new(problem, &mut lp, &cpu);
 
         // route in-degree constraints
-        for t in 0..problem.num_days {
-            for v in 0..problem.num_vehicles {
-                for i in 0..=problem.num_customers {
+        for t in problem.all_days() {
+            for v in problem.all_vehicles() {
+                for i in problem.all_sites() {
                     let mut lhs = grb::expr::LinExpr::new();
 
                     lhs.add_term(-1.0, data.vars.visit(t, v, i));
-                    for j in 0..=problem.num_customers {
-                        if i != j {
-                            lhs.add_term(1.0, data.vars.route(t, v, j, i));
-                        }
+                    for j in problem.all_sites_except(i) {
+                        lhs.add_term(1.0, data.vars.route(t, v, j, i));
                     }
 
                     lp.add_constr(&format!("Ri_{}_{}_{}", t, v, i), grb::c!(lhs == 0.0))?;
@@ -812,16 +806,14 @@ impl Solver {
         }
 
         // route out-degree constraints
-        for t in 0..problem.num_days {
-            for v in 0..problem.num_vehicles {
-                for i in 0..=problem.num_customers {
+        for t in problem.all_days() {
+            for v in problem.all_vehicles() {
+                for i in problem.all_sites() {
                     let mut lhs = grb::expr::LinExpr::new();
 
                     lhs.add_term(-1.0, data.vars.visit(t, v, i));
-                    for j in 0..=problem.num_customers {
-                        if i != j {
-                            lhs.add_term(1.0, data.vars.route(t, v, i, j));
-                        }
+                    for j in problem.all_sites_except(i) {
+                        lhs.add_term(1.0, data.vars.route(t, v, i, j));
                     }
 
                     lp.add_constr(&format!("Ro_{}_{}_{}", t, v, i), grb::c!(lhs == 0.0))?;
@@ -830,9 +822,9 @@ impl Solver {
         }
 
         // visit depot if customer is visited
-        for t in 0..problem.num_days {
-            for v in 0..problem.num_vehicles {
-                for i in 1..=problem.num_customers {
+        for t in problem.all_days() {
+            for v in problem.all_vehicles() {
+                for i in problem.all_customers() {
                     let mut lhs = grb::expr::LinExpr::new();
                     lhs.add_term(1.0, data.vars.visit(t, v, 0));
                     lhs.add_term(-1.0, data.vars.visit(t, v, i));
@@ -843,10 +835,10 @@ impl Solver {
         }
 
         // at most one visit per day
-        for t in 0..problem.num_days {
-            for i in 1..=problem.num_customers {
+        for t in problem.all_days() {
+            for i in problem.all_customers() {
                 let mut lhs = grb::expr::LinExpr::new();
-                for v in 0..problem.num_vehicles {
+                for v in problem.all_vehicles() {
                     lhs.add_term(1.0, data.vars.visit(t, v, i));
                 }
                 lp.add_constr(&format!("V1d_{}_{}", t, i), grb::c!(lhs <= 1.0))?;
@@ -854,9 +846,9 @@ impl Solver {
         }
 
         // glue: disable delivery if we do not visit
-        for t in 0..problem.num_days {
-            for v in 0..problem.num_vehicles {
-                for i in 1..=problem.num_customers {
+        for t in problem.all_days() {
+            for v in problem.all_vehicles() {
+                for i in problem.all_customers() {
                     let mut lhs = grb::expr::LinExpr::new();
                     lhs.add_term(problem.capacity as f64, data.vars.visit(t, v, i));
                     lhs.add_term(-1.0, data.vars.deliver(t, v, i));
@@ -867,10 +859,10 @@ impl Solver {
         }
 
         // ensure vehicle capacity is not exceeded
-        for t in 0..problem.num_days {
-            for v in 0..problem.num_vehicles {
+        for t in problem.all_days() {
+            for v in problem.all_vehicles() {
                 let mut lhs = grb::expr::LinExpr::new();
-                for i in 1..=problem.num_customers {
+                for i in problem.all_customers() {
                     lhs.add_term(1.0, data.vars.deliver(t, v, i));
                 }
 
@@ -882,18 +874,19 @@ impl Solver {
         }
 
         // inventory flow for depot
-        for t in 0..problem.num_days {
+        for t in problem.all_days() {
             let mut lhs = grb::expr::LinExpr::new();
-            for v in 0..problem.num_vehicles {
-                for j in 1..=problem.num_customers {
+            for v in problem.all_vehicles() {
+                for j in problem.all_customers() {
                     lhs.add_term(-1.0, data.vars.deliver(t, v, j));
                 }
             }
             lhs.add_term(-1.0, data.vars.inventory(t, 0)); // outgoing inventory
-            let mut value = -problem.site(0).level_change();
+            let depot = problem.site(0);
+            let mut value = -depot.level_change();
 
             if t == 0 {
-                value -= problem.site(0).level_start();
+                value -= depot.level_start();
             } else {
                 lhs.add_term(1.0, data.vars.inventory(t - 1, 0)); // incoming inventory
             }
@@ -902,17 +895,18 @@ impl Solver {
         }
 
         // inventory flow for customers
-        for t in 0..problem.num_days {
-            for i in 1..=problem.num_customers {
+        for t in problem.all_days() {
+            for i in problem.all_customers() {
                 let mut lhs = grb::expr::LinExpr::new();
-                for v in 0..problem.num_vehicles {
+                for v in problem.all_vehicles() {
                     lhs.add_term(1.0, data.vars.deliver(t, v, i)); // delivered
                 }
                 lhs.add_term(-1.0, data.vars.inventory(t, i)); // outgoing inventory
-                let mut value = -problem.site(i).level_change();
+                let customer = problem.site(i);
+                let mut value = -customer.level_change();
 
                 if t == 0 {
-                    value -= problem.site(i).level_start();
+                    value -= customer.level_start();
                 } else {
                     lhs.add_term(1.0, data.vars.inventory(t - 1, i)); // incoming inventory
                 }

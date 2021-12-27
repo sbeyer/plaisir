@@ -151,6 +151,7 @@ impl Site for Customer {
 
 #[derive(Debug)]
 pub struct Problem {
+    pub num_sites: usize,
     pub num_customers: usize,
     pub num_days: usize,
     pub num_vehicles: usize,
@@ -203,6 +204,7 @@ impl Problem {
         assert!(iter.next() == None, "There is junk at the end of the file");
 
         Ok(Problem {
+            num_sites: num_nodes,
             num_customers: num_nodes - 1,
             num_days,
             num_vehicles,
@@ -233,6 +235,26 @@ impl Problem {
             let pos2 = &self.site(j).position();
             pos1.distance(pos2)
         }
+    }
+
+    fn all_days(&self) -> std::ops::Range<usize> {
+        0..self.num_days
+    }
+
+    fn all_vehicles(&self) -> std::ops::Range<usize> {
+        0..self.num_vehicles
+    }
+
+    fn all_sites(&self) -> std::ops::Range<usize> {
+        0..self.num_sites
+    }
+
+    fn all_sites_except(&self, exception: usize) -> impl Iterator<Item = usize> + '_ {
+        self.all_sites().filter(move |i| *i != exception)
+    }
+
+    fn all_customers(&self) -> std::ops::Range<usize> {
+        1..self.num_sites
     }
 }
 
