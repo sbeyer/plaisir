@@ -249,6 +249,10 @@ impl Problem {
         0..self.num_sites
     }
 
+    fn all_sites_except(&self, exception: usize) -> impl Iterator<Item = usize> + '_ {
+        self.all_sites().filter(move |i| *i != exception)
+    }
+
     fn all_customers(&self) -> std::ops::Range<usize> {
         1..self.num_sites
     }

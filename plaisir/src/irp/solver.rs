@@ -42,25 +42,23 @@ impl<'a> Variables<'a> {
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
                 for i in problem.all_sites() {
-                    for j in problem.all_sites() {
-                        if i != j {
-                            let name = format!("r_{}_{}_{}_{}", t, v, i, j);
-                            let coeff = problem.distance(i, j).into();
-                            let bounds = (0.0, 1.0);
-                            //let var = grb::add_binvar!(lp, name: &name, obj: coeff).unwrap();
-                            let var = lp
-                                .add_var(
-                                    &name,
-                                    gurobi::VarType::Binary,
-                                    coeff,
-                                    bounds.0,
-                                    bounds.1,
-                                    std::iter::empty(),
-                                )
-                                .unwrap();
-                            debug_assert_eq!(vars.variables.len(), vars.route_index(t, v, i, j));
-                            vars.variables.push(var);
-                        }
+                    for j in problem.all_sites_except(i) {
+                        let name = format!("r_{}_{}_{}_{}", t, v, i, j);
+                        let coeff = problem.distance(i, j).into();
+                        let bounds = (0.0, 1.0);
+                        //let var = grb::add_binvar!(lp, name: &name, obj: coeff).unwrap();
+                        let var = lp
+                            .add_var(
+                                &name,
+                                gurobi::VarType::Binary,
+                                coeff,
+                                bounds.0,
+                                bounds.1,
+                                std::iter::empty(),
+                            )
+                            .unwrap();
+                        debug_assert_eq!(vars.variables.len(), vars.route_index(t, v, i, j));
+                        vars.variables.push(var);
                     }
                 }
             }
@@ -436,12 +434,10 @@ impl<'a> SolverData<'a> {
                 // find connected components with union-find data structure
                 let mut uf = partitions::partition_vec![(); self.problem.num_sites];
                 for i in self.problem.all_sites() {
-                    for j in self.problem.all_sites() {
-                        if i != j {
-                            let idx = self.vars.route_index(t, v, i, j);
-                            if assignment[idx] > 0.5 {
-                                uf.union(i, j);
-                            }
+                    for j in self.problem.all_sites_except(i) {
+                        let idx = self.vars.route_index(t, v, i, j);
+                        if assignment[idx] > 0.5 {
+                            uf.union(i, j);
                         }
                     }
                 }
@@ -573,12 +569,10 @@ impl<'a> SolverData<'a> {
         i: usize,
     ) -> Option<usize> {
         // Find the next site by route variables
-        for j in self.problem.all_sites() {
-            if i != j {
-                let var_route = self.vars.route_index(t, v, i, j);
-                if solution[var_route] > 0.5 {
-                    return Some(j);
-                }
+        for j in self.problem.all_sites_except(i) {
+            let var_route = self.vars.route_index(t, v, i, j);
+            if solution[var_route] > 0.5 {
+                return Some(j);
             }
         }
         None
@@ -802,10 +796,8 @@ impl Solver {
                     let mut lhs = grb::expr::LinExpr::new();
 
                     lhs.add_term(-1.0, data.vars.visit(t, v, i));
-                    for j in problem.all_sites() {
-                        if i != j {
-                            lhs.add_term(1.0, data.vars.route(t, v, j, i));
-                        }
+                    for j in problem.all_sites_except(i) {
+                        lhs.add_term(1.0, data.vars.route(t, v, j, i));
                     }
 
                     lp.add_constr(&format!("Ri_{}_{}_{}", t, v, i), grb::c!(lhs == 0.0))?;
@@ -820,10 +812,8 @@ impl Solver {
                     let mut lhs = grb::expr::LinExpr::new();
 
                     lhs.add_term(-1.0, data.vars.visit(t, v, i));
-                    for j in problem.all_sites() {
-                        if i != j {
-                            lhs.add_term(1.0, data.vars.route(t, v, i, j));
-                        }
+                    for j in problem.all_sites_except(i) {
+                        lhs.add_term(1.0, data.vars.route(t, v, i, j));
                     }
 
                     lp.add_constr(&format!("Ro_{}_{}_{}", t, v, i), grb::c!(lhs == 0.0))?;
