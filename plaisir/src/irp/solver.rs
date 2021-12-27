@@ -98,16 +98,17 @@ impl<'a> Variables<'a> {
         vars.inventory_range.0 = vars.visit_range.1;
         for t in problem.all_days() {
             for i in problem.all_sites() {
+                let site = problem.site(i);
                 let name = format!("i_{}_{}", t, i);
-                let coeff = problem.site(i).cost();
-                let bounds = problem.site(i).level_bounds();
+                let coeff = site.cost();
+                let bounds = site.level_bounds();
                 let var = lp
                     .add_var(
                         &name,
                         gurobi::VarType::Continuous,
                         coeff,
                         bounds.0,
-                        bounds.1 + problem.site(i).level_change(),
+                        bounds.1 + site.level_change(),
                         std::iter::empty(),
                     )
                     .unwrap();
@@ -891,10 +892,11 @@ impl Solver {
                 }
             }
             lhs.add_term(-1.0, data.vars.inventory(t, 0)); // outgoing inventory
-            let mut value = -problem.site(0).level_change();
+            let depot = problem.site(0);
+            let mut value = -depot.level_change();
 
             if t == 0 {
-                value -= problem.site(0).level_start();
+                value -= depot.level_start();
             } else {
                 lhs.add_term(1.0, data.vars.inventory(t - 1, 0)); // incoming inventory
             }
@@ -910,10 +912,11 @@ impl Solver {
                     lhs.add_term(1.0, data.vars.deliver(t, v, i)); // delivered
                 }
                 lhs.add_term(-1.0, data.vars.inventory(t, i)); // outgoing inventory
-                let mut value = -problem.site(i).level_change();
+                let customer = problem.site(i);
+                let mut value = -customer.level_change();
 
                 if t == 0 {
-                    value -= problem.site(i).level_start();
+                    value -= customer.level_start();
                 } else {
                     lhs.add_term(1.0, data.vars.inventory(t - 1, i)); // incoming inventory
                 }
