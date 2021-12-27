@@ -43,7 +43,7 @@ impl<'a> Variables<'a> {
 
         // route variables
         for t in problem.all_days() {
-            for v in 0..problem.num_vehicles {
+            for v in problem.all_vehicles() {
                 for i in 0..=problem.num_customers {
                     for j in 0..=problem.num_customers {
                         if i != j {
@@ -74,7 +74,7 @@ impl<'a> Variables<'a> {
         // visit variables
         vars.visit_range.0 = vars.route_range.1;
         for t in problem.all_days() {
-            for v in 0..problem.num_vehicles {
+            for v in problem.all_vehicles() {
                 for i in 0..=problem.num_customers {
                     let name = format!("v_{}_{}_{}", t, v, i);
                     let coeff = 0.0;
@@ -149,7 +149,7 @@ impl<'a> Variables<'a> {
         // deliver variables
         vars.deliver_range.0 = vars.inventory_range.1;
         for t in problem.all_days() {
-            for v in 0..problem.num_vehicles {
+            for v in problem.all_vehicles() {
                 for i in 1..=problem.num_customers {
                     let name = format!("d_{}_{}_{}", t, v, i);
                     let coeff = epsilon;
@@ -433,7 +433,7 @@ impl<'a> SolverData<'a> {
         // collect node sets of connected components for every day and every vehicle
         let mut sets: Vec<Vec<usize>> = Vec::new();
         for t in self.problem.all_days() {
-            for v in 0..self.problem.num_vehicles {
+            for v in self.problem.all_vehicles() {
                 // find connected components with union-find data structure
                 let mut uf = partitions::partition_vec![(); self.problem.num_customers + 1];
                 for i in 0..=self.problem.num_customers {
@@ -479,7 +479,7 @@ impl<'a> SolverData<'a> {
         // now add all sets (whether violated or not) to all days and vehicles
         if added {
             for t in self.problem.all_days() {
-                for v in 0..self.problem.num_vehicles {
+                for v in self.problem.all_vehicles() {
                     // add subtour elimination constraints if necessary
                     for set in sets.iter() {
                         for k in set.iter() {
@@ -516,7 +516,7 @@ impl<'a> SolverData<'a> {
 
         let mut assignment = vec![0.0; self.vars.variables.len()];
         for t in self.problem.all_days() {
-            for v in 0..self.problem.num_vehicles {
+            for v in self.problem.all_vehicles() {
                 let route = &self.best_solution.routes[t][v];
                 if route.len() > 1 {
                     for delivery in route.iter() {
@@ -607,7 +607,7 @@ impl<'a> SolverData<'a> {
         for t in self.problem.all_days() {
             routes.push(Vec::new());
 
-            for v in 0..self.problem.num_vehicles {
+            for v in self.problem.all_vehicles() {
                 if use_route_heuristic {
                     let mut visited_sites = self.get_visited_customers(solution, t, v);
                     visited_sites.push(0); // add depot
@@ -795,7 +795,7 @@ impl Solver {
 
         // route in-degree constraints
         for t in problem.all_days() {
-            for v in 0..problem.num_vehicles {
+            for v in problem.all_vehicles() {
                 for i in 0..=problem.num_customers {
                     let mut lhs = grb::expr::LinExpr::new();
 
@@ -813,7 +813,7 @@ impl Solver {
 
         // route out-degree constraints
         for t in problem.all_days() {
-            for v in 0..problem.num_vehicles {
+            for v in problem.all_vehicles() {
                 for i in 0..=problem.num_customers {
                     let mut lhs = grb::expr::LinExpr::new();
 
@@ -831,7 +831,7 @@ impl Solver {
 
         // visit depot if customer is visited
         for t in problem.all_days() {
-            for v in 0..problem.num_vehicles {
+            for v in problem.all_vehicles() {
                 for i in 1..=problem.num_customers {
                     let mut lhs = grb::expr::LinExpr::new();
                     lhs.add_term(1.0, data.vars.visit(t, v, 0));
@@ -846,7 +846,7 @@ impl Solver {
         for t in problem.all_days() {
             for i in 1..=problem.num_customers {
                 let mut lhs = grb::expr::LinExpr::new();
-                for v in 0..problem.num_vehicles {
+                for v in problem.all_vehicles() {
                     lhs.add_term(1.0, data.vars.visit(t, v, i));
                 }
                 lp.add_constr(&format!("V1d_{}_{}", t, i), grb::c!(lhs <= 1.0))?;
@@ -855,7 +855,7 @@ impl Solver {
 
         // glue: disable delivery if we do not visit
         for t in problem.all_days() {
-            for v in 0..problem.num_vehicles {
+            for v in problem.all_vehicles() {
                 for i in 1..=problem.num_customers {
                     let mut lhs = grb::expr::LinExpr::new();
                     lhs.add_term(problem.capacity as f64, data.vars.visit(t, v, i));
@@ -868,7 +868,7 @@ impl Solver {
 
         // ensure vehicle capacity is not exceeded
         for t in problem.all_days() {
-            for v in 0..problem.num_vehicles {
+            for v in problem.all_vehicles() {
                 let mut lhs = grb::expr::LinExpr::new();
                 for i in 1..=problem.num_customers {
                     lhs.add_term(1.0, data.vars.deliver(t, v, i));
@@ -884,7 +884,7 @@ impl Solver {
         // inventory flow for depot
         for t in problem.all_days() {
             let mut lhs = grb::expr::LinExpr::new();
-            for v in 0..problem.num_vehicles {
+            for v in problem.all_vehicles() {
                 for j in 1..=problem.num_customers {
                     lhs.add_term(-1.0, data.vars.deliver(t, v, j));
                 }
@@ -905,7 +905,7 @@ impl Solver {
         for t in problem.all_days() {
             for i in 1..=problem.num_customers {
                 let mut lhs = grb::expr::LinExpr::new();
-                for v in 0..problem.num_vehicles {
+                for v in problem.all_vehicles() {
                     lhs.add_term(1.0, data.vars.deliver(t, v, i)); // delivered
                 }
                 lhs.add_term(-1.0, data.vars.inventory(t, i)); // outgoing inventory

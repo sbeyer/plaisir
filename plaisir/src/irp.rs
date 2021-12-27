@@ -238,6 +238,10 @@ impl Problem {
     fn all_days(&self) -> std::ops::Range<usize> {
         0..self.num_days
     }
+
+    fn all_vehicles(&self) -> std::ops::Range<usize> {
+        0..self.num_vehicles
+    }
 }
 
 impl fmt::Display for Problem {
