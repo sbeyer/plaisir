@@ -20,13 +20,10 @@ struct Variables<'a> {
 #[allow(clippy::many_single_char_names)]
 impl<'a> Variables<'a> {
     fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> Self {
-        let num_variables_route = problem.num_days
-            * problem.num_vehicles
-            * (problem.num_customers + 1)
-            * problem.num_customers;
-        let num_variables_visit =
-            problem.num_days * problem.num_vehicles * (problem.num_customers + 1);
-        let num_variables_inventory = problem.num_days * (problem.num_customers + 1);
+        let num_variables_route =
+            problem.num_days * problem.num_vehicles * problem.num_sites * problem.num_customers;
+        let num_variables_visit = problem.num_days * problem.num_vehicles * problem.num_sites;
+        let num_variables_inventory = problem.num_days * problem.num_sites;
         let num_variables_deliver = problem.num_days * problem.num_vehicles * problem.num_customers;
         let num_variables = num_variables_route
             + num_variables_visit
@@ -207,7 +204,7 @@ impl<'a> Variables<'a> {
         debug_assert!(v < self.problem.num_vehicles);
         debug_assert!(i <= self.problem.num_customers);
 
-        let i_block_size = self.problem.num_customers + 1;
+        let i_block_size = self.problem.num_sites;
         let v_i_block_size = self.problem.num_vehicles * i_block_size;
         let offset = self.visit_range.0 + t * v_i_block_size + v * i_block_size;
         let result = offset + i;
@@ -224,7 +221,7 @@ impl<'a> Variables<'a> {
         debug_assert!(t < self.problem.num_days);
         debug_assert!(i <= self.problem.num_customers);
 
-        let i_block_size = self.problem.num_customers + 1;
+        let i_block_size = self.problem.num_sites;
         let offset = self.inventory_range.0 + t * i_block_size;
         let result = offset + i;
         debug_assert!(result < self.inventory_range.1);
@@ -315,7 +312,7 @@ impl Solution {
             .all_sites()
             .map(|i| problem.site(i).level_start())
             .collect();
-        let mut cost_inventory = vec![0.; problem.num_customers + 1];
+        let mut cost_inventory = vec![0.; problem.num_sites];
 
         for day_routes in sol.routes.iter() {
             // step one: deliveries
@@ -436,7 +433,7 @@ impl<'a> SolverData<'a> {
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
                 // find connected components with union-find data structure
-                let mut uf = partitions::partition_vec![(); self.problem.num_customers + 1];
+                let mut uf = partitions::partition_vec![(); self.problem.num_sites];
                 for i in self.problem.all_sites() {
                     for j in self.problem.all_sites() {
                         if i != j {

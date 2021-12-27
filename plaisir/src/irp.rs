@@ -151,6 +151,7 @@ impl Site for Customer {
 
 #[derive(Debug)]
 pub struct Problem {
+    pub num_sites: usize,
     pub num_customers: usize,
     pub num_days: usize,
     pub num_vehicles: usize,
@@ -203,6 +204,7 @@ impl Problem {
         assert!(iter.next() == None, "There is junk at the end of the file");
 
         Ok(Problem {
+            num_sites: num_nodes,
             num_customers: num_nodes - 1,
             num_days,
             num_vehicles,
@@ -243,12 +245,12 @@ impl Problem {
         0..self.num_vehicles
     }
 
-    fn all_sites(&self) -> std::ops::RangeInclusive<usize> {
-        0..=self.num_customers
+    fn all_sites(&self) -> std::ops::Range<usize> {
+        0..self.num_sites
     }
 
-    fn all_customers(&self) -> std::ops::RangeInclusive<usize> {
-        1..=self.num_customers
+    fn all_customers(&self) -> std::ops::Range<usize> {
+        1..self.num_sites
     }
 }
 
