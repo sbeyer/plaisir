@@ -6,6 +6,7 @@ extern crate partitions;
 
 const PRINT_VARIABLE_VALUES: bool = false;
 const PRINT_ELIMINATED_SUBTOURS: bool = false;
+const EPSILON_HEURISTIC_THRESHOLD: f64 = 0.001;
 
 struct Variables<'a> {
     problem: &'a Problem,
@@ -138,7 +139,8 @@ impl<'a> Variables<'a> {
         //   sum_i=1..eps_amount (problem.capacity * q epsilon) < 0.001
         //      q problem.capacity sum_i=1..eps_amount epsilon  < 0.001
         //      q problem.capacity          eps_amount epsilon  < 0.001
-        let mut epsilon = 0.001 / eps_q / problem.capacity as f64 / eps_amount;
+        let mut epsilon =
+            EPSILON_HEURISTIC_THRESHOLD / eps_q / problem.capacity as f64 / eps_amount;
         // To ensure our assumption for delta, we observe that
         //   eps_amount * delta < (q - 1) epsilon
         // implies that assumption.
@@ -736,7 +738,8 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         eprintln!("{}", solution);
                     }
 
-                    if self.best_solution.cost_total < best_objective - 0.001 {
+                    if self.best_solution.cost_total < best_objective - EPSILON_HEURISTIC_THRESHOLD
+                    {
                         let best_solution_assignment = self.get_best_solution_variable_assignment();
                         let set_result = ctx.set_solution(
                             self.vars.variables.iter().zip(best_solution_assignment),
