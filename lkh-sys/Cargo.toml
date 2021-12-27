@@ -3,4 +3,4 @@ name = "lkh-sys"
 version = "0.1.0"
 authors = ["Stephan Beyer <s-beyer@gmx.net>"]
 links = "LKH"
-edition = "2018"
+edition = "2021"
