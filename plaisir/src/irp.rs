@@ -234,6 +234,10 @@ impl Problem {
             pos1.distance(pos2)
         }
     }
+
+    fn all_days(&self) -> std::ops::Range<usize> {
+        0..self.num_days
+    }
 }
 
 impl fmt::Display for Problem {

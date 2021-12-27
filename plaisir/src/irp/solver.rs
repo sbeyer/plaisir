@@ -42,7 +42,7 @@ impl<'a> Variables<'a> {
         };
 
         // route variables
-        for t in 0..problem.num_days {
+        for t in problem.all_days() {
             for v in 0..problem.num_vehicles {
                 for i in 0..=problem.num_customers {
                     for j in 0..=problem.num_customers {
@@ -73,7 +73,7 @@ impl<'a> Variables<'a> {
 
         // visit variables
         vars.visit_range.0 = vars.route_range.1;
-        for t in 0..problem.num_days {
+        for t in problem.all_days() {
             for v in 0..problem.num_vehicles {
                 for i in 0..=problem.num_customers {
                     let name = format!("v_{}_{}_{}", t, v, i);
@@ -99,7 +99,7 @@ impl<'a> Variables<'a> {
 
         // inventory variables
         vars.inventory_range.0 = vars.visit_range.1;
-        for t in 0..problem.num_days {
+        for t in problem.all_days() {
             for i in 0..=problem.num_customers {
                 let name = format!("i_{}_{}", t, i);
                 let coeff = problem.site(i).cost();
@@ -148,7 +148,7 @@ impl<'a> Variables<'a> {
 
         // deliver variables
         vars.deliver_range.0 = vars.inventory_range.1;
-        for t in 0..problem.num_days {
+        for t in problem.all_days() {
             for v in 0..problem.num_vehicles {
                 for i in 1..=problem.num_customers {
                     let name = format!("d_{}_{}_{}", t, v, i);
@@ -432,7 +432,7 @@ impl<'a> SolverData<'a> {
 
         // collect node sets of connected components for every day and every vehicle
         let mut sets: Vec<Vec<usize>> = Vec::new();
-        for t in 0..self.problem.num_days {
+        for t in self.problem.all_days() {
             for v in 0..self.problem.num_vehicles {
                 // find connected components with union-find data structure
                 let mut uf = partitions::partition_vec![(); self.problem.num_customers + 1];
@@ -478,7 +478,7 @@ impl<'a> SolverData<'a> {
 
         // now add all sets (whether violated or not) to all days and vehicles
         if added {
-            for t in 0..self.problem.num_days {
+            for t in self.problem.all_days() {
                 for v in 0..self.problem.num_vehicles {
                     // add subtour elimination constraints if necessary
                     for set in sets.iter() {
@@ -515,7 +515,7 @@ impl<'a> SolverData<'a> {
             .collect::<Vec<_>>();
 
         let mut assignment = vec![0.0; self.vars.variables.len()];
-        for t in 0..self.problem.num_days {
+        for t in self.problem.all_days() {
             for v in 0..self.problem.num_vehicles {
                 let route = &self.best_solution.routes[t][v];
                 if route.len() > 1 {
@@ -604,7 +604,7 @@ impl<'a> SolverData<'a> {
     fn get_routes(&self, solution: &[f64], use_route_heuristic: bool) -> Routes {
         let mut routes = Vec::with_capacity(self.problem.num_days);
 
-        for t in 0..self.problem.num_days {
+        for t in self.problem.all_days() {
             routes.push(Vec::new());
 
             for v in 0..self.problem.num_vehicles {
@@ -794,7 +794,7 @@ impl Solver {
         let mut data = SolverData::new(problem, &mut lp, &cpu);
 
         // route in-degree constraints
-        for t in 0..problem.num_days {
+        for t in problem.all_days() {
             for v in 0..problem.num_vehicles {
                 for i in 0..=problem.num_customers {
                     let mut lhs = grb::expr::LinExpr::new();
@@ -812,7 +812,7 @@ impl Solver {
         }
 
         // route out-degree constraints
-        for t in 0..problem.num_days {
+        for t in problem.all_days() {
             for v in 0..problem.num_vehicles {
                 for i in 0..=problem.num_customers {
                     let mut lhs = grb::expr::LinExpr::new();
@@ -830,7 +830,7 @@ impl Solver {
         }
 
         // visit depot if customer is visited
-        for t in 0..problem.num_days {
+        for t in problem.all_days() {
             for v in 0..problem.num_vehicles {
                 for i in 1..=problem.num_customers {
                     let mut lhs = grb::expr::LinExpr::new();
@@ -843,7 +843,7 @@ impl Solver {
         }
 
         // at most one visit per day
-        for t in 0..problem.num_days {
+        for t in problem.all_days() {
             for i in 1..=problem.num_customers {
                 let mut lhs = grb::expr::LinExpr::new();
                 for v in 0..problem.num_vehicles {
@@ -854,7 +854,7 @@ impl Solver {
         }
 
         // glue: disable delivery if we do not visit
-        for t in 0..problem.num_days {
+        for t in problem.all_days() {
             for v in 0..problem.num_vehicles {
                 for i in 1..=problem.num_customers {
                     let mut lhs = grb::expr::LinExpr::new();
@@ -867,7 +867,7 @@ impl Solver {
         }
 
         // ensure vehicle capacity is not exceeded
-        for t in 0..problem.num_days {
+        for t in problem.all_days() {
             for v in 0..problem.num_vehicles {
                 let mut lhs = grb::expr::LinExpr::new();
                 for i in 1..=problem.num_customers {
@@ -882,7 +882,7 @@ impl Solver {
         }
 
         // inventory flow for depot
-        for t in 0..problem.num_days {
+        for t in problem.all_days() {
             let mut lhs = grb::expr::LinExpr::new();
             for v in 0..problem.num_vehicles {
                 for j in 1..=problem.num_customers {
@@ -902,7 +902,7 @@ impl Solver {
         }
 
         // inventory flow for customers
-        for t in 0..problem.num_days {
+        for t in problem.all_days() {
             for i in 1..=problem.num_customers {
                 let mut lhs = grb::expr::LinExpr::new();
                 for v in 0..problem.num_vehicles {
