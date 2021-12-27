@@ -77,6 +77,78 @@ impl fmt::Display for Customer {
     }
 }
 
+trait Site {
+    /// Returns the numeric identifer
+    fn id(&self) -> usize;
+
+    /// Returns the start inventory level
+    fn level_start(&self) -> f64;
+
+    /// Returns the daily inventory level change
+    fn level_change(&self) -> f64;
+
+    /// Returns minimum and maximum inventory levels
+    fn level_bounds(&self) -> (f64, f64);
+
+    /// Returns the daily cost for each inventory unit
+    fn cost(&self) -> f64;
+
+    /// Returns the position
+    fn position(&self) -> &Position;
+}
+
+impl Site for Depot {
+    fn id(&self) -> usize {
+        0
+    }
+
+    fn level_start(&self) -> f64 {
+        self.start_level.into()
+    }
+
+    fn level_change(&self) -> f64 {
+        self.daily_production.into()
+    }
+
+    fn level_bounds(&self) -> (f64, f64) {
+        (0.0, f64::INFINITY)
+    }
+
+    fn cost(&self) -> f64 {
+        self.daily_cost
+    }
+
+    fn position(&self) -> &Position {
+        &self.position
+    }
+}
+
+impl Site for Customer {
+    fn id(&self) -> usize {
+        self.id
+    }
+
+    fn level_start(&self) -> f64 {
+        self.start_level.into()
+    }
+
+    fn level_change(&self) -> f64 {
+        (-self.daily_consumption).into()
+    }
+
+    fn level_bounds(&self) -> (f64, f64) {
+        (self.min_level.into(), self.max_level.into())
+    }
+
+    fn cost(&self) -> f64 {
+        self.daily_cost
+    }
+
+    fn position(&self) -> &Position {
+        &self.position
+    }
+}
+
 #[derive(Debug)]
 pub struct Problem {
     pub num_customers: usize,
@@ -145,66 +217,21 @@ impl Problem {
         })
     }
 
+    fn site(&self, index: usize) -> &dyn Site {
+        if index == 0 {
+            &self.depot
+        } else {
+            &self.customers[index - 1]
+        }
+    }
+
     fn distance(&self, i: usize, j: usize) -> i32 {
-        #[allow(clippy::comparison_chain)]
         if i == j {
             0
-        } else if i > j {
-            self.distance(j, i)
         } else {
-            let pos1 = if i == 0 {
-                &self.depot.position
-            } else {
-                &self.customers[i - 1].position
-            };
-            let pos2 = &self.customers[j - 1].position;
+            let pos1 = &self.site(i).position();
+            let pos2 = &self.site(j).position();
             pos1.distance(pos2)
-        }
-    }
-
-    fn id_with_coords(&self, site: usize) -> (usize, f64, f64) {
-        let position = if site == 0 {
-            &self.depot.position
-        } else {
-            &self.customers[site - 1].position
-        };
-
-        (site, position.x, position.y)
-    }
-
-    fn start_level(&self, site: usize) -> f64 {
-        if site == 0 {
-            self.depot.start_level
-        } else {
-            self.customers[site - 1].start_level
-        }
-        .into()
-    }
-
-    fn level_bounds(&self, site: usize) -> (f64, f64) {
-        if site == 0 {
-            let max = self.depot.start_level as usize
-                + self.depot.daily_production as usize * self.num_days;
-            (0.0, max as f64)
-        } else {
-            let customer = &self.customers[site - 1];
-            (customer.min_level.into(), customer.max_level.into())
-        }
-    }
-
-    fn daily_cost(&self, site: usize) -> f64 {
-        if site == 0 {
-            self.depot.daily_cost
-        } else {
-            self.customers[site - 1].daily_cost
-        }
-    }
-
-    fn daily_level_change(&self, site: usize) -> f64 {
-        if site == 0 {
-            self.depot.daily_production.into()
-        } else {
-            (-self.customers[site - 1].daily_consumption).into()
         }
     }
 }

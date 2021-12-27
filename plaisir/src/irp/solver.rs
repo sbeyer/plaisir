@@ -101,15 +101,15 @@ impl<'a> Variables<'a> {
         for t in 0..problem.num_days {
             for i in 0..=problem.num_customers {
                 let name = format!("i_{}_{}", t, i);
-                let coeff = problem.daily_cost(i);
-                let bounds = problem.level_bounds(i);
+                let coeff = problem.site(i).cost();
+                let bounds = problem.site(i).level_bounds();
                 let var = lp
                     .add_var(
                         &name,
                         gurobi::VarType::Continuous,
                         coeff,
                         bounds.0,
-                        bounds.1 + problem.daily_level_change(i),
+                        bounds.1 + problem.site(i).level_change(),
                         std::iter::empty(),
                     )
                     .unwrap();
@@ -310,7 +310,7 @@ impl Solution {
 
         // inventory cost
         let mut inventory: Vec<f64> = (0..=problem.num_customers)
-            .map(|x| problem.start_level(x))
+            .map(|i| problem.site(i).level_start())
             .collect();
         let mut cost_inventory = vec![0.; problem.num_customers + 1];
 
@@ -326,12 +326,12 @@ impl Solution {
             // step two: daily change (production at depot, consumption at customers)
             #[allow(clippy::needless_range_loop)]
             for i in 0..=problem.num_customers {
-                inventory[i] += problem.daily_level_change(i);
+                inventory[i] += problem.site(i).level_change();
             }
 
             // update inventory costs
             for i in 0..=problem.num_customers {
-                cost_inventory[i] += problem.daily_cost(i) * inventory[i]
+                cost_inventory[i] += problem.site(i).cost() * inventory[i]
             }
         }
 
@@ -509,7 +509,7 @@ impl<'a> SolverData<'a> {
     fn get_best_solution_variable_assignment(&self) -> Vec<f64> {
         // Inventory levels, necessary for inventory variables
         let mut levels = (0..=self.problem.num_customers)
-            .map(|i| self.problem.start_level(i) as isize)
+            .map(|i| self.problem.site(i).level_start() as isize)
             .collect::<Vec<_>>();
 
         let mut assignment = vec![0.0; self.vars.variables.len()];
@@ -549,7 +549,7 @@ impl<'a> SolverData<'a> {
             // Set inventory variable values
             #[allow(clippy::needless_range_loop)]
             for i in 0..=self.problem.num_customers {
-                levels[i] += self.problem.daily_level_change(i) as isize;
+                levels[i] += self.problem.site(i).level_change() as isize;
                 let index = self.vars.inventory_index(t, i);
                 assignment[index] = levels[i] as f64;
             }
@@ -612,7 +612,11 @@ impl<'a> SolverData<'a> {
 
                     let tsp_instance: Vec<(usize, f64, f64)> = visited_sites
                         .iter()
-                        .map(|site| self.problem.id_with_coords(*site))
+                        .map(|site| {
+                            let site = self.problem.site(*site);
+                            let pos = &site.position();
+                            (site.id(), pos.x, pos.y)
+                        })
                         .collect();
                     let mut tsp_tour = lkh::run(&tsp_instance);
 
@@ -883,10 +887,10 @@ impl Solver {
                 }
             }
             lhs.add_term(-1.0, data.vars.inventory(t, 0)); // outgoing inventory
-            let mut value = -problem.daily_level_change(0);
+            let mut value = -problem.site(0).level_change();
 
             if t == 0 {
-                value -= problem.start_level(0);
+                value -= problem.site(0).level_start();
             } else {
                 lhs.add_term(1.0, data.vars.inventory(t - 1, 0)); // incoming inventory
             }
@@ -902,10 +906,10 @@ impl Solver {
                     lhs.add_term(1.0, data.vars.deliver(t, v, i)); // delivered
                 }
                 lhs.add_term(-1.0, data.vars.inventory(t, i)); // outgoing inventory
-                let mut value = -problem.daily_level_change(i);
+                let mut value = -problem.site(i).level_change();
 
                 if t == 0 {
-                    value -= problem.start_level(i);
+                    value -= problem.site(i).level_start();
                 } else {
                     lhs.add_term(1.0, data.vars.inventory(t - 1, i)); // incoming inventory
                 }
