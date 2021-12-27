@@ -44,8 +44,8 @@ impl<'a> Variables<'a> {
         // route variables
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
-                for i in 0..=problem.num_customers {
-                    for j in 0..=problem.num_customers {
+                for i in problem.all_sites() {
+                    for j in problem.all_sites() {
                         if i != j {
                             let name = format!("r_{}_{}_{}_{}", t, v, i, j);
                             let coeff = problem.distance(i, j).into();
@@ -75,7 +75,7 @@ impl<'a> Variables<'a> {
         vars.visit_range.0 = vars.route_range.1;
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
-                for i in 0..=problem.num_customers {
+                for i in problem.all_sites() {
                     let name = format!("v_{}_{}_{}", t, v, i);
                     let coeff = 0.0;
                     let bounds = (0.0, 1.0);
@@ -100,7 +100,7 @@ impl<'a> Variables<'a> {
         // inventory variables
         vars.inventory_range.0 = vars.visit_range.1;
         for t in problem.all_days() {
-            for i in 0..=problem.num_customers {
+            for i in problem.all_sites() {
                 let name = format!("i_{}_{}", t, i);
                 let coeff = problem.site(i).cost();
                 let bounds = problem.site(i).level_bounds();
@@ -150,7 +150,7 @@ impl<'a> Variables<'a> {
         vars.deliver_range.0 = vars.inventory_range.1;
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
-                for i in 1..=problem.num_customers {
+                for i in problem.all_customers() {
                     let name = format!("d_{}_{}_{}", t, v, i);
                     let coeff = epsilon;
                     epsilon += delta;
@@ -311,7 +311,8 @@ impl Solution {
         }
 
         // inventory cost
-        let mut inventory: Vec<f64> = (0..=problem.num_customers)
+        let mut inventory: Vec<f64> = problem
+            .all_sites()
             .map(|i| problem.site(i).level_start())
             .collect();
         let mut cost_inventory = vec![0.; problem.num_customers + 1];
@@ -327,12 +328,12 @@ impl Solution {
 
             // step two: daily change (production at depot, consumption at customers)
             #[allow(clippy::needless_range_loop)]
-            for i in 0..=problem.num_customers {
+            for i in problem.all_sites() {
                 inventory[i] += problem.site(i).level_change();
             }
 
             // update inventory costs
-            for i in 0..=problem.num_customers {
+            for i in problem.all_sites() {
                 cost_inventory[i] += problem.site(i).cost() * inventory[i]
             }
         }
@@ -436,8 +437,8 @@ impl<'a> SolverData<'a> {
             for v in self.problem.all_vehicles() {
                 // find connected components with union-find data structure
                 let mut uf = partitions::partition_vec![(); self.problem.num_customers + 1];
-                for i in 0..=self.problem.num_customers {
-                    for j in 0..=self.problem.num_customers {
+                for i in self.problem.all_sites() {
+                    for j in self.problem.all_sites() {
                         if i != j {
                             let idx = self.vars.route_index(t, v, i, j);
                             if assignment[idx] > 0.5 {
@@ -510,7 +511,9 @@ impl<'a> SolverData<'a> {
 
     fn get_best_solution_variable_assignment(&self) -> Vec<f64> {
         // Inventory levels, necessary for inventory variables
-        let mut levels = (0..=self.problem.num_customers)
+        let mut levels = self
+            .problem
+            .all_sites()
             .map(|i| self.problem.site(i).level_start() as isize)
             .collect::<Vec<_>>();
 
@@ -550,7 +553,7 @@ impl<'a> SolverData<'a> {
 
             // Set inventory variable values
             #[allow(clippy::needless_range_loop)]
-            for i in 0..=self.problem.num_customers {
+            for i in self.problem.all_sites() {
                 levels[i] += self.problem.site(i).level_change() as isize;
                 let index = self.vars.inventory_index(t, i);
                 assignment[index] = levels[i] as f64;
@@ -572,7 +575,7 @@ impl<'a> SolverData<'a> {
         i: usize,
     ) -> Option<usize> {
         // Find the next site by route variables
-        for j in 0..=self.problem.num_customers {
+        for j in self.problem.all_sites() {
             if i != j {
                 let var_route = self.vars.route_index(t, v, i, j);
                 if solution[var_route] > 0.5 {
@@ -584,7 +587,8 @@ impl<'a> SolverData<'a> {
     }
 
     fn get_visited_customers(&self, solution: &[f64], t: usize, v: usize) -> Vec<usize> {
-        (1..=self.problem.num_customers)
+        self.problem
+            .all_customers()
             .filter(|i| {
                 let var_deliver = self.vars.deliver_index(t, v, *i);
                 solution[var_deliver] > 0.5
@@ -796,11 +800,11 @@ impl Solver {
         // route in-degree constraints
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
-                for i in 0..=problem.num_customers {
+                for i in problem.all_sites() {
                     let mut lhs = grb::expr::LinExpr::new();
 
                     lhs.add_term(-1.0, data.vars.visit(t, v, i));
-                    for j in 0..=problem.num_customers {
+                    for j in problem.all_sites() {
                         if i != j {
                             lhs.add_term(1.0, data.vars.route(t, v, j, i));
                         }
@@ -814,11 +818,11 @@ impl Solver {
         // route out-degree constraints
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
-                for i in 0..=problem.num_customers {
+                for i in problem.all_sites() {
                     let mut lhs = grb::expr::LinExpr::new();
 
                     lhs.add_term(-1.0, data.vars.visit(t, v, i));
-                    for j in 0..=problem.num_customers {
+                    for j in problem.all_sites() {
                         if i != j {
                             lhs.add_term(1.0, data.vars.route(t, v, i, j));
                         }
@@ -832,7 +836,7 @@ impl Solver {
         // visit depot if customer is visited
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
-                for i in 1..=problem.num_customers {
+                for i in problem.all_customers() {
                     let mut lhs = grb::expr::LinExpr::new();
                     lhs.add_term(1.0, data.vars.visit(t, v, 0));
                     lhs.add_term(-1.0, data.vars.visit(t, v, i));
@@ -844,7 +848,7 @@ impl Solver {
 
         // at most one visit per day
         for t in problem.all_days() {
-            for i in 1..=problem.num_customers {
+            for i in problem.all_customers() {
                 let mut lhs = grb::expr::LinExpr::new();
                 for v in problem.all_vehicles() {
                     lhs.add_term(1.0, data.vars.visit(t, v, i));
@@ -856,7 +860,7 @@ impl Solver {
         // glue: disable delivery if we do not visit
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
-                for i in 1..=problem.num_customers {
+                for i in problem.all_customers() {
                     let mut lhs = grb::expr::LinExpr::new();
                     lhs.add_term(problem.capacity as f64, data.vars.visit(t, v, i));
                     lhs.add_term(-1.0, data.vars.deliver(t, v, i));
@@ -870,7 +874,7 @@ impl Solver {
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
                 let mut lhs = grb::expr::LinExpr::new();
-                for i in 1..=problem.num_customers {
+                for i in problem.all_customers() {
                     lhs.add_term(1.0, data.vars.deliver(t, v, i));
                 }
 
@@ -885,7 +889,7 @@ impl Solver {
         for t in problem.all_days() {
             let mut lhs = grb::expr::LinExpr::new();
             for v in problem.all_vehicles() {
-                for j in 1..=problem.num_customers {
+                for j in problem.all_customers() {
                     lhs.add_term(-1.0, data.vars.deliver(t, v, j));
                 }
             }
@@ -903,7 +907,7 @@ impl Solver {
 
         // inventory flow for customers
         for t in problem.all_days() {
-            for i in 1..=problem.num_customers {
+            for i in problem.all_customers() {
                 let mut lhs = grb::expr::LinExpr::new();
                 for v in problem.all_vehicles() {
                     lhs.add_term(1.0, data.vars.deliver(t, v, i)); // delivered

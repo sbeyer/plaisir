@@ -242,6 +242,14 @@ impl Problem {
     fn all_vehicles(&self) -> std::ops::Range<usize> {
         0..self.num_vehicles
     }
+
+    fn all_sites(&self) -> std::ops::RangeInclusive<usize> {
+        0..=self.num_customers
+    }
+
+    fn all_customers(&self) -> std::ops::RangeInclusive<usize> {
+        1..=self.num_customers
+    }
 }
 
 impl fmt::Display for Problem {
