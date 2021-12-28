@@ -237,23 +237,23 @@ impl Problem {
         }
     }
 
-    fn all_days(&self) -> std::ops::Range<usize> {
+    fn all_days(&self) -> impl Iterator<Item = usize> {
         0..self.num_days
     }
 
-    fn all_vehicles(&self) -> std::ops::Range<usize> {
+    fn all_vehicles(&self) -> impl Iterator<Item = usize> {
         0..self.num_vehicles
     }
 
-    fn all_sites(&self) -> std::ops::Range<usize> {
+    fn all_sites(&self) -> impl Iterator<Item = usize> {
         0..self.num_sites
     }
 
-    fn all_sites_except(&self, exception: usize) -> impl Iterator<Item = usize> + '_ {
+    fn all_sites_except(&self, exception: usize) -> impl Iterator<Item = usize> {
         self.all_sites().filter(move |i| *i != exception)
     }
 
-    fn all_customers(&self) -> std::ops::Range<usize> {
+    fn all_customers(&self) -> impl Iterator<Item = usize> {
         1..self.num_sites
     }
 }
