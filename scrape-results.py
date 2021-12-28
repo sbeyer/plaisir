@@ -85,7 +85,11 @@ for filepath in args:
             f"OLD: {instance}\t{row.bestsol}\t{row.commit}\t{row.time}\t{row.optimal}"
         )
 
-    if best_cost < row.bestsol or (best_cost == row.bestsol and best_time < row.time):
+    if (
+        best_cost < row.bestsol
+        or (best_cost == row.bestsol and best_time < row.time)
+        or (optimum and not row.optimal)
+    ):
         print(f" `-> IMPROVED!")
         results.loc[
             results.instance == instance, ("commit", "bestsol", "time", "optimal")
