@@ -598,82 +598,80 @@ impl<'a> SolverData<'a> {
     }
 
     fn get_routes(&self, solution: &[f64]) -> Routes {
-        let mut routes = Vec::with_capacity(self.problem.num_days);
+        self.problem
+            .all_days()
+            .map(|t| {
+                self.problem
+                    .all_vehicles()
+                    .map(|v| {
+                        let mut route = vec![Delivery {
+                            quantity: 0,
+                            customer: 0,
+                        }];
 
-        for t in self.problem.all_days() {
-            routes.push(Vec::new());
+                        let mut i = 0; // last visited site
+                        while let Some(j) = self.find_next_site_in_route(solution, t, v, i) {
+                            if j == 0 {
+                                break;
+                            }
 
-            for v in self.problem.all_vehicles() {
-                let mut route = vec![Delivery {
-                    quantity: 0,
-                    customer: 0,
-                }];
+                            let quantity = self.get_delivery_amount(solution, t, v, j);
+                            if quantity > 0 {
+                                route.push(Delivery {
+                                    quantity,
+                                    customer: j,
+                                });
+                            }
+                            // note that results may deviate from intermediate MIP results
+                            // because of the "if"
 
-                let mut i = 0; // last visited site
-                while let Some(j) = self.find_next_site_in_route(solution, t, v, i) {
-                    if j == 0 {
-                        break;
-                    }
+                            i = j
+                        }
 
-                    let quantity = self.get_delivery_amount(solution, t, v, j);
-                    if quantity > 0 {
-                        route.push(Delivery {
-                            quantity,
-                            customer: j,
-                        });
-                    }
-                    // note that results may deviate from intermediate MIP results
-                    // because of the "if"
-
-                    i = j
-                }
-
-                routes[t].push(route);
-            }
-        }
-
-        routes
+                        route
+                    })
+                    .collect()
+            })
+            .collect()
     }
 
     fn get_routes_heuristically(&self, solution: &[f64]) -> Routes {
-        let mut routes = Vec::with_capacity(self.problem.num_days);
+        self.problem
+            .all_days()
+            .map(|t| {
+                self.problem
+                    .all_vehicles()
+                    .map(|v| {
+                        let mut visited_sites = self.get_visited_customers(solution, t, v);
+                        visited_sites.push(0); // add depot
 
-        for t in self.problem.all_days() {
-            routes.push(Vec::new());
+                        let tsp_instance: Vec<(usize, f64, f64)> = visited_sites
+                            .iter()
+                            .map(|site| {
+                                let site = self.problem.site(*site);
+                                let pos = &site.position();
+                                (site.id(), pos.x, pos.y)
+                            })
+                            .collect();
+                        let mut tsp_tour = lkh::run(&tsp_instance);
 
-            for v in self.problem.all_vehicles() {
-                let mut visited_sites = self.get_visited_customers(solution, t, v);
-                visited_sites.push(0); // add depot
+                        let depot_position = tsp_tour
+                            .iter()
+                            .position(|site| *site == 0)
+                            .expect("Depot is expected to be in TSP tour");
+                        tsp_tour.rotate_left(depot_position);
 
-                let tsp_instance: Vec<(usize, f64, f64)> = visited_sites
-                    .iter()
-                    .map(|site| {
-                        let site = self.problem.site(*site);
-                        let pos = &site.position();
-                        (site.id(), pos.x, pos.y)
+                        tsp_tour
+                            .iter()
+                            .map(|site| Delivery {
+                                quantity: self.get_delivery_amount(solution, t, v, *site),
+                                customer: *site,
+                            })
+                            .collect()
                     })
-                    .collect();
-                let mut tsp_tour = lkh::run(&tsp_instance);
-
-                let depot_position = tsp_tour
-                    .iter()
-                    .position(|site| *site == 0)
-                    .expect("Depot is expected to be in TSP tour");
-                tsp_tour.rotate_left(depot_position);
-
-                let heuristic_route = tsp_tour
-                    .iter()
-                    .map(|site| Delivery {
-                        quantity: self.get_delivery_amount(solution, t, v, *site),
-                        customer: *site,
-                    })
-                    .collect();
-
-                routes[t].push(heuristic_route);
-            }
-        }
-
-        routes
+                    .collect()
+            })
+            .collect()
     }
 }
 
