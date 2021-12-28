@@ -90,7 +90,7 @@ for filepath in args:
         or (best_cost == row.bestsol and best_time < row.time)
         or (optimum and not row.optimal)
     ):
-        print(f" `-> IMPROVED!")
+        print(" `-> IMPROVED!")
         results.loc[
             results.instance == instance, ("commit", "bestsol", "time", "optimal")
         ] = (commit, best_cost, best_time, optimum)
