@@ -83,6 +83,7 @@ impl<'a> Variables<'a> {
                         std::iter::empty(),
                     )?;
                     debug_assert_eq!(vars.variables.len(), vars.visit_index(t, v, i));
+                    lp.set_obj_attr(grb::attr::BranchPriority, &var, 1).unwrap();
                     vars.variables.push(var);
                 }
             }
