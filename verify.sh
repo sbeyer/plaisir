@@ -18,7 +18,9 @@ do
 	"$VERIFIER" "$input" "$(dirname "$file")" >$verifylog
 	if test "$?" -ne 0
 	then
+		echo
 		echo "Verification of $i failed, see $verifylog"
+		tail -n 2 "$verifylog" | sed 's/^/>>> /'
 		exitcode=1
 	fi
 done
