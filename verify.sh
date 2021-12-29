@@ -3,25 +3,19 @@
 # Configuration
 VERIFIER="../dimacs-irp-verifier/verify.py"
 
-resultdir="results/$(git describe --tags --always)"
-test -n "$1" && resultdir="$1"
-test -d "$resultdir" || ( echo "Result directory $resultdir does not exist" ; exit 1 ) || exit
-
-# Find instances
-FILES=""
-for file in "$resultdir"/*.txt
-do
-	i="$(basename "$file" .txt | sed 's/^out_//')"
-	FILES="$FILES $(git ls-files "instances/**$i*.dat")"
-done
-
-# Verify
 exitcode=0
-for file in $FILES
+for file in "$@"
 do
-	i="$(basename "$file" .dat)"
+	# Instance name
+	i="$(basename "$file" .txt | sed 's/^out_//')"
+
+	# Input file
+	input="$(git ls-files "instances/**$i*.dat")"
+
+	# Log file for verification
 	verifylog="/tmp/$i.verify.log"
-	"$VERIFIER" "$file" "$resultdir/" >$verifylog
+
+	"$VERIFIER" "$input" "$(dirname "$file")" >$verifylog
 	if test "$?" -ne 0
 	then
 		echo "Verification of $i failed, see $verifylog"
