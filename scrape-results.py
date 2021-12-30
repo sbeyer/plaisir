@@ -8,6 +8,8 @@ import os
 import pandas as pd
 import sys
 
+Timelimit = 1598.58
+
 results = pd.read_csv("results.csv")
 results.fillna(np.inf, inplace=True)
 
@@ -24,6 +26,8 @@ def get_solution_from_data(data):
         CPU = 6
         Time = 7
 
+    output_list = []
+    feasible_output = ""
     state = State.Ignore
     total_cost = 0
     total_time = 0
@@ -33,10 +37,15 @@ def get_solution_from_data(data):
     best_changed = False
     for line in solution_data:
         line = line.rstrip()
+
+        if output_list:
+            output_list.append(line)
+
         if state == State.Ignore:
             if line == "# Final solution":
                 optimum = True
             elif line == "Day 1":
+                output_list.append(line)
                 state = State.Days
         elif state == State.Days:
             if line[:4] != "Day " and line[:6] != "Route ":
@@ -59,11 +68,15 @@ def get_solution_from_data(data):
             if best_changed:
                 best_time = total_time
                 best_changed = False
+                if total_time < Timelimit + 0.01:
+                    feasible_output = "\n".join(output_list)
+            output_list = []
 
     return {
         "bestsol": best_cost,
         "time": best_time,
         "optimal": optimum,
+        "output": feasible_output,
     }
 
 
@@ -87,6 +100,15 @@ for filepath in args:
         continue
 
     solution = get_solution_from_data(solution_data)
+
+    if solution["output"]:
+        try:
+            latest_solution_file = f"results_latest/out_{instance}.txt"
+            with open(latest_solution_file, "w") as outfile:
+                solution_data = outfile.writelines(solution["output"])
+        except Exception as err:
+            print(f"Failed to write solution to file {latest_solution_file}: {err}")
+
     row = results.loc[results.instance == instance].squeeze()
 
     if (
