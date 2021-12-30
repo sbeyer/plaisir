@@ -6,6 +6,7 @@ extern crate partitions;
 
 const PRINT_VARIABLE_VALUES: bool = false;
 const PRINT_ELIMINATED_SUBTOURS: bool = false;
+const EPSILON_HEURISTIC_THRESHOLD: f64 = 0.001;
 
 struct Variables<'a> {
     problem: &'a Problem,
@@ -119,25 +120,46 @@ impl<'a> Variables<'a> {
             vars.inventory_range.1 - vars.inventory_range.0
         );
 
+        // For the deliver variables, we use an "epsilon heuristic" to ensure
+        // that the variables' values are integral.
+        // We compute epsilon and its fixed per-iteration change value delta
+        // beforehand such that these values will not interfere with the
+        // overall solution value.
+        let eps_amount = (problem.num_days * problem.num_vehicles * problem.num_customers) as f64;
+        // We want that the sum for i = 1..eps_amount of
+        //   problem.capacity * (epsilon + i * delta)
+        // is less than 0.001.
+        // Let's assume that i * delta <= (q - 1) epsilon for some reasonable q > 1.
+        let eps_q = 1.1;
+        // Then
+        //   sum_i=1..eps_amount (problem.capacity * q epsilon) < 0.001
+        //      q problem.capacity sum_i=1..eps_amount epsilon  < 0.001
+        //      q problem.capacity          eps_amount epsilon  < 0.001
+        let mut epsilon =
+            EPSILON_HEURISTIC_THRESHOLD / eps_q / problem.capacity as f64 / eps_amount;
+        // To ensure our assumption for delta, we observe that
+        //   eps_amount * delta < (q - 1) epsilon
+        // implies that assumption.
+        let delta = (eps_q - 1.0) * epsilon / eps_amount;
+
         // deliver variables
         vars.deliver_range.0 = vars.inventory_range.1;
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
                 for i in problem.all_customers() {
                     let name = format!("d_{}_{}_{}", t, v, i);
-                    let coeff = 0.0;
+                    let coeff = epsilon;
+                    epsilon += delta;
                     let bounds = (0.0, problem.capacity.into());
                     let var = lp
                         .add_var(
                             &name,
-                            gurobi::VarType::Integer,
+                            gurobi::VarType::Continuous,
                             coeff,
                             bounds.0,
                             bounds.1,
                             std::iter::empty(),
                         )
-                        .unwrap();
-                    lp.set_obj_attr(grb::attr::BranchPriority, &var, -1)
                         .unwrap();
                     debug_assert_eq!(vars.variables.len(), vars.deliver_index(t, v, i));
                     vars.variables.push(var);
@@ -720,7 +742,8 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         eprintln!("{}", solution);
                     }
 
-                    if self.best_solution.cost_total < best_objective {
+                    if self.best_solution.cost_total < best_objective - EPSILON_HEURISTIC_THRESHOLD
+                    {
                         let best_solution_assignment = self.get_best_solution_variable_assignment();
                         let set_result = ctx.set_solution(
                             self.vars.variables.iter().zip(best_solution_assignment),
