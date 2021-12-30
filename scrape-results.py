@@ -13,25 +13,8 @@ results.fillna(np.inf, inplace=True)
 
 _, *args = sys.argv
 
-for filepath in args:
-    filedir, filename = os.path.split(filepath)
-    _, commit = os.path.split(filedir)
 
-    basename, extension = os.path.splitext(filename)
-    if extension != ".txt":
-        continue
-
-    prefix, instance = basename.split("_", 1)
-    if prefix != "out":
-        continue
-
-    try:
-        with open(filepath, "r") as infile:
-            solution_data = infile.readlines()
-    except Exception as err:
-        print(f"Failed to read file {filepath}: {err}")
-        continue
-
+def get_solution_from_data(data):
     class State(enum.Enum):
         Ignore = 1
         Days = 2
@@ -77,23 +60,56 @@ for filepath in args:
                 best_time = total_time
                 best_changed = False
 
+    return {
+        "bestsol": best_cost,
+        "time": best_time,
+        "optimal": optimum,
+    }
+
+
+for filepath in args:
+    filedir, filename = os.path.split(filepath)
+    _, commit = os.path.split(filedir)
+
+    basename, extension = os.path.splitext(filename)
+    if extension != ".txt":
+        continue
+
+    prefix, instance = basename.split("_", 1)
+    if prefix != "out":
+        continue
+
+    try:
+        with open(filepath, "r") as infile:
+            solution_data = infile.readlines()
+    except Exception as err:
+        print(f"Failed to read file {filepath}: {err}")
+        continue
+
+    solution = get_solution_from_data(solution_data)
     row = results.loc[results.instance == instance].squeeze()
 
-    if best_cost != row.bestsol or best_time != row.time or optimum != row.optimal:
-        print(f"NEW: {instance}\t{best_cost}\t{commit}\t{best_time}\t{optimum}")
+    if (
+        solution["bestsol"] != row.bestsol
+        or solution["time"] != row.time
+        or solution["optimal"] != row.optimal
+    ):
+        print(
+            f"NEW: {instance}\t{solution['bestsol']}\t{commit}\t{solution['time']}\t{solution['optimal']}"
+        )
         print(
             f"OLD: {instance}\t{row.bestsol}\t{row.commit}\t{row.time}\t{row.optimal}"
         )
 
         if (
-            best_cost < row.bestsol
-            or (best_cost == row.bestsol and best_time < row.time)
-            or (optimum and not row.optimal)
+            solution["bestsol"] < row.bestsol
+            or (solution["bestsol"] == row.bestsol and solution["time"] < row.time)
+            or (solution["optimal"] and not row.optimal)
         ):
             print(" `-> IMPROVED!")
             results.loc[
                 results.instance == instance, ("commit", "bestsol", "time", "optimal")
-            ] = (commit, best_cost, best_time, optimum)
+            ] = (commit, solution["bestsol"], solution["time"], solution["optimal"])
 
         print()
 
