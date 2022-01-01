@@ -1,11 +1,14 @@
 use super::*;
 use grb::prelude as gurobi;
+use rand::prelude::*;
+use rand_xorshift::XorShiftRng;
 use std::time;
 
 extern crate partitions;
 
 const PRINT_VARIABLE_VALUES: bool = false;
 const PRINT_ELIMINATED_SUBTOURS: bool = false;
+const EPSILON_HEURISTIC_THRESHOLD: f64 = 0.001;
 
 struct Variables<'a> {
     problem: &'a Problem,
@@ -119,13 +122,15 @@ impl<'a> Variables<'a> {
             vars.inventory_range.1 - vars.inventory_range.0
         );
 
+        let mut rng = XorShiftRng::seed_from_u64(4);
+
         // deliver variables
         vars.deliver_range.0 = vars.inventory_range.1;
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
                 for i in problem.all_customers() {
                     let name = format!("d_{}_{}_{}", t, v, i);
-                    let coeff = 0.0;
+                    let coeff = rng.gen::<f64>() * 0.00000001;
                     let bounds = (0.0, problem.capacity.into());
                     let var = lp
                         .add_var(
@@ -718,7 +723,8 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         eprintln!("{}", solution);
                     }
 
-                    if self.best_solution.cost_total < best_objective {
+                    if self.best_solution.cost_total < best_objective - EPSILON_HEURISTIC_THRESHOLD
+                    {
                         let best_solution_assignment = self.get_best_solution_variable_assignment();
                         let set_result = ctx.set_solution(
                             self.vars.variables.iter().zip(best_solution_assignment),
