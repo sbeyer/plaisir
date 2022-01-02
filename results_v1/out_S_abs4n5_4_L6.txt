@@ -1,0 +1,36 @@
+Day 1
+Route 1: 0 - 0
+Route 2: 0 - 0
+Route 3: 0 - 0
+Route 4: 0 - 0
+Day 2
+Route 1: 0 - 1 ( 106 ) - 0
+Route 2: 0 - 2 ( 117 ) - 0
+Route 3: 0 - 3 ( 117 ) - 0
+Route 4: 0 - 4 ( 110 ) - 0
+Day 3
+Route 1: 0 - 5 ( 96 ) - 0
+Route 2: 0 - 0
+Route 3: 0 - 2 ( 84 ) - 0
+Route 4: 0 - 3 ( 117 ) - 0
+Day 4
+Route 1: 0 - 4 ( 110 ) - 0
+Route 2: 0 - 0
+Route 3: 0 - 1 ( 97 ) - 2 ( 20 ) - 0
+Route 4: 0 - 3 ( 117 ) - 0
+Day 5
+Route 1: 0 - 3 ( 104 ) - 0
+Route 2: 0 - 1 ( 62 ) - 4 ( 55 ) - 0
+Route 3: 0 - 5 ( 96 ) - 0
+Route 4: 0 - 2 ( 114 ) - 0
+Day 6
+Route 1: 0 - 0
+Route 2: 0 - 0
+Route 3: 0 - 0
+Route 4: 0 - 0
+4876
+21.08
+159.54
+5056.62
+Intel Core i5-10210U @ 1.60GHz
+41.038000000000004
