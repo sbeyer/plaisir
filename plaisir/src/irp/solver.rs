@@ -18,7 +18,7 @@ struct Variables<'a> {
 
 #[allow(clippy::many_single_char_names)]
 impl<'a> Variables<'a> {
-    fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> Self {
+    fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> grb::Result<Self> {
         let num_variables_route =
             problem.num_days * problem.num_vehicles * problem.num_sites * problem.num_customers;
         let num_variables_visit = problem.num_days * problem.num_vehicles * problem.num_sites;
@@ -45,17 +45,15 @@ impl<'a> Variables<'a> {
                         let name = format!("r_{}_{}_{}_{}", t, v, i, j);
                         let coeff = problem.distance(i, j).into();
                         let bounds = (0.0, 1.0);
-                        //let var = grb::add_binvar!(lp, name: &name, obj: coeff).unwrap();
-                        let var = lp
-                            .add_var(
-                                &name,
-                                gurobi::VarType::Binary,
-                                coeff,
-                                bounds.0,
-                                bounds.1,
-                                std::iter::empty(),
-                            )
-                            .unwrap();
+                        //let var = grb::add_binvar!(lp, name: &name, obj: coeff)?;
+                        let var = lp.add_var(
+                            &name,
+                            gurobi::VarType::Binary,
+                            coeff,
+                            bounds.0,
+                            bounds.1,
+                            std::iter::empty(),
+                        )?;
                         debug_assert_eq!(vars.variables.len(), vars.route_index(t, v, i, j));
                         vars.variables.push(var);
                     }
@@ -73,16 +71,14 @@ impl<'a> Variables<'a> {
                     let name = format!("v_{}_{}_{}", t, v, i);
                     let coeff = 0.0;
                     let bounds = (0.0, 1.0);
-                    let var = lp
-                        .add_var(
-                            &name,
-                            gurobi::VarType::Continuous,
-                            coeff,
-                            bounds.0,
-                            bounds.1,
-                            std::iter::empty(),
-                        )
-                        .unwrap();
+                    let var = lp.add_var(
+                        &name,
+                        gurobi::VarType::Continuous,
+                        coeff,
+                        bounds.0,
+                        bounds.1,
+                        std::iter::empty(),
+                    )?;
                     debug_assert_eq!(vars.variables.len(), vars.visit_index(t, v, i));
                     vars.variables.push(var);
                 }
@@ -99,16 +95,14 @@ impl<'a> Variables<'a> {
                 let name = format!("i_{}_{}", t, i);
                 let coeff = site.cost();
                 let bounds = site.level_bounds();
-                let var = lp
-                    .add_var(
-                        &name,
-                        gurobi::VarType::Continuous,
-                        coeff,
-                        bounds.0,
-                        bounds.1 + site.level_change(),
-                        std::iter::empty(),
-                    )
-                    .unwrap();
+                let var = lp.add_var(
+                    &name,
+                    gurobi::VarType::Continuous,
+                    coeff,
+                    bounds.0,
+                    bounds.1 + site.level_change(),
+                    std::iter::empty(),
+                )?;
                 debug_assert_eq!(vars.variables.len(), vars.inventory_index(t, i));
                 vars.variables.push(var);
             }
@@ -127,16 +121,14 @@ impl<'a> Variables<'a> {
                     let name = format!("d_{}_{}_{}", t, v, i);
                     let coeff = 0.0;
                     let bounds = (0.0, problem.capacity.into());
-                    let var = lp
-                        .add_var(
-                            &name,
-                            gurobi::VarType::Continuous,
-                            coeff,
-                            bounds.0,
-                            bounds.1,
-                            std::iter::empty(),
-                        )
-                        .unwrap();
+                    let var = lp.add_var(
+                        &name,
+                        gurobi::VarType::Continuous,
+                        coeff,
+                        bounds.0,
+                        bounds.1,
+                        std::iter::empty(),
+                    )?;
                     debug_assert_eq!(vars.variables.len(), vars.deliver_index(t, v, i));
                     vars.variables.push(var);
                 }
@@ -148,7 +140,7 @@ impl<'a> Variables<'a> {
             vars.deliver_range.1 - vars.deliver_range.0
         );
 
-        vars
+        Ok(vars)
     }
 
     fn route_index(&self, t: usize, v: usize, i: usize, j: usize) -> usize {
@@ -510,21 +502,21 @@ impl<'a> SolverData<'a> {
         lp: &mut gurobi::Model,
         env: &'a gurobi::Env,
         cpu: &'a str,
-    ) -> Self {
+    ) -> grb::Result<Self> {
         let start_time = time::Instant::now();
-        let vars = Variables::new(problem, lp);
-        lp.update().unwrap(); // update to access variable names
+        let vars = Variables::new(problem, lp)?;
+        lp.update()?; // update to access variable names
         let varnames = vars
             .variables
             .iter()
             .map(|var| lp.get_obj_attr(grb::attr::VarName, var).unwrap())
             .collect();
 
-        let mcf = McfSubproblem::new(env, problem).unwrap();
+        let mcf = McfSubproblem::new(env, problem)?;
 
         let best_solution = Solution::empty();
 
-        SolverData {
+        Ok(SolverData {
             problem,
             vars,
             varnames,
@@ -533,7 +525,7 @@ impl<'a> SolverData<'a> {
             ncalls: 0,
             mcf,
             best_solution,
-        }
+        })
     }
 
     fn integral_subtour_elimination<F>(&mut self, assignment: &[f64], add: F) -> grb::Result<bool>
@@ -985,7 +977,7 @@ impl Solver {
 
         lp.set_objective(0, gurobi::ModelSense::Minimize)?;
 
-        let mut data = SolverData::new(problem, &mut lp, &env, &cpu);
+        let mut data = SolverData::new(problem, &mut lp, &env, &cpu)?;
 
         // route in-degree constraints
         for t in problem.all_days() {
