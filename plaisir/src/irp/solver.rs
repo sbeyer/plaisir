@@ -355,7 +355,6 @@ impl fmt::Display for Solution {
 
 struct McfSubproblem {
     model: gurobi::Model,
-    inventory_vars: Vec<Vec<gurobi::Var>>,
     delivery_vars: Vec<Vec<Vec<gurobi::Var>>>,
 }
 
@@ -421,7 +420,6 @@ impl McfSubproblem {
 
         let mut mcf = McfSubproblem {
             model,
-            inventory_vars,
             delivery_vars,
         };
         // Use the original constraints from Solver here, too:
@@ -449,14 +447,14 @@ impl McfSubproblem {
                     lhs.add_term(-1.0, mcf.delivery_var(t, v, j));
                 }
             }
-            lhs.add_term(-1.0, mcf.inventory_vars[t][0]); // outgoing inventory
+            lhs.add_term(-1.0, inventory_vars[t][0]); // outgoing inventory
             let depot = problem.site(0);
             let mut value = -depot.level_change();
 
             if t == 0 {
                 value -= depot.level_start();
             } else {
-                lhs.add_term(1.0, mcf.inventory_vars[t - 1][0]); // incoming inventory
+                lhs.add_term(1.0, inventory_vars[t - 1][0]); // incoming inventory
             }
 
             mcf.model
@@ -470,14 +468,14 @@ impl McfSubproblem {
                 for v in problem.all_vehicles() {
                     lhs.add_term(1.0, mcf.delivery_var(t, v, i)); // delivered
                 }
-                lhs.add_term(-1.0, mcf.inventory_vars[t][i]); // outgoing inventory
+                lhs.add_term(-1.0, inventory_vars[t][i]); // outgoing inventory
                 let customer = problem.site(i);
                 let mut value = -customer.level_change();
 
                 if t == 0 {
                     value -= customer.level_start();
                 } else {
-                    lhs.add_term(1.0, mcf.inventory_vars[t - 1][i]); // incoming inventory
+                    lhs.add_term(1.0, inventory_vars[t - 1][i]); // incoming inventory
                 }
 
                 mcf.model
