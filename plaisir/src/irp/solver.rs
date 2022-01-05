@@ -1,5 +1,8 @@
 use super::*;
 use grb::prelude as gurobi;
+use std::cmp::Ordering;
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 use std::time;
 
 extern crate partitions;
@@ -220,9 +223,28 @@ impl<'a> Variables<'a> {
     }
 }
 
+#[derive(Eq)]
 struct Delivery {
     quantity: usize,
     customer: usize,
+}
+
+impl PartialEq for Delivery {
+    fn eq(&self, other: &Self) -> bool {
+        self.quantity == other.quantity
+    }
+}
+
+impl PartialOrd for Delivery {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Delivery {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.quantity.cmp(&other.quantity)
+    }
 }
 
 type Routes = Vec<Vec<Vec<Delivery>>>;
@@ -815,6 +837,129 @@ impl<'a> SolverData<'a> {
         Ok(())
     }
 
+    /// A really stupid heuristic that does not take anything into consideration that would be sane
+    ///
+    /// Note that this method just changes the delivery values although it would also have
+    /// to change other values to get a feasible solution. We are assuming that all following
+    /// methods ignore the parts that are not related to deliveries.
+    fn fix_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
+        for t in self.problem.all_days() {
+            eprintln!("# Fixing day {}", t);
+
+            // Compute load for each vehicle
+            let load = self
+                .problem
+                .all_vehicles()
+                .map(|v| {
+                    self.problem
+                        .all_customers()
+                        .map(|i| self.get_delivery_amount(solution, t, v, i))
+                        .sum()
+                })
+                .collect::<Vec<usize>>();
+            eprintln!(
+                "## Loads {}: {:?} capacity {}",
+                t, load, self.problem.capacity
+            );
+
+            // Move delivieries to the same customer on different routes to the first route
+            // with such a delivery. (Note that this does not change anything for customers
+            // that are visited at most once.)
+            for i in self.problem.all_customers() {
+                let mut total_delivery: usize = self
+                    .problem
+                    .all_vehicles()
+                    .map(|v| self.get_delivery_amount(solution, t, v, i))
+                    .sum();
+
+                for v in self.problem.all_vehicles() {
+                    let value = self.get_delivery_amount(solution, t, v, i);
+                    if value > 0 {
+                        solution[self.vars.deliver_index(t, v, i)] = total_delivery as f64;
+                        total_delivery = 0;
+                    }
+                }
+            }
+
+            // Compute load for each vehicle
+            let mut load = self
+                .problem
+                .all_vehicles()
+                .map(|v| {
+                    self.problem
+                        .all_customers()
+                        .map(|i| self.get_delivery_amount(solution, t, v, i))
+                        .sum()
+                })
+                .collect::<Vec<usize>>();
+            eprintln!(
+                "## Loads {}: {:?} capacity {}",
+                t, load, self.problem.capacity
+            );
+
+            // Sort vehicles by descending load
+            let mut sorted_vehicles = self.problem.all_vehicles().collect::<Vec<_>>();
+            sorted_vehicles.sort_by_cached_key(|a| Reverse(load[*a]));
+
+            // Move the smallest deliveries that overload the capacity to the next route
+            for (i, v_ref) in sorted_vehicles[..sorted_vehicles.len() - 1]
+                .iter()
+                .enumerate()
+            {
+                let v = *v_ref;
+                let v_next = sorted_vehicles[i + 1];
+                if load[v] > self.problem.capacity {
+                    let mut heap = self
+                        .get_visited_customers(solution, t, v)
+                        .into_iter()
+                        .map(|i| {
+                            Reverse(Delivery {
+                                quantity: self.get_delivery_amount(solution, t, v, i),
+                                customer: i,
+                            })
+                        })
+                        .collect::<BinaryHeap<_>>();
+
+                    while load[v] > self.problem.capacity {
+                        if let Some(delivery) = heap.pop() {
+                            let amount = delivery.0.quantity;
+                            load[v] -= amount;
+                            load[v_next] += amount;
+
+                            let i = delivery.0.customer;
+                            solution[self.vars.deliver_index(t, v, i)] = 0.0;
+                            solution[self.vars.deliver_index(t, v_next, i)] = amount as f64;
+                        } else {
+                            panic!("Logic error: as long as the load is positive, we must have elements on the heap")
+                        };
+                    }
+                }
+            }
+
+            // Compute load for each vehicle
+            let load = self
+                .problem
+                .all_vehicles()
+                .map(|v| {
+                    self.problem
+                        .all_customers()
+                        .map(|i| self.get_delivery_amount(solution, t, v, i))
+                        .sum()
+                })
+                .collect::<Vec<usize>>();
+            eprintln!(
+                "## Loads {}: {:?} capacity {}",
+                t, load, self.problem.capacity
+            );
+
+            if load[sorted_vehicles[sorted_vehicles.len() - 1]] > self.problem.capacity {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
+
     /// Runs LKH heuristic on visited sites to get a feasible route
     fn get_routes_heuristically(&self, solution: &[f64]) -> Routes {
         self.problem
@@ -911,18 +1056,26 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     eprintln!("#       best objective: {}", best_objective);
                     eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
 
-                    // The following code is disabled because it produces wrong solutions:
-                    // In a relaxation it can happen that we visit the same customers on the
-                    // same day via different routes. It seems we need a further heuristic
-                    // to fix that.
-                    if false {
+                    if true {
                         let mut assignment = ctx.get_solution(&self.vars.variables)?;
+                        if PRINT_VARIABLE_VALUES {
+                            self.varnames
+                                .iter()
+                                .zip(assignment.iter())
+                                .filter(|(_, &value)| value > Self::EPSILON)
+                                .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+                        }
                         self.adjust_deliveries(&mut assignment)?;
-                        let routes = self.get_routes_heuristically(&assignment);
-                        let solution =
-                            Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
+                        let fixed = self.fix_deliveries(&mut assignment)?;
+                        if fixed {
+                            let routes = self.get_routes_heuristically(&assignment);
+                            let solution =
+                                Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
 
-                        eprintln!("{}", solution);
+                            eprintln!("{}", solution);
+                        } else {
+                            eprintln!("# Failed to find a feasible solution.");
+                        }
                     }
 
                     if self.best_solution.cost_total < best_objective {
