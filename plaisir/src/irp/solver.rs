@@ -120,7 +120,7 @@ impl<'a> Variables<'a> {
                 for i in problem.all_customers() {
                     let name = format!("d_{}_{}_{}", t, v, i);
                     let coeff = 0.0;
-                    let bounds = (0.0, problem.capacity.into());
+                    let bounds = (0.0, problem.capacity as f64);
                     let var = lp.add_var(
                         &name,
                         gurobi::VarType::Continuous,
@@ -759,7 +759,7 @@ impl<'a> SolverData<'a> {
                     self.mcf.model.set_obj_attr(
                         grb::attr::UB,
                         &self.mcf.delivery_var(t, v, i),
-                        self.problem.capacity.into(),
+                        self.problem.capacity as f64,
                     )?;
                 }
             }

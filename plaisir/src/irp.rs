@@ -155,7 +155,7 @@ pub struct Problem {
     pub num_customers: usize,
     pub num_days: usize,
     pub num_vehicles: usize,
-    pub capacity: i32,
+    pub capacity: usize,
     pub depot: Depot,
     pub customers: Vec<Customer>,
 }
@@ -167,7 +167,7 @@ impl Problem {
 
         let num_nodes = iter.next().unwrap().parse::<usize>()?;
         let num_days = iter.next().unwrap().parse::<usize>()?;
-        let capacity = iter.next().unwrap().parse::<i32>()?;
+        let capacity = iter.next().unwrap().parse::<usize>()?;
         let num_vehicles = iter.next().unwrap().parse::<usize>()?;
         let depot_id = iter.next().unwrap().parse::<i32>()?;
         assert!(depot_id == 0, "Depot identifier is not 0");
