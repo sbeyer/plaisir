@@ -773,7 +773,7 @@ impl<'a> SolverData<'a> {
     }
 
     /// Solve Minimum-Cost Flow LP to improve deliveries
-    fn adjust_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<()> {
+    fn adjust_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
         // Update bounds of deliveries
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
@@ -789,26 +789,6 @@ impl<'a> SolverData<'a> {
 
         self.mcf.model.optimize()?;
 
-        let status = self.mcf.model.status()?;
-        if true {
-            eprintln!("#### MIP solution status: {:?}", status);
-
-            let objective = self.mcf.model.get_attr(gurobi::attr::ObjVal)?;
-            eprintln!("#### MIP solution value: {}", objective);
-
-            for delivery_vars_per_day in self.mcf.delivery_vars.iter() {
-                for delivery_vars_per_customer in delivery_vars_per_day.iter() {
-                    for var in delivery_vars_per_customer.iter() {
-                        let name = self.mcf.model.get_obj_attr(grb::attr::VarName, var)?;
-                        let value = self.mcf.model.get_obj_attr(grb::attr::X, var)?;
-                        if value > SolverData::EPSILON {
-                            eprintln!("####   - {}: {}", name, value);
-                        }
-                    }
-                }
-            }
-        }
-
         // Reset bounds of deliveries
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
@@ -822,19 +802,43 @@ impl<'a> SolverData<'a> {
             }
         }
 
+        let status = self.mcf.model.status()?;
         if status == grb::Status::Optimal {
-            for t in self.problem.all_days() {
-                for v in self.problem.all_vehicles() {
-                    for i in self.problem.all_customers() {
-                        let var = self.mcf.delivery_var(t, v, i);
-                        let value = self.mcf.model.get_obj_attr(grb::attr::X, &var)?;
-                        solution[self.vars.deliver_index(t, v, i)] = value;
+            if true {
+                eprintln!("#### MIP solution status: {:?}", status);
+
+                let objective = self.mcf.model.get_attr(gurobi::attr::ObjVal)?;
+                eprintln!("#### MIP solution value: {}", objective);
+
+                for delivery_vars_per_day in self.mcf.delivery_vars.iter() {
+                    for delivery_vars_per_customer in delivery_vars_per_day.iter() {
+                        for var in delivery_vars_per_customer.iter() {
+                            let name = self.mcf.model.get_obj_attr(grb::attr::VarName, var)?;
+                            let value = self.mcf.model.get_obj_attr(grb::attr::X, var)?;
+                            if value > SolverData::EPSILON {
+                                eprintln!("####   - {}: {}", name, value);
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        Ok(())
+            if status == grb::Status::Optimal {
+                for t in self.problem.all_days() {
+                    for v in self.problem.all_vehicles() {
+                        for i in self.problem.all_customers() {
+                            let var = self.mcf.delivery_var(t, v, i);
+                            let value = self.mcf.model.get_obj_attr(grb::attr::X, &var)?;
+                            solution[self.vars.deliver_index(t, v, i)] = value;
+                        }
+                    }
+                }
+            }
+
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     /// A really stupid heuristic that does not take anything into consideration that would be sane
@@ -1020,15 +1024,17 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                             .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
                     }
 
-                    self.adjust_deliveries(&mut assignment)?;
-                    let routes = self.get_routes_heuristically(&assignment);
-                    let solution =
-                        Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
+                    let adjusted = self.adjust_deliveries(&mut assignment)?;
+                    if adjusted {
+                        let routes = self.get_routes_heuristically(&assignment);
+                        let solution =
+                            Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
 
-                    eprintln!("{}", solution);
+                        eprintln!("{}", solution);
 
-                    if solution.cost_total < self.best_solution.cost_total {
-                        self.best_solution = solution
+                        if solution.cost_total < self.best_solution.cost_total {
+                            self.best_solution = solution
+                        }
                     }
                 }
 
@@ -1065,8 +1071,8 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                 .filter(|(_, &value)| value > Self::EPSILON)
                                 .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
                         }
-                        self.adjust_deliveries(&mut assignment)?;
-                        let fixed = self.fix_deliveries(&mut assignment)?;
+                        let fixed = self.adjust_deliveries(&mut assignment)?
+                            && self.fix_deliveries(&mut assignment)?;
                         if fixed {
                             let routes = self.get_routes_heuristically(&assignment);
                             let solution =
