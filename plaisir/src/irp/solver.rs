@@ -1079,6 +1079,10 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                 Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
 
                             eprintln!("{}", solution);
+
+                            if solution.cost_total < self.best_solution.cost_total {
+                                self.best_solution = solution
+                            }
                         } else {
                             eprintln!("# Failed to find a feasible solution.");
                         }
