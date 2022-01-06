@@ -714,6 +714,38 @@ impl<'a> SolverData<'a> {
         }
     }
 
+    fn give_new_best_solution_to_solver(
+        &mut self,
+        ctx: grb::callback::MIPNodeCtx,
+    ) -> grb::Result<()> {
+        let best_objective = ctx.obj_best()?;
+        if self.best_solution.cost_total < best_objective {
+            let best_solution_assignment = self.get_best_solution_variable_assignment();
+            let set_result =
+                ctx.set_solution(self.vars.variables.iter().zip(best_solution_assignment))?;
+            if let Some(value) = set_result {
+                self.is_new_solution_just_set = true;
+                eprintln!(
+                    "# New best solution with objective value {} (old: {}) set successfully",
+                    value, best_objective
+                );
+                if value != self.best_solution.cost_total {
+                    eprintln!(
+                        "# The new objective value deviates from expected value {}",
+                        self.best_solution.cost_total
+                    );
+                }
+            } else {
+                eprintln!(
+                    "# No new solution set, keeping best objective value  {}",
+                    best_objective
+                );
+            }
+        }
+
+        Ok(())
+    }
+
     fn elapsed_time(&self) -> time::Duration {
         self.start_time.elapsed()
     }
@@ -1077,8 +1109,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         ctx.node_cnt()?,
                         status
                     );
-                    let best_objective = ctx.obj_best()?;
-                    eprintln!("#       best objective: {}", best_objective);
+                    eprintln!("#       best objective: {}", ctx.obj_best()?);
                     eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
 
                     if true {
@@ -1100,30 +1131,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         }
                     }
 
-                    if self.best_solution.cost_total < best_objective {
-                        let best_solution_assignment = self.get_best_solution_variable_assignment();
-                        let set_result = ctx.set_solution(
-                            self.vars.variables.iter().zip(best_solution_assignment),
-                        )?;
-                        if let Some(value) = set_result {
-                            self.is_new_solution_just_set = true;
-                            eprintln!(
-                                "# New best solution with objective value {} (old: {}) set successfully",
-                                value, best_objective
-                            );
-                            if value != self.best_solution.cost_total {
-                                eprintln!(
-                                    "# The new objective value deviates from expected value {}",
-                                    self.best_solution.cost_total
-                                );
-                            }
-                        } else {
-                            eprintln!(
-                                "# No new solution set, keeping best objective value  {}",
-                                best_objective
-                            );
-                        }
-                    }
+                    self.give_new_best_solution_to_solver(ctx)?;
                 }
             }
             _ => (),
