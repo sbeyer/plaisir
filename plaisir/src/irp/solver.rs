@@ -1030,11 +1030,17 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         let solution =
                             Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
 
-                        eprintln!("{}", solution);
-
                         if solution.cost_total < self.best_solution.cost_total {
+                            eprintln!("{}", solution);
                             self.best_solution = solution
+                        } else {
+                            eprintln!(
+                                "# Found solution of objective value {} not better than {}",
+                                solution.cost_total, self.best_solution.cost_total
+                            );
                         }
+                    } else {
+                        eprintln!("# Failed to find a feasible adjusted solution. This is weird, because we are in MIPSol.");
                     }
                 }
 
@@ -1078,10 +1084,14 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                             let solution =
                                 Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
 
-                            eprintln!("{}", solution);
-
                             if solution.cost_total < self.best_solution.cost_total {
+                                eprintln!("{}", solution);
                                 self.best_solution = solution
+                            } else {
+                                eprintln!(
+                                    "# Found solution of objective value {} not better than {}",
+                                    solution.cost_total, self.best_solution.cost_total
+                                );
                             }
                         } else {
                             eprintln!("# Failed to find a feasible solution.");
@@ -1094,9 +1104,21 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                             self.vars.variables.iter().zip(best_solution_assignment),
                         )?;
                         if let Some(value) = set_result {
-                            eprintln!("# New solution with value {} set successfully", value);
+                            eprintln!(
+                                "# New best solution with objective value {} (old: {}) set successfully",
+                                value, best_objective
+                            );
+                            if value != self.best_solution.cost_total {
+                                eprintln!(
+                                    "# The new objective value deviates from expected value {}",
+                                    self.best_solution.cost_total
+                                );
+                            }
                         } else {
-                            eprintln!("# No new solution set");
+                            eprintln!(
+                                "# No new solution set, keeping best objective value  {}",
+                                best_objective
+                            );
                         }
                     }
                 }
