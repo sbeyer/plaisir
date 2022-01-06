@@ -696,6 +696,24 @@ impl<'a> SolverData<'a> {
         assignment
     }
 
+    fn update_best_solution(&mut self, routes: Routes) -> bool {
+        let solution = Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
+
+        if solution.cost_total < self.best_solution.cost_total {
+            eprintln!("{}", solution);
+            self.best_solution = solution;
+
+            true
+        } else {
+            eprintln!(
+                "# Found solution of objective value {} not better than {}",
+                solution.cost_total, self.best_solution.cost_total
+            );
+
+            false
+        }
+    }
+
     fn elapsed_time(&self) -> time::Duration {
         self.start_time.elapsed()
     }
@@ -1032,20 +1050,12 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         let adjusted = self.adjust_deliveries(&mut assignment)?;
                         if adjusted {
                             let routes = self.get_routes_heuristically(&assignment);
-                            let solution =
-                                Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
-
-                            if solution.cost_total < self.best_solution.cost_total {
-                                eprintln!("{}", solution);
-                                self.best_solution = solution
-                            } else {
-                                eprintln!(
-                                    "# Found solution of objective value {} not better than {}",
-                                    solution.cost_total, self.best_solution.cost_total
-                                );
-                            }
+                            self.update_best_solution(routes);
                         } else {
-                            eprintln!("# Failed to find a feasible adjusted solution. This is weird, because we are in MIPSol.");
+                            eprintln!(
+                                "# Failed to find a feasible adjusted solution. \
+                                   This is weird, because we are in MIPSol."
+                            );
                         }
                     }
 
@@ -1054,10 +1064,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
 
                     if !new_subtour_constraints {
                         let routes = self.get_routes(&assignment);
-                        let solution =
-                            Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
-
-                        eprintln!("{}", solution);
+                        self.update_best_solution(routes);
                     }
                 }
             }
@@ -1087,18 +1094,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                             && self.fix_deliveries(&mut assignment)?;
                         if fixed {
                             let routes = self.get_routes_heuristically(&assignment);
-                            let solution =
-                                Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
-
-                            if solution.cost_total < self.best_solution.cost_total {
-                                eprintln!("{}", solution);
-                                self.best_solution = solution
-                            } else {
-                                eprintln!(
-                                    "# Found solution of objective value {} not better than {}",
-                                    solution.cost_total, self.best_solution.cost_total
-                                );
-                            }
+                            self.update_best_solution(routes);
                         } else {
                             eprintln!("# Failed to find a feasible solution.");
                         }
