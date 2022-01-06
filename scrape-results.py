@@ -98,14 +98,6 @@ for filepath in args:
 
     solution = get_solution_from_data(solution_data)
 
-    if solution["output"]:
-        try:
-            latest_solution_file = f"results_latest/out_{instance}.txt"
-            with open(latest_solution_file, "w") as outfile:
-                solution_data = outfile.writelines(solution["output"])
-        except Exception as err:
-            print(f"Failed to write solution to file {latest_solution_file}: {err}")
-
     row = results.loc[results.instance == instance].squeeze()
 
     if (
@@ -129,6 +121,16 @@ for filepath in args:
             results.loc[
                 results.instance == instance, ("commit", "bestsol", "time", "optimal")
             ] = (commit, solution["bestsol"], solution["time"], solution["optimal"])
+
+            if solution["output"]:
+                try:
+                    latest_solution_file = f"results_latest/out_{instance}.txt"
+                    with open(latest_solution_file, "w") as outfile:
+                        solution_data = outfile.writelines(solution["output"])
+                except Exception as err:
+                    print(
+                        f"Failed to write solution to file {latest_solution_file}: {err}"
+                    )
 
         print()
 
