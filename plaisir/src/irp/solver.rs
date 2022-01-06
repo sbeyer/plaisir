@@ -514,6 +514,7 @@ struct SolverData<'a> {
     ncalls: usize,
     mcf: McfSubproblem,
     best_solution: Solution,
+    is_new_solution_just_set: bool,
 }
 
 impl<'a> SolverData<'a> {
@@ -547,6 +548,7 @@ impl<'a> SolverData<'a> {
             ncalls: 0,
             mcf,
             best_solution,
+            is_new_solution_just_set: false,
         })
     }
 
@@ -1015,44 +1017,48 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                 eprintln!("#    current obj: {}", ctx.obj()?);
                 eprintln!("#       best obj: {}", ctx.obj_best()?);
 
-                {
-                    if PRINT_VARIABLE_VALUES {
-                        self.varnames
-                            .iter()
-                            .zip(assignment.iter())
-                            .filter(|(_, &value)| value > Self::EPSILON)
-                            .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+                if self.is_new_solution_just_set {
+                    self.is_new_solution_just_set = false;
+                } else {
+                    {
+                        if PRINT_VARIABLE_VALUES {
+                            self.varnames
+                                .iter()
+                                .zip(assignment.iter())
+                                .filter(|(_, &value)| value > Self::EPSILON)
+                                .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+                        }
+
+                        let adjusted = self.adjust_deliveries(&mut assignment)?;
+                        if adjusted {
+                            let routes = self.get_routes_heuristically(&assignment);
+                            let solution =
+                                Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
+
+                            if solution.cost_total < self.best_solution.cost_total {
+                                eprintln!("{}", solution);
+                                self.best_solution = solution
+                            } else {
+                                eprintln!(
+                                    "# Found solution of objective value {} not better than {}",
+                                    solution.cost_total, self.best_solution.cost_total
+                                );
+                            }
+                        } else {
+                            eprintln!("# Failed to find a feasible adjusted solution. This is weird, because we are in MIPSol.");
+                        }
                     }
 
-                    let adjusted = self.adjust_deliveries(&mut assignment)?;
-                    if adjusted {
-                        let routes = self.get_routes_heuristically(&assignment);
+                    let new_subtour_constraints = self
+                        .integral_subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
+
+                    if !new_subtour_constraints {
+                        let routes = self.get_routes(&assignment);
                         let solution =
                             Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
 
-                        if solution.cost_total < self.best_solution.cost_total {
-                            eprintln!("{}", solution);
-                            self.best_solution = solution
-                        } else {
-                            eprintln!(
-                                "# Found solution of objective value {} not better than {}",
-                                solution.cost_total, self.best_solution.cost_total
-                            );
-                        }
-                    } else {
-                        eprintln!("# Failed to find a feasible adjusted solution. This is weird, because we are in MIPSol.");
+                        eprintln!("{}", solution);
                     }
-                }
-
-                let new_subtour_constraints =
-                    self.integral_subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
-
-                if !new_subtour_constraints {
-                    let routes = self.get_routes(&assignment);
-                    let solution =
-                        Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
-
-                    eprintln!("{}", solution);
                 }
             }
             gurobi::Where::MIPNode(ctx) => {
@@ -1104,6 +1110,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                             self.vars.variables.iter().zip(best_solution_assignment),
                         )?;
                         if let Some(value) = set_result {
+                            self.is_new_solution_just_set = true;
                             eprintln!(
                                 "# New best solution with objective value {} (old: {}) set successfully",
                                 value, best_objective
