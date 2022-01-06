@@ -8,8 +8,6 @@ import os
 import pandas as pd
 import sys
 
-Timelimit = 1598.58
-
 results = pd.read_csv("results.csv")
 results.fillna(np.inf, inplace=True)
 
@@ -68,8 +66,7 @@ def get_solution_from_data(data):
             if best_changed:
                 best_time = total_time
                 best_changed = False
-                if total_time < Timelimit + 0.01:
-                    feasible_output = "\n".join(output_list)
+                feasible_output = "\n".join(output_list)
             output_list = []
 
     return {
