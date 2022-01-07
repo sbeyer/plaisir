@@ -853,7 +853,7 @@ S_abs4n50_3_L6,14070.86,v1,1422.157,False
 S_abs4n50_4_H3,14907.39,v1,591.422,False
 S_abs4n50_4_H6,41802.6,v1,1382.047,False
 S_abs4n50_4_L3,6760.66,v1,1244.614,False
-S_abs4n50_4_L6,25796.62,v1,1504.263,False
+S_abs4n50_4_L6,inf,v1,inf,False
 S_abs4n50_5_H3,16608.02,v1,1047.235,False
 S_abs4n50_5_H6,inf,v1,inf,False
 S_abs4n50_5_L3,7947.8,v1,885.825,False
@@ -1008,7 +1008,7 @@ S_abs5n50_3_H6,34969.67,v1,885.61,False
 S_abs5n50_3_L3,5512.16,v1,642.658,False
 S_abs5n50_3_L6,17022.71,v1,224.871,False
 S_abs5n50_4_H3,14602.78,v1,936.847,False
-S_abs5n50_4_H6,38106.92,v1,1401.681,False
+S_abs5n50_4_H6,inf,v1,inf,False
 S_abs5n50_4_L3,6721.53,v1,1003.168,False
 S_abs5n50_4_L6,20101.94,v1,94.696,False
 S_abs5n50_5_H3,15645.55,v1,1521.801,False
