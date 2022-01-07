@@ -1067,6 +1067,10 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                 eprintln!("# Incumbent {}!", self.ncalls);
                 eprintln!("#    current obj: {}", ctx.obj()?);
                 eprintln!("#       best obj: {}", ctx.obj_best()?);
+                eprintln!(
+                    "#           time: {}",
+                    self.elapsed_time().as_millis() as f64 * 1e-3
+                );
 
                 if self.is_new_solution_just_set {
                     self.is_new_solution_just_set = false;
@@ -1099,19 +1103,28 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         let routes = self.get_routes(&assignment);
                         self.update_best_solution(routes);
                     }
+
+                    eprintln!(
+                        "# Callback finish time: {}",
+                        self.elapsed_time().as_millis() as f64 * 1e-3
+                    );
                 }
             }
             gurobi::Where::MIPNode(ctx) => {
                 let status = ctx.status()?;
                 if status == grb::Status::Optimal {
                     eprintln!(
-                        "# MIPNode {} {} {:?}",
+                        "# MIPNode #sols {} #nodes {} status {:?}",
                         ctx.sol_cnt()?,
                         ctx.node_cnt()?,
-                        status
+                        status,
                     );
                     eprintln!("#       best objective: {}", ctx.obj_best()?);
                     eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
+                    eprintln!(
+                        "#                 time: {}",
+                        self.elapsed_time().as_millis() as f64 * 1e-3
+                    );
 
                     if true {
                         let mut assignment = ctx.get_solution(&self.vars.variables)?;
@@ -1133,6 +1146,11 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     }
 
                     self.give_new_best_solution_to_solver(ctx)?;
+
+                    eprintln!(
+                        "# MIPNode finish time: {}",
+                        self.elapsed_time().as_millis() as f64 * 1e-3
+                    );
                 }
             }
             _ => (),
