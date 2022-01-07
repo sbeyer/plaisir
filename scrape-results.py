@@ -77,6 +77,16 @@ def get_solution_from_data(data):
     }
 
 
+def save_output(instance, content):
+    if content:
+        try:
+            latest_solution_file = f"results_best/out_{instance}.txt"
+            with open(latest_solution_file, "w") as outfile:
+                outfile.writelines(content)
+        except Exception as err:
+            print(f"Failed to write solution to file {latest_solution_file}: {err}")
+
+
 for filepath in args:
     filedir, filename = os.path.split(filepath)
     _, commit = os.path.split(filedir)
@@ -100,7 +110,25 @@ for filepath in args:
 
     row = results.loc[results.instance == instance].squeeze()
 
-    if (
+    update = False
+    if row.empty:
+        print(
+            f"NEW: {instance}\t{solution['bestsol']}\t{commit}\t{solution['time']}\t{solution['optimal']}"
+        )
+        print(" `-> NEWLY INSERTED!")
+        print()
+        results.loc[
+            len(results.index), ("instance", "commit", "bestsol", "time", "optimal")
+        ] = (
+            instance,
+            commit,
+            solution["bestsol"],
+            solution["time"],
+            solution["optimal"],
+        )
+
+        save_output(instance, solution["output"])
+    elif (
         solution["bestsol"] != row.bestsol
         or solution["time"] != row.time
         or solution["optimal"] != row.optimal
@@ -122,15 +150,7 @@ for filepath in args:
                 results.instance == instance, ("commit", "bestsol", "time", "optimal")
             ] = (commit, solution["bestsol"], solution["time"], solution["optimal"])
 
-            if solution["output"]:
-                try:
-                    latest_solution_file = f"results_latest/out_{instance}.txt"
-                    with open(latest_solution_file, "w") as outfile:
-                        solution_data = outfile.writelines(solution["output"])
-                except Exception as err:
-                    print(
-                        f"Failed to write solution to file {latest_solution_file}: {err}"
-                    )
+            save_output(instance, solution["output"])
 
         print()
 
