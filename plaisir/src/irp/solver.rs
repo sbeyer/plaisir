@@ -697,21 +697,17 @@ impl<'a> SolverData<'a> {
         assignment
     }
 
-    fn update_best_solution(&mut self, routes: Routes) -> bool {
+    fn update_best_solution(&mut self, routes: Routes) {
         let solution = Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
 
         if solution.cost_total < self.best_solution.cost_total {
             eprintln!("{}", solution);
             self.best_solution = solution;
-
-            true
         } else {
             eprintln!(
                 "# Found solution of objective value {} not better than {}",
                 solution.cost_total, self.best_solution.cost_total
             );
-
-            false
         }
     }
 
