@@ -140,12 +140,17 @@ for filepath in args:
             f"OLD: {instance}\t{row.bestsol}\t{row.commit}\t{row.time}\t{row.optimal}"
         )
 
-        if (
-            solution["bestsol"] < row.bestsol
-            or (solution["bestsol"] == row.bestsol and solution["time"] < row.time)
-            or (solution["optimal"] and not row.optimal)
-        ):
-            print(" `-> IMPROVED!")
+        if solution["bestsol"] <= row.bestsol:
+            if solution["bestsol"] == row.bestsol and solution["time"] > row.time:
+                print(" `-> SOLUTION KEPT ALTHOUGH WORSE TIME!")
+            elif row.optimal and not solution["optimal"]:
+                print(
+                    " `-> SOLUTION KEPT ALTHOUGH WE LOST PROOF OF OPTIMALITY! (We keep info of optimality)"
+                )
+                solution["optimal"] = True
+            else:
+                print(" `-> IMPROVED!")
+
             results.loc[
                 results.instance == instance, ("commit", "bestsol", "time", "optimal")
             ] = (commit, solution["bestsol"], solution["time"], solution["optimal"])
