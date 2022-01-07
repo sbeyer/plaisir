@@ -1184,9 +1184,9 @@ impl Solver {
 
         // precision used in DIMACS instances is 1e-2, so we use 9e-3 as absolute MIP gap
         lp.set_param(grb::param::MIPGapAbs, 9e-3)?;
-        */
 
         lp.set_param(grb::param::IntegralityFocus, 1)?;
+        */
 
         lp.set_param(grb::param::Presolve, 2)?;
 
