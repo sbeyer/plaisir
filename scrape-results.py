@@ -8,8 +8,6 @@ import os
 import pandas as pd
 import sys
 
-Timelimit = 1598.58
-
 results = pd.read_csv("results.csv")
 results.fillna(np.inf, inplace=True)
 
@@ -68,8 +66,7 @@ def get_solution_from_data(data):
             if best_changed:
                 best_time = total_time
                 best_changed = False
-                if total_time < Timelimit + 0.01:
-                    feasible_output = "\n".join(output_list)
+                feasible_output = "\n".join(output_list)
             output_list = []
 
     return {
@@ -78,6 +75,16 @@ def get_solution_from_data(data):
         "optimal": optimum,
         "output": feasible_output,
     }
+
+
+def save_output(instance, content):
+    if content:
+        try:
+            latest_solution_file = f"results_best/out_{instance}.txt"
+            with open(latest_solution_file, "w") as outfile:
+                outfile.writelines(content)
+        except Exception as err:
+            print(f"Failed to write solution to file {latest_solution_file}: {err}")
 
 
 for filepath in args:
@@ -101,17 +108,27 @@ for filepath in args:
 
     solution = get_solution_from_data(solution_data)
 
-    if solution["output"]:
-        try:
-            latest_solution_file = f"results_latest/out_{instance}.txt"
-            with open(latest_solution_file, "w") as outfile:
-                solution_data = outfile.writelines(solution["output"])
-        except Exception as err:
-            print(f"Failed to write solution to file {latest_solution_file}: {err}")
-
     row = results.loc[results.instance == instance].squeeze()
 
-    if (
+    update = False
+    if row.empty:
+        print(
+            f"NEW: {instance}\t{solution['bestsol']}\t{commit}\t{solution['time']}\t{solution['optimal']}"
+        )
+        print(" `-> NEWLY INSERTED!")
+        print()
+        results.loc[
+            len(results.index), ("instance", "commit", "bestsol", "time", "optimal")
+        ] = (
+            instance,
+            commit,
+            solution["bestsol"],
+            solution["time"],
+            solution["optimal"],
+        )
+
+        save_output(instance, solution["output"])
+    elif (
         solution["bestsol"] != row.bestsol
         or solution["time"] != row.time
         or solution["optimal"] != row.optimal
@@ -123,15 +140,22 @@ for filepath in args:
             f"OLD: {instance}\t{row.bestsol}\t{row.commit}\t{row.time}\t{row.optimal}"
         )
 
-        if (
-            solution["bestsol"] < row.bestsol
-            or (solution["bestsol"] == row.bestsol and solution["time"] < row.time)
-            or (solution["optimal"] and not row.optimal)
-        ):
-            print(" `-> IMPROVED!")
+        if solution["bestsol"] <= row.bestsol:
+            if solution["bestsol"] == row.bestsol and solution["time"] > row.time:
+                print(" `-> SOLUTION KEPT ALTHOUGH WORSE TIME!")
+            elif row.optimal and not solution["optimal"]:
+                print(
+                    " `-> SOLUTION KEPT ALTHOUGH WE LOST PROOF OF OPTIMALITY! (We keep info of optimality)"
+                )
+                solution["optimal"] = True
+            else:
+                print(" `-> IMPROVED!")
+
             results.loc[
                 results.instance == instance, ("commit", "bestsol", "time", "optimal")
             ] = (commit, solution["bestsol"], solution["time"], solution["optimal"])
+
+            save_output(instance, solution["output"])
 
         print()
 
