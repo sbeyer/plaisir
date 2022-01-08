@@ -76,7 +76,7 @@ impl<'a> Variables<'a> {
                     let bounds = (0.0, 1.0);
                     let var = lp.add_var(
                         &name,
-                        gurobi::VarType::Continuous,
+                        gurobi::VarType::Binary,
                         coeff,
                         bounds.0,
                         bounds.1,
