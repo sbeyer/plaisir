@@ -796,6 +796,16 @@ impl<'a> SolverData<'a> {
                             customer: 0,
                         }];
 
+                        let mut adjacencies = vec![Vec::with_capacity(2); self.problem.num_sites];
+                        for i in self.problem.all_sites() {
+                            for j in self.problem.all_sites_after(i) {
+                                if self.is_edge_in_route(solution, t, v, i, j) {
+                                    adjacencies[i].push(j);
+                                    adjacencies[j].push(i);
+                                }
+                            }
+                        }
+
                         let mut visited = vec![false; self.problem.num_sites];
                         visited[0] = true;
 
@@ -803,28 +813,26 @@ impl<'a> SolverData<'a> {
                         loop {
                             let mut found = false;
 
-                            // XXX: bad run-time with this loop... preprocess!
-                            for j in self.problem.all_customers() {
-                                if i != j
-                                    && !visited[j]
-                                    && self.is_edge_in_route(solution, t, v, i, j)
-                                {
-                                    let quantity = self.get_delivery_amount(solution, t, v, j);
-                                    visited[j] = true;
-                                    i = j;
-                                    found = true;
+                            for j in adjacencies[i].iter() {
+                                if !visited[*j] {
+                                    let quantity = self.get_delivery_amount(solution, t, v, *j);
 
-                                    if quantity > 0 {
+                                    if quantity > 0 && *j != 0 {
                                         route.push(Delivery {
                                             quantity,
-                                            customer: j,
+                                            customer: *j,
                                         });
                                     }
+
+                                    visited[*j] = true;
+                                    found = true;
+                                    i = *j;
+
                                     break;
                                 }
                             }
 
-                            if !found {
+                            if !found || i == 0 {
                                 break;
                             }
                         }
