@@ -270,7 +270,7 @@ struct Solution {
     cost_inventory_customers: f64,
     cost_total: f64,
     processor: String,
-    time: time::Duration,
+    time: f64,
 }
 
 impl Solution {
@@ -282,11 +282,11 @@ impl Solution {
             cost_inventory_customers: f64::INFINITY,
             cost_total: f64::INFINITY,
             processor: String::new(),
-            time: time::Duration::default(),
+            time: 0.0,
         }
     }
 
-    fn new(problem: &Problem, routes: Routes, time: time::Duration, cpu: &str) -> Self {
+    fn new(problem: &Problem, routes: Routes, time: f64, cpu: &str) -> Self {
         let mut sol = Solution {
             routes,
             cost_transportation: 0.,
@@ -374,7 +374,7 @@ impl fmt::Display for Solution {
 
         // Meta
         writeln!(f, "{}", self.processor)?;
-        writeln!(f, "{}", self.time.as_millis() as f64 * 1e-3)?;
+        writeln!(f, "{}", self.time)?;
 
         Ok(())
     }
@@ -571,7 +571,7 @@ impl<'a> SolverData<'a> {
     {
         let mut added = false;
 
-        eprintln!("# Subtour elimination run");
+        eprintln!("# Subtour elimination run, time {}", self.elapsed_seconds());
 
         if PRINT_VARIABLE_VALUES {
             self.varnames
@@ -654,6 +654,12 @@ impl<'a> SolverData<'a> {
             }
         }
 
+        eprintln!(
+            "# Subtour elimination -> constraints added? {}, time {}",
+            added,
+            self.elapsed_seconds()
+        );
+
         Ok(added)
     }
 
@@ -711,7 +717,7 @@ impl<'a> SolverData<'a> {
     }
 
     fn update_best_solution(&mut self, routes: Routes) {
-        let solution = Solution::new(self.problem, routes, self.elapsed_time(), self.cpu);
+        let solution = Solution::new(self.problem, routes, self.elapsed_seconds(), self.cpu);
 
         if solution.cost_total < self.best_solution.cost_total {
             eprintln!("{}", solution);
@@ -756,8 +762,8 @@ impl<'a> SolverData<'a> {
         Ok(())
     }
 
-    fn elapsed_time(&self) -> time::Duration {
-        self.start_time.elapsed()
+    fn elapsed_seconds(&self) -> f64 {
+        self.start_time.elapsed().as_millis() as f64 * 1e-3
     }
 
     fn is_edge_in_route(&self, solution: &[f64], t: usize, v: usize, i: usize, j: usize) -> bool {
@@ -785,6 +791,8 @@ impl<'a> SolverData<'a> {
     }
 
     fn get_routes(&self, solution: &[f64]) -> Routes {
+        eprintln!("# Get routes, time {}", self.elapsed_seconds());
+
         self.problem
             .all_days()
             .map(|t| {
@@ -846,6 +854,7 @@ impl<'a> SolverData<'a> {
 
     /// Solve Minimum-Cost Flow LP to improve deliveries
     fn adjust_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
+        eprintln!("# Adjust deliveries, time {}", self.elapsed_seconds());
         // Update bounds of deliveries
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
@@ -919,6 +928,7 @@ impl<'a> SolverData<'a> {
     /// to change other values to get a feasible solution. We are assuming that all following
     /// methods ignore the parts that are not related to deliveries.
     fn fix_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
+        eprintln!("# Fix deliveries, time {}", self.elapsed_seconds());
         for t in self.problem.all_days() {
             eprintln!("# Fixing day {}", t);
 
@@ -1038,6 +1048,10 @@ impl<'a> SolverData<'a> {
 
     /// Runs LKH heuristic on visited sites to get a feasible route
     fn get_routes_heuristically(&self, solution: &[f64]) -> Routes {
+        eprintln!(
+            "# Get routes heuristically, time {}",
+            self.elapsed_seconds()
+        );
         self.problem
             .all_days()
             .map(|t| {
@@ -1086,10 +1100,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                 eprintln!("# Incumbent {}!", self.ncalls);
                 eprintln!("#    current obj: {}", ctx.obj()?);
                 eprintln!("#       best obj: {}", ctx.obj_best()?);
-                eprintln!(
-                    "#           time: {}",
-                    self.elapsed_time().as_millis() as f64 * 1e-3
-                );
+                eprintln!("#           time: {}", self.elapsed_seconds());
 
                 if self.is_new_solution_just_set {
                     self.is_new_solution_just_set = false;
@@ -1123,10 +1134,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         self.update_best_solution(routes);
                     }
 
-                    eprintln!(
-                        "# Callback finish time: {}",
-                        self.elapsed_time().as_millis() as f64 * 1e-3
-                    );
+                    eprintln!("# Callback finish time: {}", self.elapsed_seconds());
                 }
             }
             gurobi::Where::MIPNode(ctx) => {
@@ -1140,10 +1148,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     );
                     eprintln!("#       best objective: {}", ctx.obj_best()?);
                     eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
-                    eprintln!(
-                        "#                 time: {}",
-                        self.elapsed_time().as_millis() as f64 * 1e-3
-                    );
+                    eprintln!("#                 time: {}", self.elapsed_seconds());
 
                     if true {
                         let mut assignment = ctx.get_solution(&self.vars.variables)?;
@@ -1166,10 +1171,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
 
                     self.give_new_best_solution_to_solver(ctx)?;
 
-                    eprintln!(
-                        "# MIPNode finish time: {}",
-                        self.elapsed_time().as_millis() as f64 * 1e-3
-                    );
+                    eprintln!("# MIPNode finish time: {}", self.elapsed_seconds());
                 }
             }
             _ => (),
@@ -1327,7 +1329,7 @@ impl Solver {
         Self::print_raw_solution(&data, &lp)?;
         let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
         let routes = data.get_routes(&assignment);
-        let solution = Solution::new(problem, routes, data.elapsed_time(), data.cpu);
+        let solution = Solution::new(problem, routes, data.elapsed_seconds(), data.cpu);
         eprintln!("# Final solution");
         eprintln!("{}", solution);
 
