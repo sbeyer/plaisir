@@ -253,6 +253,10 @@ impl Problem {
         self.all_sites().filter(move |i| *i != exception)
     }
 
+    fn all_sites_after(&self, after: usize) -> impl Iterator<Item = usize> {
+        after + 1..self.num_sites
+    }
+
     fn all_customers(&self) -> impl Iterator<Item = usize> {
         1..self.num_sites
     }

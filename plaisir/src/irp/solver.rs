@@ -1,7 +1,6 @@
 use super::*;
 use grb::prelude as gurobi;
-use std::cmp::Ordering;
-use std::cmp::Reverse;
+use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
 use std::time;
 
@@ -22,8 +21,9 @@ struct Variables<'a> {
 #[allow(clippy::many_single_char_names)]
 impl<'a> Variables<'a> {
     fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> grb::Result<Self> {
-        let num_variables_route =
-            problem.num_days * problem.num_vehicles * problem.num_sites * problem.num_customers;
+        let num_variables_route = problem.num_days
+            * problem.num_vehicles
+            * (problem.num_sites * problem.num_customers / 2);
         let num_variables_visit = problem.num_days * problem.num_vehicles * problem.num_sites;
         let num_variables_inventory = problem.num_days * problem.num_sites;
         let num_variables_deliver = problem.num_days * problem.num_vehicles * problem.num_customers;
@@ -44,14 +44,18 @@ impl<'a> Variables<'a> {
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
                 for i in problem.all_sites() {
-                    for j in problem.all_sites_except(i) {
+                    for j in problem.all_sites_after(i) {
                         let name = format!("r_{}_{}_{}_{}", t, v, i, j);
                         let coeff = problem.distance(i, j).into();
-                        let bounds = (0.0, 1.0);
+                        let bounds = (0.0, if i == 0 { 2.0 } else { 1.0 });
                         //let var = grb::add_binvar!(lp, name: &name, obj: coeff)?;
                         let var = lp.add_var(
                             &name,
-                            gurobi::VarType::Binary,
+                            if i == 0 {
+                                gurobi::VarType::Integer
+                            } else {
+                                gurobi::VarType::Binary
+                            },
                             coeff,
                             bounds.0,
                             bounds.1,
@@ -150,24 +154,33 @@ impl<'a> Variables<'a> {
     fn route_index(&self, t: usize, v: usize, i: usize, j: usize) -> usize {
         debug_assert!(t < self.problem.num_days);
         debug_assert!(v < self.problem.num_vehicles);
+        debug_assert!(i < j);
         let n = self.problem.num_customers;
-        debug_assert!(i <= n);
         debug_assert!(j <= n);
-        debug_assert!(i != j);
 
-        let j_block_size = n;
-        let i_j_block_size = (n + 1) * j_block_size;
+        let i_j_block_size = n * (n + 1) / 2;
         let v_i_j_block_size = self.problem.num_vehicles * i_j_block_size;
-        let offset =
-            self.route_range.0 + t * v_i_j_block_size + v * i_j_block_size + i * j_block_size;
-        let result = offset + (if j > i { j - 1 } else { j });
+        let offset = self.route_range.0 + t * v_i_j_block_size + v * i_j_block_size;
+        let i_offset = i * (2 * n - i + 1) / 2;
+        let i_j_offset = i_offset + j - i - 1;
+
+        let result = offset + i_j_offset;
         debug_assert!(result < self.route_range.1);
 
         result
     }
 
+    fn route_index_undirected(&self, t: usize, v: usize, i: usize, j: usize) -> usize {
+        if i < j {
+            self.route_index(t, v, i, j)
+        } else {
+            self.route_index(t, v, j, i)
+        }
+    }
+
     fn route(&self, t: usize, v: usize, i: usize, j: usize) -> gurobi::Var {
-        self.variables[self.route_index(t, v, i, j)]
+        let index = self.route_index_undirected(t, v, i, j);
+        self.variables[index]
     }
 
     fn visit_index(&self, t: usize, v: usize, i: usize) -> usize {
@@ -314,7 +327,6 @@ impl Solution {
             }
 
             // step two: daily change (production at depot, consumption at customers)
-            #[allow(clippy::needless_range_loop)]
             for i in problem.all_sites() {
                 inventory[i] += problem.site(i).level_change();
             }
@@ -559,6 +571,8 @@ impl<'a> SolverData<'a> {
     {
         let mut added = false;
 
+        eprintln!("# Subtour elimination run");
+
         if PRINT_VARIABLE_VALUES {
             self.varnames
                 .iter()
@@ -574,7 +588,7 @@ impl<'a> SolverData<'a> {
                 // find connected components with union-find data structure
                 let mut uf = partitions::partition_vec![(); self.problem.num_sites];
                 for i in self.problem.all_sites() {
-                    for j in self.problem.all_sites_except(i) {
+                    for j in self.problem.all_sites_after(i) {
                         let idx = self.vars.route_index(t, v, i, j);
                         if assignment[idx] > 0.5 {
                             uf.union(i, j);
@@ -622,7 +636,7 @@ impl<'a> SolverData<'a> {
 
                             for i in set.iter() {
                                 for j in set.iter() {
-                                    if i != j {
+                                    if i < j {
                                         lhs.add_term(1.0, self.vars.route(t, v, *i, *j));
                                     }
                                 }
@@ -671,7 +685,7 @@ impl<'a> SolverData<'a> {
                     for deliveries in route.windows(2) {
                         let i = deliveries[0].customer;
                         let j = deliveries[1].customer;
-                        let index = self.vars.route_index(t, v, i, j);
+                        let index = self.vars.route_index_undirected(t, v, i, j);
                         assignment[index] = 1.0;
                     }
                     // Routes in our solutions do not end at the depot, but we want to
@@ -679,14 +693,13 @@ impl<'a> SolverData<'a> {
                     {
                         let i = route[route.len() - 1].customer;
                         let j = 0;
-                        let index = self.vars.route_index(t, v, i, j);
-                        assignment[index] = 1.0;
+                        let index = self.vars.route_index_undirected(t, v, i, j);
+                        assignment[index] += 1.0;
                     }
                 }
             }
 
             // Set inventory variable values
-            #[allow(clippy::needless_range_loop)]
             for i in self.problem.all_sites() {
                 levels[i] += self.problem.site(i).level_change() as isize;
                 let index = self.vars.inventory_index(t, i);
@@ -747,21 +760,9 @@ impl<'a> SolverData<'a> {
         self.start_time.elapsed()
     }
 
-    fn find_next_site_in_route(
-        &self,
-        solution: &[f64],
-        t: usize,
-        v: usize,
-        i: usize,
-    ) -> Option<usize> {
-        // Find the next site by route variables
-        for j in self.problem.all_sites_except(i) {
-            let var_route = self.vars.route_index(t, v, i, j);
-            if solution[var_route] > 0.5 {
-                return Some(j);
-            }
-        }
-        None
+    fn is_edge_in_route(&self, solution: &[f64], t: usize, v: usize, i: usize, j: usize) -> bool {
+        let var_route = self.vars.route_index_undirected(t, v, i, j);
+        solution[var_route] > Self::EPSILON
     }
 
     fn get_visited_customers(&self, solution: &[f64], t: usize, v: usize) -> Vec<usize> {
@@ -795,23 +796,37 @@ impl<'a> SolverData<'a> {
                             customer: 0,
                         }];
 
+                        let mut visited = vec![false; self.problem.num_sites];
+                        visited[0] = true;
+
                         let mut i = 0; // last visited site
-                        while let Some(j) = self.find_next_site_in_route(solution, t, v, i) {
-                            if j == 0 {
+                        loop {
+                            let mut found = false;
+
+                            // XXX: bad run-time with this loop... preprocess!
+                            for j in self.problem.all_customers() {
+                                if i != j
+                                    && !visited[j]
+                                    && self.is_edge_in_route(solution, t, v, i, j)
+                                {
+                                    let quantity = self.get_delivery_amount(solution, t, v, j);
+                                    visited[j] = true;
+                                    i = j;
+                                    found = true;
+
+                                    if quantity > 0 {
+                                        route.push(Delivery {
+                                            quantity,
+                                            customer: j,
+                                        });
+                                    }
+                                    break;
+                                }
+                            }
+
+                            if !found {
                                 break;
                             }
-
-                            let quantity = self.get_delivery_amount(solution, t, v, j);
-                            if quantity > 0 {
-                                route.push(Delivery {
-                                    quantity,
-                                    customer: j,
-                                });
-                            }
-                            // note that results may deviate from intermediate MIP results
-                            // because of the "if"
-
-                            i = j
                         }
 
                         route
@@ -1190,34 +1205,18 @@ impl Solver {
 
         let mut data = SolverData::new(problem, &mut lp, &env, &cpu)?;
 
-        // route in-degree constraints
+        // route degree constraints
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
                 for i in problem.all_sites() {
                     let mut lhs = grb::expr::LinExpr::new();
 
-                    lhs.add_term(-1.0, data.vars.visit(t, v, i));
-                    for j in problem.all_sites_except(i) {
-                        lhs.add_term(1.0, data.vars.route(t, v, j, i));
-                    }
-
-                    lp.add_constr(&format!("Ri_{}_{}_{}", t, v, i), grb::c!(lhs == 0.0))?;
-                }
-            }
-        }
-
-        // route out-degree constraints
-        for t in problem.all_days() {
-            for v in problem.all_vehicles() {
-                for i in problem.all_sites() {
-                    let mut lhs = grb::expr::LinExpr::new();
-
-                    lhs.add_term(-1.0, data.vars.visit(t, v, i));
+                    lhs.add_term(-2.0, data.vars.visit(t, v, i));
                     for j in problem.all_sites_except(i) {
                         lhs.add_term(1.0, data.vars.route(t, v, i, j));
                     }
 
-                    lp.add_constr(&format!("Ro_{}_{}_{}", t, v, i), grb::c!(lhs == 0.0))?;
+                    lp.add_constr(&format!("Rd_{}_{}_{}", t, v, i), grb::c!(lhs == 0.0))?;
                 }
             }
         }
