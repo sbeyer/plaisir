@@ -768,7 +768,7 @@ impl<'a> SolverData<'a> {
 
     fn is_edge_in_route(&self, solution: &[f64], t: usize, v: usize, i: usize, j: usize) -> bool {
         let var_route = self.vars.route_index_undirected(t, v, i, j);
-        solution[var_route] > Self::EPSILON
+        solution[var_route].round() > Self::EPSILON
     }
 
     fn get_visited_customers(&self, solution: &[f64], t: usize, v: usize) -> Vec<usize> {
