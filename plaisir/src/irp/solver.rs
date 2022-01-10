@@ -927,7 +927,12 @@ impl<'a> SolverData<'a> {
     /// Note that this method just changes the delivery values although it would also have
     /// to change other values to get a feasible solution. We are assuming that all following
     /// methods ignore the parts that are not related to deliveries.
-    fn fix_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
+    fn fix_deliveries_fallback(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
+        let adjusted = self.adjust_deliveries(solution)?;
+        if !adjusted {
+            return Ok(false);
+        }
+
         eprintln!("# Fix deliveries, time {}", self.elapsed_seconds());
         for t in self.problem.all_days() {
             eprintln!("# Fixing day {}", t);
@@ -1159,8 +1164,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                 .filter(|(_, &value)| value > Self::EPSILON)
                                 .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
                         }
-                        let fixed = self.adjust_deliveries(&mut assignment)?
-                            && self.fix_deliveries(&mut assignment)?;
+                        let fixed = self.fix_deliveries_fallback(&mut assignment)?;
                         if fixed {
                             let routes = self.get_routes_heuristically(&assignment);
                             self.update_best_solution(routes);
