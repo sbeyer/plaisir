@@ -853,6 +853,88 @@ impl<'a> SolverData<'a> {
     }
 
     /// Solve Minimum-Cost Flow LP to improve deliveries
+    fn compute_new_deliveries<F>(
+        &mut self,
+        solution: &mut [f64],
+        is_visited: F,
+    ) -> grb::Result<bool>
+    where
+        F: Fn(usize, usize, usize) -> bool,
+    {
+        eprintln!("# Compute new deliveries, time {}", self.elapsed_seconds());
+        // Update bounds of deliveries
+        for t in self.problem.all_days() {
+            for v in self.problem.all_vehicles() {
+                for i in self.problem.all_customers() {
+                    self.mcf.model.set_obj_attr(
+                        grb::attr::UB,
+                        &self.mcf.delivery_var(t, v, i),
+                        if is_visited(t, v, i) {
+                            self.problem.capacity as f64
+                        } else {
+                            0.0
+                        },
+                    )?;
+                }
+            }
+        }
+
+        // XXX XXX XXX copy and pasted from adjust_deliveries() below XXX XXX XXX:
+        self.mcf.model.optimize()?;
+
+        // Reset bounds of deliveries
+        for t in self.problem.all_days() {
+            for v in self.problem.all_vehicles() {
+                for i in self.problem.all_customers() {
+                    self.mcf.model.set_obj_attr(
+                        grb::attr::UB,
+                        &self.mcf.delivery_var(t, v, i),
+                        0.0,
+                    )?;
+                }
+            }
+        }
+
+        let status = self.mcf.model.status()?;
+        if status == grb::Status::Optimal {
+            if true {
+                eprintln!("#### MIP solution status: {:?}", status);
+
+                let objective = self.mcf.model.get_attr(gurobi::attr::ObjVal)?;
+                eprintln!("#### MIP solution value: {}", objective);
+
+                for delivery_vars_per_day in self.mcf.delivery_vars.iter() {
+                    for delivery_vars_per_customer in delivery_vars_per_day.iter() {
+                        for var in delivery_vars_per_customer.iter() {
+                            let name = self.mcf.model.get_obj_attr(grb::attr::VarName, var)?;
+                            let value = self.mcf.model.get_obj_attr(grb::attr::X, var)?;
+                            if value > SolverData::EPSILON {
+                                eprintln!("####   - {}: {}", name, value);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if status == grb::Status::Optimal {
+                for t in self.problem.all_days() {
+                    for v in self.problem.all_vehicles() {
+                        for i in self.problem.all_customers() {
+                            let var = self.mcf.delivery_var(t, v, i);
+                            let value = self.mcf.model.get_obj_attr(grb::attr::X, &var)?;
+                            solution[self.vars.deliver_index(t, v, i)] = value;
+                        }
+                    }
+                }
+            }
+
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    /// Solve Minimum-Cost Flow LP to improve deliveries (based on currently visited customers)
     fn adjust_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
         eprintln!("# Adjust deliveries, time {}", self.elapsed_seconds());
         // Update bounds of deliveries
@@ -920,6 +1002,58 @@ impl<'a> SolverData<'a> {
         } else {
             Ok(false)
         }
+    }
+
+    fn fractional_delivery_heuristic(
+        &mut self,
+        solution: &mut [f64],
+    ) -> grb::Result<Option<Routes>> {
+        let vehicle_choices = self
+            .problem
+            .all_days()
+            .map(|t| {
+                self.problem
+                    .all_customers()
+                    .map(|i| {
+                        let mut vehicle_delivery = self
+                            .problem
+                            .all_vehicles()
+                            .map(|v| (v, solution[self.vars.deliver_index(t, v, i)]))
+                            .filter(|(_, delivery)| *delivery > Self::EPSILON)
+                            .collect::<Vec<_>>();
+
+                        vehicle_delivery.sort_unstable_by(|(_, delivery_a), (_, delivery_b)| {
+                            delivery_b.partial_cmp(delivery_a).unwrap()
+                        });
+
+                        vehicle_delivery
+                            .into_iter()
+                            .map(|(vehicle, _)| vehicle)
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        let mut success = self.compute_new_deliveries(solution, |t, v, i| {
+            let customer_vehicle_choices = &vehicle_choices[t][i - 1];
+            if customer_vehicle_choices.is_empty() {
+                false
+            } else {
+                customer_vehicle_choices[0] == v
+            }
+        })?;
+
+        if !success {
+            eprintln!("# Attempting fallback heuristic...");
+            success = self.fix_deliveries_fallback(solution)?;
+        }
+
+        Ok(if success {
+            Some(self.get_routes_heuristically(solution))
+        } else {
+            None
+        })
     }
 
     /// A really stupid heuristic that does not take anything into consideration that would be sane
@@ -1164,12 +1298,13 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                 .filter(|(_, &value)| value > Self::EPSILON)
                                 .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
                         }
-                        let fixed = self.fix_deliveries_fallback(&mut assignment)?;
-                        if fixed {
-                            let routes = self.get_routes_heuristically(&assignment);
-                            self.update_best_solution(routes);
-                        } else {
-                            eprintln!("# Failed to find a feasible solution.");
+                        match self.fractional_delivery_heuristic(&mut assignment)? {
+                            Some(routes) => {
+                                self.update_best_solution(routes);
+                            }
+                            None => {
+                                eprintln!("# Failed to find a feasible solution.");
+                            }
                         }
                     }
 
