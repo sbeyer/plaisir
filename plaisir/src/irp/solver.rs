@@ -739,18 +739,12 @@ impl<'a> SolverData<'a> {
             let best_solution_assignment = self.get_best_solution_variable_assignment();
             let set_result =
                 ctx.set_solution(self.vars.variables.iter().zip(best_solution_assignment))?;
-            if let Some(value) = set_result {
+            if set_result.is_some() {
                 self.is_new_solution_just_set = true;
                 eprintln!(
                     "# New best solution with objective value {} (old: {}) set successfully",
-                    value, best_objective
+                    self.best_solution.cost_total, best_objective
                 );
-                if value != self.best_solution.cost_total {
-                    eprintln!(
-                        "# The new objective value deviates from expected value {}",
-                        self.best_solution.cost_total
-                    );
-                }
             } else {
                 eprintln!(
                     "# No new solution set, keeping best objective value  {}",
