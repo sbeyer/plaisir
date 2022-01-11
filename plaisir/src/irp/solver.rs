@@ -30,7 +30,8 @@ impl<'a> Variables<'a> {
         let num_variables = num_variables_route
             + num_variables_visit
             + num_variables_inventory
-            + num_variables_deliver;
+            + num_variables_deliver
+            + 1;
         let mut vars = Variables {
             problem,
             variables: Vec::with_capacity(num_variables),
@@ -40,7 +41,14 @@ impl<'a> Variables<'a> {
             inventory_range: (0, num_variables),
         };
 
+        // penalty variable
+        {
+            let var = grb::add_ctsvar!(lp, name: "p", obj: 1.0, bounds: 0..)?;
+            vars.variables.push(var)
+        }
+
         // route variables
+        vars.route_range.0 = 1;
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
                 for i in problem.all_sites() {
@@ -101,7 +109,7 @@ impl<'a> Variables<'a> {
             for i in problem.all_sites() {
                 let site = problem.site(i);
                 let name = format!("i_{}_{}", t, i);
-                let coeff = site.cost();
+                let coeff = 0.0;
                 let bounds = site.level_bounds();
                 let var = lp.add_var(
                     &name,
@@ -234,6 +242,14 @@ impl<'a> Variables<'a> {
 
     fn deliver(&self, t: usize, v: usize, i: usize) -> gurobi::Var {
         self.variables[self.deliver_index(t, v, i)]
+    }
+
+    fn penalty_index(&self) -> usize {
+        0
+    }
+
+    fn penalty(&self) -> gurobi::Var {
+        self.variables[self.penalty_index()]
     }
 }
 
@@ -1395,6 +1411,19 @@ impl Solver {
 
                 lp.add_constr(&format!("Ifc_{}_{}", t, i), grb::c!(lhs == value))?;
             }
+        }
+
+        // penalty is at least the inventory cost
+        {
+            let mut lhs = grb::expr::LinExpr::new();
+            for i in problem.all_sites() {
+                let cost = problem.site(i).cost();
+                for t in problem.all_days() {
+                    lhs.add_term(cost, data.vars.inventory(t, i));
+                }
+            }
+            lhs.add_term(-1.0, data.vars.penalty());
+            lp.add_constr("p0", grb::c!(lhs <= 0.0))?;
         }
 
         lp.optimize_with_callback(&mut data)?;
