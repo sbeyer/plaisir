@@ -846,17 +846,10 @@ impl<'a> SolverData<'a> {
             .collect()
     }
 
-    /// Solve Minimum-Cost Flow LP to improve deliveries
-    fn compute_new_deliveries<F>(
-        &mut self,
-        solution: &mut [f64],
-        is_visited: F,
-    ) -> grb::Result<bool>
+    fn update_mcf_delivery_bounds<F>(&mut self, is_visited: F) -> grb::Result<()>
     where
         F: Fn(usize, usize, usize) -> bool,
     {
-        eprintln!("# Compute new deliveries, time {}", self.elapsed_seconds());
-        // Update bounds of deliveries
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
                 for i in self.problem.all_customers() {
@@ -872,25 +865,16 @@ impl<'a> SolverData<'a> {
                 }
             }
         }
+        Ok(())
+    }
 
-        // XXX XXX XXX copy and pasted from adjust_deliveries() below XXX XXX XXX:
+    /// Solve Minimum-Cost Flow LP to improve deliveries (use after update_mcf_delivery_bounds())
+    fn compute_new_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
         self.mcf.model.optimize()?;
 
-        // Reset bounds of deliveries
-        for t in self.problem.all_days() {
-            for v in self.problem.all_vehicles() {
-                for i in self.problem.all_customers() {
-                    self.mcf.model.set_obj_attr(
-                        grb::attr::UB,
-                        &self.mcf.delivery_var(t, v, i),
-                        0.0,
-                    )?;
-                }
-            }
-        }
-
         let status = self.mcf.model.status()?;
-        if status == grb::Status::Optimal {
+        let good_solution = status == grb::Status::Optimal;
+        if good_solution {
             if true {
                 eprintln!("#### MIP solution status: {:?}", status);
 
@@ -921,81 +905,35 @@ impl<'a> SolverData<'a> {
                     }
                 }
             }
-
-            Ok(true)
-        } else {
-            Ok(false)
         }
+
+        Ok(good_solution)
     }
 
     /// Solve Minimum-Cost Flow LP to improve deliveries (based on currently visited customers)
     fn adjust_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
         eprintln!("# Adjust deliveries, time {}", self.elapsed_seconds());
-        // Update bounds of deliveries
+
+        // Update bounds of deliveries (TODO: re-use update_mcf_delivery_bounds())
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
-                for i in self.get_visited_customers(solution, t, v).into_iter() {
+                for i in self.problem.all_customers() {
+                    let var_deliver = self.vars.deliver_index(t, v, i);
                     self.mcf.model.set_obj_attr(
                         grb::attr::UB,
                         &self.mcf.delivery_var(t, v, i),
-                        self.problem.capacity as f64,
+                        if solution[var_deliver] > 0.5 {
+                            self.problem.capacity as f64
+                        } else {
+                            0.0
+                        },
                     )?;
                 }
             }
         }
+        let result = self.compute_new_deliveries(solution)?;
 
-        self.mcf.model.optimize()?;
-
-        // Reset bounds of deliveries
-        for t in self.problem.all_days() {
-            for v in self.problem.all_vehicles() {
-                for i in self.get_visited_customers(solution, t, v).into_iter() {
-                    self.mcf.model.set_obj_attr(
-                        grb::attr::UB,
-                        &self.mcf.delivery_var(t, v, i),
-                        0.0,
-                    )?;
-                }
-            }
-        }
-
-        let status = self.mcf.model.status()?;
-        if status == grb::Status::Optimal {
-            if true {
-                eprintln!("#### MIP solution status: {:?}", status);
-
-                let objective = self.mcf.model.get_attr(gurobi::attr::ObjVal)?;
-                eprintln!("#### MIP solution value: {}", objective);
-
-                for delivery_vars_per_day in self.mcf.delivery_vars.iter() {
-                    for delivery_vars_per_customer in delivery_vars_per_day.iter() {
-                        for var in delivery_vars_per_customer.iter() {
-                            let name = self.mcf.model.get_obj_attr(grb::attr::VarName, var)?;
-                            let value = self.mcf.model.get_obj_attr(grb::attr::X, var)?;
-                            if value > SolverData::EPSILON {
-                                eprintln!("####   - {}: {}", name, value);
-                            }
-                        }
-                    }
-                }
-            }
-
-            if status == grb::Status::Optimal {
-                for t in self.problem.all_days() {
-                    for v in self.problem.all_vehicles() {
-                        for i in self.problem.all_customers() {
-                            let var = self.mcf.delivery_var(t, v, i);
-                            let value = self.mcf.model.get_obj_attr(grb::attr::X, &var)?;
-                            solution[self.vars.deliver_index(t, v, i)] = value;
-                        }
-                    }
-                }
-            }
-
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+        Ok(result)
     }
 
     fn fractional_delivery_heuristic(
@@ -1029,7 +967,8 @@ impl<'a> SolverData<'a> {
             })
             .collect::<Vec<_>>();
 
-        let mut success = self.compute_new_deliveries(solution, |t, v, i| {
+        eprintln!("# Compute new deliveries, time {}", self.elapsed_seconds());
+        self.update_mcf_delivery_bounds(|t, v, i| {
             let customer_vehicle_choices = &vehicle_choices[t][i - 1];
             if customer_vehicle_choices.is_empty() {
                 false
@@ -1037,7 +976,7 @@ impl<'a> SolverData<'a> {
                 customer_vehicle_choices[0] == v
             }
         })?;
-
+        let mut success = self.compute_new_deliveries(solution)?;
         if !success {
             eprintln!("# Attempting fallback heuristic...");
             success = self.fix_deliveries_fallback(solution)?;
