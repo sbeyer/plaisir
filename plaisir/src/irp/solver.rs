@@ -885,16 +885,15 @@ impl<'a> SolverData<'a> {
     }
 
     /// Solve Minimum-Cost Flow LP to improve deliveries (use after update_mcf_delivery_bounds())
-    fn compute_new_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
+    fn compute_new_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<Option<f64>> {
         self.mcf.model.optimize()?;
 
         let status = self.mcf.model.status()?;
-        let good_solution = status == grb::Status::Optimal;
-        if good_solution {
+        let result = if status == grb::Status::Optimal {
+            let objective = self.mcf.model.get_attr(gurobi::attr::ObjVal)?;
+
             if true {
                 eprintln!("#### MIP solution status: {:?}", status);
-
-                let objective = self.mcf.model.get_attr(gurobi::attr::ObjVal)?;
                 eprintln!("#### MIP solution value: {}", objective);
 
                 for delivery_vars_per_day in self.mcf.delivery_vars.iter() {
@@ -921,9 +920,13 @@ impl<'a> SolverData<'a> {
                     }
                 }
             }
-        }
 
-        Ok(good_solution)
+            Some(objective)
+        } else {
+            None
+        };
+
+        Ok(result)
     }
 
     /// Solve Minimum-Cost Flow LP to improve deliveries (based on currently visited customers)
@@ -949,7 +952,7 @@ impl<'a> SolverData<'a> {
         }
         let result = self.compute_new_deliveries(solution)?;
 
-        Ok(result)
+        Ok(result.is_some())
     }
 
     fn fractional_delivery_heuristic(
@@ -994,9 +997,34 @@ impl<'a> SolverData<'a> {
             }
         };
         self.update_mcf_delivery_bounds(is_visited)?;
-        let mut success = self.compute_new_deliveries(solution)?;
-        if !success {
-            eprintln!("# Adding lazy constraint");
+        let optional_inventory_cost = self.compute_new_deliveries(solution)?;
+        let success = if let Some(inventory_cost) = optional_inventory_cost {
+            eprintln!(
+                "# Adding lazy constraint with inventory cost {}",
+                inventory_cost
+            );
+            // copy-and-paste because quick-n-dirty test
+            let mut lhs = grb::expr::LinExpr::new();
+            let mut num_true: usize = 0;
+            for t in self.problem.all_days() {
+                for i in self.problem.all_customers() {
+                    for v in self.problem.all_vehicles() {
+                        if is_visited(t, v, i) {
+                            lhs.add_term(inventory_cost, self.vars.visit(t, v, i));
+                            num_true += 1;
+                        } else {
+                            lhs.add_term(-inventory_cost, self.vars.visit(t, v, i));
+                        }
+                    }
+                }
+            }
+            lhs.add_term(-1.0, self.vars.penalty());
+            let rhs = inventory_cost * (num_true as f64 - 1.0);
+            context.add_lazy(grb::c!(lhs <= rhs))?;
+
+            true
+        } else {
+            eprintln!("# Adding lazy constraint for infeasible case");
             const INFEASIBLE_PENALTY: f64 = 1000000.0;
 
             // + true... + (1 - false)... <= #all
@@ -1025,8 +1053,8 @@ impl<'a> SolverData<'a> {
             context.add_lazy(grb::c!(lhs <= rhs))?;
 
             eprintln!("# Attempting fallback heuristic...");
-            success = self.fix_deliveries_fallback(solution)?;
-        }
+            self.fix_deliveries_fallback(solution)?
+        };
 
         Ok(if success {
             Some(self.get_routes_heuristically(solution))
