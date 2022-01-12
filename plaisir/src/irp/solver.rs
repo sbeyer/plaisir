@@ -955,6 +955,7 @@ impl<'a> SolverData<'a> {
     fn fractional_delivery_heuristic(
         &mut self,
         solution: &mut [f64],
+        context: &grb::callback::MIPNodeCtx,
     ) -> grb::Result<Option<Routes>> {
         let vehicle_choices = self
             .problem
@@ -984,16 +985,45 @@ impl<'a> SolverData<'a> {
             .collect::<Vec<_>>();
 
         eprintln!("# Compute new deliveries, time {}", self.elapsed_seconds());
-        self.update_mcf_delivery_bounds(|t, v, i| {
+        let is_visited = |t: usize, v: usize, i: usize| {
             let customer_vehicle_choices = &vehicle_choices[t][i - 1];
             if customer_vehicle_choices.is_empty() {
                 false
             } else {
                 customer_vehicle_choices[0] == v
             }
-        })?;
+        };
+        self.update_mcf_delivery_bounds(is_visited)?;
         let mut success = self.compute_new_deliveries(solution)?;
         if !success {
+            eprintln!("# Adding lazy constraint");
+            const INFEASIBLE_PENALTY: f64 = 1000000.0;
+
+            // + true... + (1 - false)... <= #all
+            // + true... - false... - ( #all - #false ) <= 0
+            // + true... - false... - ( #all - #false ) + 1 <= 1
+            // INFEASIBLE_PENALTY ( + true... - false... - ( #all - #false ) + 1 ) <= p
+            // IP true... - IP false... - IP ( #all - #false - 1 ) <= p
+            // IP true... - IP false... - p <= IP ( #all - #false - 1 )
+            // IP true... - IP false... - p <= IP ( #true - 1 )
+            let mut lhs = grb::expr::LinExpr::new();
+            let mut num_true: usize = 0;
+            for t in self.problem.all_days() {
+                for i in self.problem.all_customers() {
+                    for v in self.problem.all_vehicles() {
+                        if is_visited(t, v, i) {
+                            lhs.add_term(INFEASIBLE_PENALTY, self.vars.visit(t, v, i));
+                            num_true += 1;
+                        } else {
+                            lhs.add_term(-INFEASIBLE_PENALTY, self.vars.visit(t, v, i));
+                        }
+                    }
+                }
+            }
+            lhs.add_term(-1.0, self.vars.penalty());
+            let rhs = INFEASIBLE_PENALTY * (num_true as f64 - 1.0);
+            context.add_lazy(grb::c!(lhs <= rhs))?;
+
             eprintln!("# Attempting fallback heuristic...");
             success = self.fix_deliveries_fallback(solution)?;
         }
@@ -1247,7 +1277,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                 .filter(|(_, &value)| value > Self::EPSILON)
                                 .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
                         }
-                        match self.fractional_delivery_heuristic(&mut assignment)? {
+                        match self.fractional_delivery_heuristic(&mut assignment, &ctx)? {
                             Some(routes) => {
                                 self.update_best_solution(routes);
                             }
