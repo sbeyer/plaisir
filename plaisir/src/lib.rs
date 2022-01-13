@@ -1,6 +1,7 @@
 use std::error::Error;
 
 mod irp;
+mod solver;
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     println!("Reading problem from file {:?}", config.filename);
@@ -8,7 +9,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let problem = irp::Problem::read_from_file(config.filename)?;
     println!("{}", problem);
 
-    irp::solver::solve(problem, config.cpu);
+    solver::solve(problem, config.cpu);
 
     Ok(())
 }

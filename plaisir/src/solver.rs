@@ -1,7 +1,8 @@
-use super::*;
+use crate::irp::*;
 use grb::prelude as gurobi;
 use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
+use std::fmt;
 use std::time;
 
 extern crate partitions;

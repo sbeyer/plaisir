@@ -2,8 +2,6 @@ use std::error::Error;
 use std::fmt;
 use std::fs;
 
-pub mod solver;
-
 #[derive(Debug)]
 pub struct Position {
     pub x: f64,
@@ -77,7 +75,7 @@ impl fmt::Display for Customer {
     }
 }
 
-trait Site {
+pub trait Site {
     /// Returns the numeric identifer
     fn id(&self) -> usize;
 
@@ -219,7 +217,7 @@ impl Problem {
         })
     }
 
-    fn site(&self, index: usize) -> &dyn Site {
+    pub fn site(&self, index: usize) -> &dyn Site {
         if index == 0 {
             &self.depot
         } else {
@@ -227,7 +225,7 @@ impl Problem {
         }
     }
 
-    fn distance(&self, i: usize, j: usize) -> i32 {
+    pub fn distance(&self, i: usize, j: usize) -> i32 {
         if i == j {
             0
         } else {
@@ -237,27 +235,27 @@ impl Problem {
         }
     }
 
-    fn all_days(&self) -> impl Iterator<Item = usize> {
+    pub fn all_days(&self) -> impl Iterator<Item = usize> {
         0..self.num_days
     }
 
-    fn all_vehicles(&self) -> impl Iterator<Item = usize> {
+    pub fn all_vehicles(&self) -> impl Iterator<Item = usize> {
         0..self.num_vehicles
     }
 
-    fn all_sites(&self) -> impl Iterator<Item = usize> {
+    pub fn all_sites(&self) -> impl Iterator<Item = usize> {
         0..self.num_sites
     }
 
-    fn all_sites_except(&self, exception: usize) -> impl Iterator<Item = usize> {
+    pub fn all_sites_except(&self, exception: usize) -> impl Iterator<Item = usize> {
         self.all_sites().filter(move |i| *i != exception)
     }
 
-    fn all_sites_after(&self, after: usize) -> impl Iterator<Item = usize> {
+    pub fn all_sites_after(&self, after: usize) -> impl Iterator<Item = usize> {
         after + 1..self.num_sites
     }
 
-    fn all_customers(&self) -> impl Iterator<Item = usize> {
+    pub fn all_customers(&self) -> impl Iterator<Item = usize> {
         1..self.num_sites
     }
 }
