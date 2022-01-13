@@ -1,6 +1,7 @@
 use std::error::Error;
 
 mod irp;
+mod mcf;
 mod solver;
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
