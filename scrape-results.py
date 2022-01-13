@@ -14,13 +14,12 @@ results = pd.read_csv("results.csv")
 _, *args = sys.argv
 
 
-def compute_score(instance):
+def compute_score(instance, bestsol):
     refsol_series = bks.loc[bks.instance == instance]
     if refsol_series.empty:
         return np.nan
 
     refsol = refsol_series.squeeze().bestsol
-    bestsol = results.loc[results.instance == instance].squeeze().bestsol
     return min(10, 100 * (bestsol / refsol - 1.0))
 
 
@@ -161,7 +160,7 @@ for filepath in args:
             else:
                 print(" `-> IMPROVED!")
 
-            score = compute_score(instance)
+            score = compute_score(instance, solution['bestsol'])
             results.loc[
                 results.instance == instance,
                 ("commit", "bestsol", "time", "optimal", "score"),
