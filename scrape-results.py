@@ -97,9 +97,6 @@ def save_output(instance, content):
             print(f"Failed to write solution to file {latest_solution_file}: {err}")
 
 
-# bootstrap score column
-results["score"] = [compute_score(instance) for instance in results.instance]
-
 for filepath in args:
     filedir, filename = os.path.split(filepath)
     _, commit = os.path.split(filedir)
