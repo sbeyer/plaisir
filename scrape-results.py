@@ -126,14 +126,18 @@ for filepath in args:
         )
         print(" `-> NEWLY INSERTED!")
         print()
+
+        score = compute_score(instance, solution["bestsol"])
         results.loc[
-            len(results.index), ("instance", "commit", "bestsol", "time", "optimal")
+            len(results.index),
+            ("instance", "commit", "bestsol", "time", "optimal", "score"),
         ] = (
             instance,
             commit,
             solution["bestsol"],
             solution["time"],
             solution["optimal"],
+            score,
         )
 
         save_output(instance, solution["output"])
@@ -160,7 +164,7 @@ for filepath in args:
             else:
                 print(" `-> IMPROVED!")
 
-            score = compute_score(instance, solution['bestsol'])
+            score = compute_score(instance, solution["bestsol"])
             results.loc[
                 results.instance == instance,
                 ("commit", "bestsol", "time", "optimal", "score"),
