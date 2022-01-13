@@ -8,10 +8,20 @@ import os
 import pandas as pd
 import sys
 
+bks = pd.read_csv("reference.csv")
 results = pd.read_csv("results.csv")
-results.fillna(np.inf, inplace=True)
 
 _, *args = sys.argv
+
+
+def compute_score(instance):
+    refsol_series = bks.loc[bks.instance == instance]
+    if refsol_series.empty:
+        return np.nan
+
+    refsol = refsol_series.squeeze().bestsol
+    bestsol = results.loc[results.instance == instance].squeeze().bestsol
+    return min(10, 100 * (bestsol / refsol - 1.0))
 
 
 def get_solution_from_data(data):
@@ -87,6 +97,9 @@ def save_output(instance, content):
             print(f"Failed to write solution to file {latest_solution_file}: {err}")
 
 
+# bootstrap score column
+results["score"] = [compute_score(instance) for instance in results.instance]
+
 for filepath in args:
     filedir, filename = os.path.split(filepath)
     _, commit = os.path.split(filedir)
@@ -151,9 +164,17 @@ for filepath in args:
             else:
                 print(" `-> IMPROVED!")
 
+            score = compute_score(instance)
             results.loc[
-                results.instance == instance, ("commit", "bestsol", "time", "optimal")
-            ] = (commit, solution["bestsol"], solution["time"], solution["optimal"])
+                results.instance == instance,
+                ("commit", "bestsol", "time", "optimal", "score"),
+            ] = (
+                commit,
+                solution["bestsol"],
+                solution["time"],
+                solution["optimal"],
+                score,
+            )
 
             save_output(instance, solution["output"])
 
