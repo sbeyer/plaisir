@@ -1,4 +1,4 @@
-use crate::irp::*;
+use crate::problem::*;
 use grb::prelude as gurobi;
 
 pub struct McfSubproblem {

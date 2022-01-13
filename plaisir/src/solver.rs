@@ -1,5 +1,5 @@
-use crate::irp::*;
 use crate::mcf::McfSubproblem;
+use crate::problem::*;
 use grb::prelude as gurobi;
 use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
