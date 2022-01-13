@@ -1,21 +1,21 @@
 Day 1
-Route 1: 0 - 0
-Route 2: 0 - 1 ( 65 ) - 0
-Route 3: 0 - 3 ( 48 ) - 4 ( 24 ) - 0
+Route 1: 0 - 3 ( 44 ) - 4 ( 24 ) - 0
+Route 2: 0 - 0
+Route 3: 0 - 1 ( 65 ) - 0
 Route 4: 0 - 0
 Day 2
-Route 1: 0 - 0
-Route 2: 0 - 2 ( 35 ) - 5 ( 22 ) - 0
-Route 3: 0 - 3 ( 68 ) - 0
-Route 4: 0 - 0
+Route 1: 0 - 2 ( 50 ) - 5 ( 22 ) - 0
+Route 2: 0 - 0
+Route 3: 0 - 0
+Route 4: 0 - 3 ( 72 ) - 0
 Day 3
 Route 1: 0 - 0
 Route 2: 0 - 0
 Route 3: 0 - 0
 Route 4: 0 - 0
 1507
-10.84
-60.81
+11.62
+60.03
 1578.65
 Intel Core i5-10210U @ 1.60GHz
-1.218
+1.1460000000000001
