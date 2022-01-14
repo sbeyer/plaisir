@@ -709,21 +709,7 @@ impl<'a> SolverData<'a> {
             .collect()
     }
 
-    fn update_deliveries_bounds<F>(&mut self, is_visited: F) -> grb::Result<()>
-    where
-        F: Fn(usize, usize, usize) -> bool,
-    {
-        for t in self.problem.all_days() {
-            for v in self.problem.all_vehicles() {
-                for i in self.problem.all_customers() {
-                    self.deliveries.set_status(t, v, i, is_visited(t, v, i))?;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// Solve Minimum-Cost Flow LP to improve deliveries (use after update_deliveries_bounds())
+    /// Solve Minimum-Cost Flow LP to improve deliveries
     fn compute_new_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
         self.deliveries.model.optimize()?;
 
@@ -772,16 +758,10 @@ impl<'a> SolverData<'a> {
     fn adjust_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
         eprintln!("# Adjust deliveries, time {}", self.elapsed_seconds());
 
-        // Update bounds of deliveries (TODO: re-use update_deliveries_bounds())
-        for t in self.problem.all_days() {
-            for v in self.problem.all_vehicles() {
-                for i in self.problem.all_customers() {
-                    let var_deliver = self.vars.deliver_index(t, v, i);
-                    self.deliveries
-                        .set_status(t, v, i, solution[var_deliver] > 0.5)?;
-                }
-            }
-        }
+        self.deliveries.set_all_statuses(|t, v, i| {
+            let var_deliver = self.vars.deliver_index(t, v, i);
+            solution[var_deliver] > 0.5
+        })?;
         let result = self.compute_new_deliveries(solution)?;
 
         Ok(result)
@@ -819,7 +799,7 @@ impl<'a> SolverData<'a> {
             .collect::<Vec<_>>();
 
         eprintln!("# Compute new deliveries, time {}", self.elapsed_seconds());
-        self.update_deliveries_bounds(|t, v, i| {
+        self.deliveries.set_all_statuses(|t, v, i| {
             let customer_vehicle_choices = &vehicle_choices[t][i - 1];
             if customer_vehicle_choices.is_empty() {
                 false

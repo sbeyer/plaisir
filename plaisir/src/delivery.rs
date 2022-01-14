@@ -153,4 +153,19 @@ impl<'a> Solver<'a> {
             },
         )
     }
+
+    /// Sets whether all deliveries are active or not using a function
+    pub fn set_all_statuses<F>(&mut self, is_active: F) -> grb::Result<()>
+    where
+        F: Fn(usize, usize, usize) -> bool,
+    {
+        for t in self.problem.all_days() {
+            for v in self.problem.all_vehicles() {
+                for i in self.problem.all_customers() {
+                    self.set_status(t, v, i, is_active(t, v, i))?;
+                }
+            }
+        }
+        Ok(())
+    }
 }
