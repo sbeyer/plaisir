@@ -388,7 +388,7 @@ struct SolverData<'a> {
     start_time: time::Instant,
     cpu: &'a str,
     ncalls: usize,
-    mcf: McfSubproblem,
+    mcf: McfSubproblem<'a>,
     best_solution: Solution,
     is_new_solution_just_set: bool,
 }

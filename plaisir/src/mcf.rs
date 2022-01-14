@@ -1,13 +1,13 @@
 use crate::problem::*;
 
-pub struct McfSubproblem {
+pub struct McfSubproblem<'a> {
+    problem: &'a Problem,
     pub model: grb::Model,
     pub delivery_vars: Vec<Vec<Vec<grb::Var>>>,
-    capacity: f64,
 }
 
-impl McfSubproblem {
-    pub fn new(env: &grb::Env, problem: &Problem) -> grb::Result<Self> {
+impl<'a> McfSubproblem<'a> {
+    pub fn new(env: &grb::Env, problem: &'a Problem) -> grb::Result<Self> {
         let mut model = grb::Model::with_env("deliveries", env)?;
 
         model.set_objective(0, grb::ModelSense::Minimize)?;
@@ -67,9 +67,9 @@ impl McfSubproblem {
             .collect::<Vec<_>>();
 
         let mut mcf = McfSubproblem {
+            problem,
             model,
             delivery_vars,
-            capacity: problem.capacity as f64,
         };
         // Use the original constraints from Solver here, too:
 
@@ -150,7 +150,11 @@ impl McfSubproblem {
         self.model.set_obj_attr(
             grb::attr::UB,
             &self.delivery_var(t, v, i),
-            if active { self.capacity as f64 } else { 0.0 },
+            if active {
+                self.problem.capacity as f64
+            } else {
+                0.0
+            },
         )
     }
 }
