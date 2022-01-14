@@ -1,16 +1,15 @@
 use crate::problem::*;
-use grb::prelude as gurobi;
 
 pub struct McfSubproblem {
-    pub model: gurobi::Model,
-    pub delivery_vars: Vec<Vec<Vec<gurobi::Var>>>,
+    pub model: grb::Model,
+    pub delivery_vars: Vec<Vec<Vec<grb::Var>>>,
 }
 
 impl McfSubproblem {
-    pub fn new(env: &gurobi::Env, problem: &Problem) -> grb::Result<Self> {
-        let mut model = gurobi::Model::with_env("deliveries", env)?;
+    pub fn new(env: &grb::Env, problem: &Problem) -> grb::Result<Self> {
+        let mut model = grb::Model::with_env("deliveries", env)?;
 
-        model.set_objective(0, gurobi::ModelSense::Minimize)?;
+        model.set_objective(0, grb::ModelSense::Minimize)?;
 
         let inventory_vars = problem
             .all_days()
@@ -25,7 +24,7 @@ impl McfSubproblem {
                         model
                             .add_var(
                                 &name,
-                                gurobi::VarType::Continuous,
+                                grb::VarType::Continuous,
                                 coeff,
                                 bounds.0,
                                 bounds.1 + site.level_change(),
@@ -52,7 +51,7 @@ impl McfSubproblem {
                                 model
                                     .add_var(
                                         &name,
-                                        gurobi::VarType::Continuous,
+                                        grb::VarType::Continuous,
                                         coeff,
                                         bounds.0,
                                         bounds.1,

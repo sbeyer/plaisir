@@ -1,6 +1,5 @@
 use crate::mcf::McfSubproblem;
 use crate::problem::*;
-use grb::prelude as gurobi;
 use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
 use std::fmt;
@@ -13,7 +12,7 @@ const PRINT_ELIMINATED_SUBTOURS: bool = false;
 
 struct Variables<'a> {
     problem: &'a Problem,
-    variables: Vec<gurobi::Var>,
+    variables: Vec<grb::Var>,
     route_range: (usize, usize),
     deliver_range: (usize, usize),
     visit_range: (usize, usize),
@@ -22,7 +21,7 @@ struct Variables<'a> {
 
 #[allow(clippy::many_single_char_names)]
 impl<'a> Variables<'a> {
-    fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> grb::Result<Self> {
+    fn new(problem: &'a Problem, lp: &mut grb::Model) -> grb::Result<Self> {
         let num_variables_route = problem.num_days
             * problem.num_vehicles
             * (problem.num_sites * problem.num_customers / 2);
@@ -54,9 +53,9 @@ impl<'a> Variables<'a> {
                         let var = lp.add_var(
                             &name,
                             if i == 0 {
-                                gurobi::VarType::Integer
+                                grb::VarType::Integer
                             } else {
-                                gurobi::VarType::Binary
+                                grb::VarType::Binary
                             },
                             coeff,
                             bounds.0,
@@ -82,7 +81,7 @@ impl<'a> Variables<'a> {
                     let bounds = (0.0, 1.0);
                     let var = lp.add_var(
                         &name,
-                        gurobi::VarType::Binary,
+                        grb::VarType::Binary,
                         coeff,
                         bounds.0,
                         bounds.1,
@@ -107,7 +106,7 @@ impl<'a> Variables<'a> {
                 let bounds = site.level_bounds();
                 let var = lp.add_var(
                     &name,
-                    gurobi::VarType::Continuous,
+                    grb::VarType::Continuous,
                     coeff,
                     bounds.0,
                     bounds.1 + site.level_change(),
@@ -133,7 +132,7 @@ impl<'a> Variables<'a> {
                     let bounds = (0.0, problem.capacity as f64);
                     let var = lp.add_var(
                         &name,
-                        gurobi::VarType::Continuous,
+                        grb::VarType::Continuous,
                         coeff,
                         bounds.0,
                         bounds.1,
@@ -180,7 +179,7 @@ impl<'a> Variables<'a> {
         }
     }
 
-    fn route(&self, t: usize, v: usize, i: usize, j: usize) -> gurobi::Var {
+    fn route(&self, t: usize, v: usize, i: usize, j: usize) -> grb::Var {
         let index = self.route_index_undirected(t, v, i, j);
         self.variables[index]
     }
@@ -199,7 +198,7 @@ impl<'a> Variables<'a> {
         result
     }
 
-    fn visit(&self, t: usize, v: usize, i: usize) -> gurobi::Var {
+    fn visit(&self, t: usize, v: usize, i: usize) -> grb::Var {
         self.variables[self.visit_index(t, v, i)]
     }
 
@@ -215,7 +214,7 @@ impl<'a> Variables<'a> {
         result
     }
 
-    fn inventory(&self, t: usize, i: usize) -> gurobi::Var {
+    fn inventory(&self, t: usize, i: usize) -> grb::Var {
         self.variables[self.inventory_index(t, i)]
     }
 
@@ -234,7 +233,7 @@ impl<'a> Variables<'a> {
         result
     }
 
-    fn deliver(&self, t: usize, v: usize, i: usize) -> gurobi::Var {
+    fn deliver(&self, t: usize, v: usize, i: usize) -> grb::Var {
         self.variables[self.deliver_index(t, v, i)]
     }
 }
@@ -399,8 +398,8 @@ impl<'a> SolverData<'a> {
 
     fn new(
         problem: &'a Problem,
-        lp: &mut gurobi::Model,
-        env: &'a gurobi::Env,
+        lp: &mut grb::Model,
+        env: &'a grb::Env,
         cpu: &'a str,
     ) -> grb::Result<Self> {
         let start_time = time::Instant::now();
@@ -742,7 +741,7 @@ impl<'a> SolverData<'a> {
             if true {
                 eprintln!("#### MIP solution status: {:?}", status);
 
-                let objective = self.mcf.model.get_attr(gurobi::attr::ObjVal)?;
+                let objective = self.mcf.model.get_attr(grb::attr::ObjVal)?;
                 eprintln!("#### MIP solution value: {}", objective);
 
                 for delivery_vars_per_day in self.mcf.delivery_vars.iter() {
@@ -1028,9 +1027,9 @@ impl<'a> SolverData<'a> {
 }
 
 impl<'a> grb::callback::Callback for SolverData<'a> {
-    fn callback(&mut self, w: gurobi::Where) -> grb::callback::CbResult {
+    fn callback(&mut self, w: grb::callback::Where) -> grb::callback::CbResult {
         match w {
-            gurobi::Where::MIPSol(ctx) => {
+            grb::callback::Where::MIPSol(ctx) => {
                 self.ncalls += 1;
                 let mut assignment = ctx.get_solution(&self.vars.variables)?;
                 eprintln!("# Incumbent {}!", self.ncalls);
@@ -1073,7 +1072,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     eprintln!("# Callback finish time: {}", self.elapsed_seconds());
                 }
             }
-            gurobi::Where::MIPNode(ctx) => {
+            grb::callback::Where::MIPNode(ctx) => {
                 let status = ctx.status()?;
                 if status == grb::Status::Optimal {
                     eprintln!(
@@ -1121,10 +1120,10 @@ struct Solver {}
 
 impl Solver {
     fn solve(problem: &Problem, cpu: String) -> grb::Result<()> {
-        let mut env = gurobi::Env::new("")?;
+        let mut env = grb::Env::new("")?;
         env.set(grb::param::Threads, 1)?;
 
-        let mut lp = gurobi::Model::with_env("irp", &env)?;
+        let mut lp = grb::Model::with_env("irp", &env)?;
 
         lp.set_param(grb::param::LazyConstraints, 1)?;
         lp.set_param(grb::param::Method, 1)?; // use dual simplex
@@ -1147,7 +1146,7 @@ impl Solver {
 
         lp.set_param(grb::param::Presolve, 2)?;
 
-        lp.set_objective(0, gurobi::ModelSense::Minimize)?;
+        lp.set_objective(0, grb::ModelSense::Minimize)?;
 
         let mut data = SolverData::new(problem, &mut lp, &env, &cpu)?;
 
@@ -1272,11 +1271,11 @@ impl Solver {
         Ok(())
     }
 
-    fn print_raw_solution(data: &SolverData, lp: &gurobi::Model) -> grb::Result<()> {
+    fn print_raw_solution(data: &SolverData, lp: &grb::Model) -> grb::Result<()> {
         let status = lp.status()?;
         eprintln!("# MIP solution status: {:?}", status);
 
-        let objective = lp.get_attr(gurobi::attr::ObjVal)?;
+        let objective = lp.get_attr(grb::attr::ObjVal)?;
         eprintln!("# MIP solution value: {}", objective);
 
         if PRINT_VARIABLE_VALUES {
