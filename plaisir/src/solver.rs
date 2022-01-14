@@ -716,15 +716,7 @@ impl<'a> SolverData<'a> {
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
                 for i in self.problem.all_customers() {
-                    self.mcf.model.set_obj_attr(
-                        grb::attr::UB,
-                        &self.mcf.delivery_var(t, v, i),
-                        if is_visited(t, v, i) {
-                            self.problem.capacity as f64
-                        } else {
-                            0.0
-                        },
-                    )?;
+                    self.mcf.set_delivery_status(t, v, i, is_visited(t, v, i))?;
                 }
             }
         }
@@ -782,15 +774,8 @@ impl<'a> SolverData<'a> {
             for v in self.problem.all_vehicles() {
                 for i in self.problem.all_customers() {
                     let var_deliver = self.vars.deliver_index(t, v, i);
-                    self.mcf.model.set_obj_attr(
-                        grb::attr::UB,
-                        &self.mcf.delivery_var(t, v, i),
-                        if solution[var_deliver] > 0.5 {
-                            self.problem.capacity as f64
-                        } else {
-                            0.0
-                        },
-                    )?;
+                    self.mcf
+                        .set_delivery_status(t, v, i, solution[var_deliver] > 0.5)?;
                 }
             }
         }

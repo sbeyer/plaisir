@@ -3,6 +3,7 @@ use crate::problem::*;
 pub struct McfSubproblem {
     pub model: grb::Model,
     pub delivery_vars: Vec<Vec<Vec<grb::Var>>>,
+    capacity: f64,
 }
 
 impl McfSubproblem {
@@ -68,6 +69,7 @@ impl McfSubproblem {
         let mut mcf = McfSubproblem {
             model,
             delivery_vars,
+            capacity: problem.capacity as f64,
         };
         // Use the original constraints from Solver here, too:
 
@@ -135,5 +137,20 @@ impl McfSubproblem {
 
     pub fn delivery_var(&self, t: usize, v: usize, i: usize) -> grb::Var {
         self.delivery_vars[t][v][i - 1]
+    }
+
+    /// Sets whether the delivery at day `t` with vehicle `v` to customer `i` is active or not
+    pub fn set_delivery_status(
+        &mut self,
+        t: usize,
+        v: usize,
+        i: usize,
+        active: bool,
+    ) -> grb::Result<()> {
+        self.model.set_obj_attr(
+            grb::attr::UB,
+            &self.delivery_var(t, v, i),
+            if active { self.capacity as f64 } else { 0.0 },
+        )
     }
 }
