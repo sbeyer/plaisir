@@ -1,12 +1,12 @@
 use crate::problem::*;
 
-pub struct McfSubproblem<'a> {
+pub struct Solver<'a> {
     problem: &'a Problem,
     pub model: grb::Model,
     pub delivery_vars: Vec<Vec<Vec<grb::Var>>>,
 }
 
-impl<'a> McfSubproblem<'a> {
+impl<'a> Solver<'a> {
     pub fn new(env: &grb::Env, problem: &'a Problem) -> grb::Result<Self> {
         let mut model = grb::Model::with_env("deliveries", env)?;
 
@@ -66,7 +66,7 @@ impl<'a> McfSubproblem<'a> {
             })
             .collect::<Vec<_>>();
 
-        let mut mcf = McfSubproblem {
+        let mut solver = Solver {
             problem,
             model,
             delivery_vars,
@@ -78,10 +78,10 @@ impl<'a> McfSubproblem<'a> {
             for v in problem.all_vehicles() {
                 let mut lhs = grb::expr::LinExpr::new();
                 for i in problem.all_customers() {
-                    lhs.add_term(1.0, mcf.delivery_var(t, v, i));
+                    lhs.add_term(1.0, solver.delivery_var(t, v, i));
                 }
 
-                mcf.model.add_constr(
+                solver.model.add_constr(
                     &format!("VC_{}_{}", t, v),
                     grb::c!(lhs <= problem.capacity as f64),
                 )?;
@@ -93,7 +93,7 @@ impl<'a> McfSubproblem<'a> {
             let mut lhs = grb::expr::LinExpr::new();
             for v in problem.all_vehicles() {
                 for j in problem.all_customers() {
-                    lhs.add_term(-1.0, mcf.delivery_var(t, v, j));
+                    lhs.add_term(-1.0, solver.delivery_var(t, v, j));
                 }
             }
             lhs.add_term(-1.0, inventory_vars[t][0]); // outgoing inventory
@@ -106,7 +106,8 @@ impl<'a> McfSubproblem<'a> {
                 lhs.add_term(1.0, inventory_vars[t - 1][0]); // incoming inventory
             }
 
-            mcf.model
+            solver
+                .model
                 .add_constr(&format!("Ifd_{}", t), grb::c!(lhs == value))?;
         }
 
@@ -115,7 +116,7 @@ impl<'a> McfSubproblem<'a> {
             for i in problem.all_customers() {
                 let mut lhs = grb::expr::LinExpr::new();
                 for v in problem.all_vehicles() {
-                    lhs.add_term(1.0, mcf.delivery_var(t, v, i)); // delivered
+                    lhs.add_term(1.0, solver.delivery_var(t, v, i)); // delivered
                 }
                 lhs.add_term(-1.0, inventory_vars[t][i]); // outgoing inventory
                 let customer = problem.site(i);
@@ -127,12 +128,13 @@ impl<'a> McfSubproblem<'a> {
                     lhs.add_term(1.0, inventory_vars[t - 1][i]); // incoming inventory
                 }
 
-                mcf.model
+                solver
+                    .model
                     .add_constr(&format!("Ifc_{}_{}", t, i), grb::c!(lhs == value))?;
             }
         }
 
-        Ok(mcf)
+        Ok(solver)
     }
 
     pub fn delivery_var(&self, t: usize, v: usize, i: usize) -> grb::Var {

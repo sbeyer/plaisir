@@ -1,6 +1,6 @@
 use std::error::Error;
 
-mod mcf;
+mod delivery;
 mod problem;
 mod solver;
 

@@ -1,4 +1,4 @@
-use crate::mcf::McfSubproblem;
+use crate::delivery::Solver as DeliverySolver;
 use crate::problem::*;
 use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
@@ -388,7 +388,7 @@ struct SolverData<'a> {
     start_time: time::Instant,
     cpu: &'a str,
     ncalls: usize,
-    mcf: McfSubproblem<'a>,
+    deliveries: DeliverySolver<'a>,
     best_solution: Solution,
     is_new_solution_just_set: bool,
 }
@@ -411,7 +411,7 @@ impl<'a> SolverData<'a> {
             .map(|var| lp.get_obj_attr(grb::attr::VarName, var).unwrap())
             .collect();
 
-        let mcf = McfSubproblem::new(env, problem)?;
+        let deliveries = DeliverySolver::new(env, problem)?;
 
         let best_solution = Solution::empty();
 
@@ -422,7 +422,7 @@ impl<'a> SolverData<'a> {
             start_time,
             cpu,
             ncalls: 0,
-            mcf,
+            deliveries,
             best_solution,
             is_new_solution_just_set: false,
         })
@@ -709,38 +709,42 @@ impl<'a> SolverData<'a> {
             .collect()
     }
 
-    fn update_mcf_delivery_bounds<F>(&mut self, is_visited: F) -> grb::Result<()>
+    fn update_deliveries_bounds<F>(&mut self, is_visited: F) -> grb::Result<()>
     where
         F: Fn(usize, usize, usize) -> bool,
     {
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
                 for i in self.problem.all_customers() {
-                    self.mcf.set_delivery_status(t, v, i, is_visited(t, v, i))?;
+                    self.deliveries
+                        .set_delivery_status(t, v, i, is_visited(t, v, i))?;
                 }
             }
         }
         Ok(())
     }
 
-    /// Solve Minimum-Cost Flow LP to improve deliveries (use after update_mcf_delivery_bounds())
+    /// Solve Minimum-Cost Flow LP to improve deliveries (use after update_deliveries_bounds())
     fn compute_new_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
-        self.mcf.model.optimize()?;
+        self.deliveries.model.optimize()?;
 
-        let status = self.mcf.model.status()?;
+        let status = self.deliveries.model.status()?;
         let good_solution = status == grb::Status::Optimal;
         if good_solution {
             if true {
                 eprintln!("#### MIP solution status: {:?}", status);
 
-                let objective = self.mcf.model.get_attr(grb::attr::ObjVal)?;
+                let objective = self.deliveries.model.get_attr(grb::attr::ObjVal)?;
                 eprintln!("#### MIP solution value: {}", objective);
 
-                for delivery_vars_per_day in self.mcf.delivery_vars.iter() {
+                for delivery_vars_per_day in self.deliveries.delivery_vars.iter() {
                     for delivery_vars_per_customer in delivery_vars_per_day.iter() {
                         for var in delivery_vars_per_customer.iter() {
-                            let name = self.mcf.model.get_obj_attr(grb::attr::VarName, var)?;
-                            let value = self.mcf.model.get_obj_attr(grb::attr::X, var)?;
+                            let name = self
+                                .deliveries
+                                .model
+                                .get_obj_attr(grb::attr::VarName, var)?;
+                            let value = self.deliveries.model.get_obj_attr(grb::attr::X, var)?;
                             if value > SolverData::EPSILON {
                                 eprintln!("####   - {}: {}", name, value);
                             }
@@ -753,8 +757,8 @@ impl<'a> SolverData<'a> {
                 for t in self.problem.all_days() {
                     for v in self.problem.all_vehicles() {
                         for i in self.problem.all_customers() {
-                            let var = self.mcf.delivery_var(t, v, i);
-                            let value = self.mcf.model.get_obj_attr(grb::attr::X, &var)?;
+                            let var = self.deliveries.delivery_var(t, v, i);
+                            let value = self.deliveries.model.get_obj_attr(grb::attr::X, &var)?;
                             solution[self.vars.deliver_index(t, v, i)] = value;
                         }
                     }
@@ -769,12 +773,12 @@ impl<'a> SolverData<'a> {
     fn adjust_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
         eprintln!("# Adjust deliveries, time {}", self.elapsed_seconds());
 
-        // Update bounds of deliveries (TODO: re-use update_mcf_delivery_bounds())
+        // Update bounds of deliveries (TODO: re-use update_deliveries_bounds())
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
                 for i in self.problem.all_customers() {
                     let var_deliver = self.vars.deliver_index(t, v, i);
-                    self.mcf
+                    self.deliveries
                         .set_delivery_status(t, v, i, solution[var_deliver] > 0.5)?;
                 }
             }
@@ -816,7 +820,7 @@ impl<'a> SolverData<'a> {
             .collect::<Vec<_>>();
 
         eprintln!("# Compute new deliveries, time {}", self.elapsed_seconds());
-        self.update_mcf_delivery_bounds(|t, v, i| {
+        self.update_deliveries_bounds(|t, v, i| {
             let customer_vehicle_choices = &vehicle_choices[t][i - 1];
             if customer_vehicle_choices.is_empty() {
                 false
