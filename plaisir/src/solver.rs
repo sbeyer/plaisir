@@ -716,8 +716,7 @@ impl<'a> SolverData<'a> {
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
                 for i in self.problem.all_customers() {
-                    self.deliveries
-                        .set_delivery_status(t, v, i, is_visited(t, v, i))?;
+                    self.deliveries.set_status(t, v, i, is_visited(t, v, i))?;
                 }
             }
         }
@@ -737,7 +736,7 @@ impl<'a> SolverData<'a> {
                 let objective = self.deliveries.model.get_attr(grb::attr::ObjVal)?;
                 eprintln!("#### MIP solution value: {}", objective);
 
-                for delivery_vars_per_day in self.deliveries.delivery_vars.iter() {
+                for delivery_vars_per_day in self.deliveries.vars.iter() {
                     for delivery_vars_per_customer in delivery_vars_per_day.iter() {
                         for var in delivery_vars_per_customer.iter() {
                             let name = self
@@ -757,7 +756,7 @@ impl<'a> SolverData<'a> {
                 for t in self.problem.all_days() {
                     for v in self.problem.all_vehicles() {
                         for i in self.problem.all_customers() {
-                            let var = self.deliveries.delivery_var(t, v, i);
+                            let var = self.deliveries.var(t, v, i);
                             let value = self.deliveries.model.get_obj_attr(grb::attr::X, &var)?;
                             solution[self.vars.deliver_index(t, v, i)] = value;
                         }
@@ -779,7 +778,7 @@ impl<'a> SolverData<'a> {
                 for i in self.problem.all_customers() {
                     let var_deliver = self.vars.deliver_index(t, v, i);
                     self.deliveries
-                        .set_delivery_status(t, v, i, solution[var_deliver] > 0.5)?;
+                        .set_status(t, v, i, solution[var_deliver] > 0.5)?;
                 }
             }
         }

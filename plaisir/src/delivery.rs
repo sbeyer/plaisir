@@ -3,7 +3,7 @@ use crate::problem::*;
 pub struct Solver<'a> {
     problem: &'a Problem,
     pub model: grb::Model,
-    pub delivery_vars: Vec<Vec<Vec<grb::Var>>>,
+    pub vars: Vec<Vec<Vec<grb::Var>>>,
 }
 
 impl<'a> Solver<'a> {
@@ -37,7 +37,7 @@ impl<'a> Solver<'a> {
             })
             .collect::<Vec<_>>();
 
-        let delivery_vars = problem
+        let vars = problem
             .all_days()
             .map(|t| {
                 problem
@@ -69,7 +69,7 @@ impl<'a> Solver<'a> {
         let mut solver = Solver {
             problem,
             model,
-            delivery_vars,
+            vars,
         };
         // Use the original constraints from Solver here, too:
 
@@ -78,7 +78,7 @@ impl<'a> Solver<'a> {
             for v in problem.all_vehicles() {
                 let mut lhs = grb::expr::LinExpr::new();
                 for i in problem.all_customers() {
-                    lhs.add_term(1.0, solver.delivery_var(t, v, i));
+                    lhs.add_term(1.0, solver.var(t, v, i));
                 }
 
                 solver.model.add_constr(
@@ -93,7 +93,7 @@ impl<'a> Solver<'a> {
             let mut lhs = grb::expr::LinExpr::new();
             for v in problem.all_vehicles() {
                 for j in problem.all_customers() {
-                    lhs.add_term(-1.0, solver.delivery_var(t, v, j));
+                    lhs.add_term(-1.0, solver.var(t, v, j));
                 }
             }
             lhs.add_term(-1.0, inventory_vars[t][0]); // outgoing inventory
@@ -116,7 +116,7 @@ impl<'a> Solver<'a> {
             for i in problem.all_customers() {
                 let mut lhs = grb::expr::LinExpr::new();
                 for v in problem.all_vehicles() {
-                    lhs.add_term(1.0, solver.delivery_var(t, v, i)); // delivered
+                    lhs.add_term(1.0, solver.var(t, v, i)); // delivered
                 }
                 lhs.add_term(-1.0, inventory_vars[t][i]); // outgoing inventory
                 let customer = problem.site(i);
@@ -137,21 +137,15 @@ impl<'a> Solver<'a> {
         Ok(solver)
     }
 
-    pub fn delivery_var(&self, t: usize, v: usize, i: usize) -> grb::Var {
-        self.delivery_vars[t][v][i - 1]
+    pub fn var(&self, t: usize, v: usize, i: usize) -> grb::Var {
+        self.vars[t][v][i - 1]
     }
 
     /// Sets whether the delivery at day `t` with vehicle `v` to customer `i` is active or not
-    pub fn set_delivery_status(
-        &mut self,
-        t: usize,
-        v: usize,
-        i: usize,
-        active: bool,
-    ) -> grb::Result<()> {
+    pub fn set_status(&mut self, t: usize, v: usize, i: usize, active: bool) -> grb::Result<()> {
         self.model.set_obj_attr(
             grb::attr::UB,
-            &self.delivery_var(t, v, i),
+            &self.var(t, v, i),
             if active {
                 self.problem.capacity as f64
             } else {
