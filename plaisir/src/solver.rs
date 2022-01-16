@@ -1,5 +1,5 @@
 use crate::delivery::Solver as DeliverySolver;
-use crate::delivery::Delivery;
+use crate::delivery::{Deliveries, Delivery};
 use crate::problem::*;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -605,16 +605,6 @@ impl<'a> SolverData<'a> {
         solution[var_route].round() > Self::EPSILON
     }
 
-    fn get_visited_customers(&self, solution: &[f64], t: usize, v: usize) -> Vec<usize> {
-        self.problem
-            .all_customers()
-            .filter(|i| {
-                let var_deliver = self.vars.deliver_index(t, v, *i);
-                solution[var_deliver] > 0.5
-            })
-            .collect()
-    }
-
     fn get_delivery_amount(&self, solution: &[f64], t: usize, v: usize, target: usize) -> usize {
         if target == 0 {
             0
@@ -687,12 +677,13 @@ impl<'a> SolverData<'a> {
     }
 
     /// Solve Minimum-Cost Flow LP to improve deliveries
-    fn compute_new_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
+    fn compute_new_deliveries(&mut self) -> grb::Result<Option<Deliveries>> {
+        let mut deliveries = Deliveries::new(self.problem);
+
         self.deliveries.model.optimize()?;
 
         let status = self.deliveries.model.status()?;
-        let good_solution = status == grb::Status::Optimal;
-        if good_solution {
+        if status == grb::Status::Optimal {
             if true {
                 eprintln!("#### MIP solution status: {:?}", status);
 
@@ -721,33 +712,33 @@ impl<'a> SolverData<'a> {
                         for i in self.problem.all_customers() {
                             let var = self.deliveries.var(t, v, i);
                             let value = self.deliveries.model.get_obj_attr(grb::attr::X, &var)?;
-                            solution[self.vars.deliver_index(t, v, i)] = value;
+
+                            deliveries.set(t, v, i, value.round() as usize);
                         }
                     }
                 }
             }
-        }
 
-        Ok(good_solution)
+            Ok(Some(deliveries))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Solve Minimum-Cost Flow LP to improve deliveries (based on currently visited customers)
-    fn adjust_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
+    fn adjust_deliveries(&mut self, solution: &[f64]) -> grb::Result<Option<Deliveries>> {
         eprintln!("# Adjust deliveries, time {}", self.elapsed_seconds());
 
         self.deliveries.set_all_statuses(|t, v, i| {
             let var_deliver = self.vars.deliver_index(t, v, i);
             solution[var_deliver] > 0.5
         })?;
-        let result = self.compute_new_deliveries(solution)?;
+        let result = self.compute_new_deliveries()?;
 
         Ok(result)
     }
 
-    fn fractional_delivery_heuristic(
-        &mut self,
-        solution: &mut [f64],
-    ) -> grb::Result<Option<Routes>> {
+    fn fractional_delivery_heuristic(&mut self, solution: &[f64]) -> grb::Result<Option<Routes>> {
         let vehicle_choices = self
             .problem
             .all_days()
@@ -784,30 +775,27 @@ impl<'a> SolverData<'a> {
                 customer_vehicle_choices[0] == v
             }
         })?;
-        let mut success = self.compute_new_deliveries(solution)?;
-        if !success {
-            eprintln!("# Attempting fallback heuristic...");
-            success = self.fix_deliveries_fallback(solution)?;
-        }
+        let opt_deliveries = match self.compute_new_deliveries()? {
+            Some(deliveries) => Some(deliveries),
+            None => match self.adjust_deliveries(solution)? {
+                Some(mut deliveries) => {
+                    eprintln!("# Attempting fallback heuristic...");
+                    let fixed = self.fix_deliveries_fallback(&mut deliveries)?;
+                    if fixed {
+                        Some(deliveries)
+                    } else {
+                        None
+                    }
+                }
+                None => None,
+            },
+        };
 
-        Ok(if success {
-            Some(self.get_routes_heuristically(solution))
-        } else {
-            None
-        })
+        Ok(opt_deliveries.map(|deliveries| self.get_routes_heuristically(&deliveries)))
     }
 
     /// A really stupid heuristic that does not take anything into consideration that would be sane
-    ///
-    /// Note that this method just changes the delivery values although it would also have
-    /// to change other values to get a feasible solution. We are assuming that all following
-    /// methods ignore the parts that are not related to deliveries.
-    fn fix_deliveries_fallback(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
-        let adjusted = self.adjust_deliveries(solution)?;
-        if !adjusted {
-            return Ok(false);
-        }
-
+    fn fix_deliveries_fallback(&mut self, deliveries: &mut Deliveries) -> grb::Result<bool> {
         eprintln!("# Fix deliveries, time {}", self.elapsed_seconds());
         for t in self.problem.all_days() {
             eprintln!("# Fixing day {}", t);
@@ -819,7 +807,7 @@ impl<'a> SolverData<'a> {
                 .map(|v| {
                     self.problem
                         .all_customers()
-                        .map(|i| self.get_delivery_amount(solution, t, v, i))
+                        .map(|i| deliveries.get(t, v, i))
                         .sum()
                 })
                 .collect::<Vec<usize>>();
@@ -835,13 +823,13 @@ impl<'a> SolverData<'a> {
                 let mut total_delivery: usize = self
                     .problem
                     .all_vehicles()
-                    .map(|v| self.get_delivery_amount(solution, t, v, i))
+                    .map(|v| deliveries.get(t, v, i))
                     .sum();
 
                 for v in self.problem.all_vehicles() {
-                    let value = self.get_delivery_amount(solution, t, v, i);
+                    let value = deliveries.get(t, v, i);
                     if value > 0 {
-                        solution[self.vars.deliver_index(t, v, i)] = total_delivery as f64;
+                        deliveries.set(t, v, i, total_delivery);
                         total_delivery = 0;
                     }
                 }
@@ -854,7 +842,7 @@ impl<'a> SolverData<'a> {
                 .map(|v| {
                     self.problem
                         .all_customers()
-                        .map(|i| self.get_delivery_amount(solution, t, v, i))
+                        .map(|i| deliveries.get(t, v, i))
                         .sum()
                 })
                 .collect::<Vec<usize>>();
@@ -875,12 +863,12 @@ impl<'a> SolverData<'a> {
                 let v = *v_ref;
                 let v_next = sorted_vehicles[i + 1];
                 if load[v] > self.problem.capacity {
-                    let mut heap = self
-                        .get_visited_customers(solution, t, v)
+                    let mut heap = deliveries
+                        .get_all_delivered_customers(t, v)
                         .into_iter()
                         .map(|i| {
                             Reverse(Delivery {
-                                quantity: self.get_delivery_amount(solution, t, v, i),
+                                quantity: deliveries.get(t, v, i),
                                 customer: i,
                             })
                         })
@@ -892,9 +880,7 @@ impl<'a> SolverData<'a> {
                             load[v] -= amount;
                             load[v_next] += amount;
 
-                            let i = delivery.0.customer;
-                            solution[self.vars.deliver_index(t, v, i)] = 0.0;
-                            solution[self.vars.deliver_index(t, v_next, i)] = amount as f64;
+                            deliveries.change_vehicle(t, v, v_next, delivery.0.customer);
                         } else {
                             panic!("Logic error: as long as the load is positive, we must have elements on the heap")
                         };
@@ -909,7 +895,7 @@ impl<'a> SolverData<'a> {
                 .map(|v| {
                     self.problem
                         .all_customers()
-                        .map(|i| self.get_delivery_amount(solution, t, v, i))
+                        .map(|i| deliveries.get(t, v, i))
                         .sum()
                 })
                 .collect::<Vec<usize>>();
@@ -924,10 +910,11 @@ impl<'a> SolverData<'a> {
         }
 
         Ok(true)
+        // Ok(None)
     }
 
     /// Runs LKH heuristic on visited sites to get a feasible route
-    fn get_routes_heuristically(&self, solution: &[f64]) -> Routes {
+    fn get_routes_heuristically(&self, deliveries: &Deliveries) -> Routes {
         eprintln!(
             "# Get routes heuristically, time {}",
             self.elapsed_seconds()
@@ -938,17 +925,17 @@ impl<'a> SolverData<'a> {
                 self.problem
                     .all_vehicles()
                     .map(|v| {
-                        let mut visited_sites = self.get_visited_customers(solution, t, v);
+                        let mut visited_sites = deliveries.get_all_delivered_customers(t, v);
                         visited_sites.push(0); // add depot
 
-                        let tsp_instance: Vec<(usize, f64, f64)> = visited_sites
+                        let tsp_instance = visited_sites
                             .iter()
                             .map(|site| {
                                 let site = self.problem.site(*site);
                                 let pos = &site.position();
                                 (site.id(), pos.x, pos.y)
                             })
-                            .collect();
+                            .collect::<Vec<_>>();
                         let mut tsp_tour = lkh::run(&tsp_instance);
 
                         let depot_position = tsp_tour
@@ -960,7 +947,11 @@ impl<'a> SolverData<'a> {
                         tsp_tour
                             .iter()
                             .map(|site| Delivery {
-                                quantity: self.get_delivery_amount(solution, t, v, *site),
+                                quantity: if *site == 0 {
+                                    0
+                                } else {
+                                    deliveries.get(t, v, *site)
+                                },
                                 customer: *site,
                             })
                             .collect()
@@ -976,7 +967,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
         match w {
             grb::callback::Where::MIPSol(ctx) => {
                 self.ncalls += 1;
-                let mut assignment = ctx.get_solution(&self.vars.variables)?;
+                let assignment = ctx.get_solution(&self.vars.variables)?;
                 eprintln!("# Incumbent {}!", self.ncalls);
                 eprintln!("#    current obj: {}", ctx.obj()?);
                 eprintln!("#       best obj: {}", ctx.obj_best()?);
@@ -994,15 +985,17 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                 .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
                         }
 
-                        let adjusted = self.adjust_deliveries(&mut assignment)?;
-                        if adjusted {
-                            let routes = self.get_routes_heuristically(&assignment);
-                            self.update_best_solution(routes);
-                        } else {
-                            eprintln!(
-                                "# Failed to find a feasible adjusted solution. \
+                        match self.adjust_deliveries(&assignment)? {
+                            Some(deliveries) => {
+                                let routes = self.get_routes_heuristically(&deliveries);
+                                self.update_best_solution(routes);
+                            }
+                            None => {
+                                eprintln!(
+                                    "# Failed to find a feasible adjusted solution. \
                                    This is weird, because we are in MIPSol."
-                            );
+                                );
+                            }
                         }
                     }
 
@@ -1031,7 +1024,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     eprintln!("#                 time: {}", self.elapsed_seconds());
 
                     if true {
-                        let mut assignment = ctx.get_solution(&self.vars.variables)?;
+                        let assignment = ctx.get_solution(&self.vars.variables)?;
                         if PRINT_VARIABLE_VALUES {
                             self.varnames
                                 .iter()
@@ -1039,7 +1032,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                 .filter(|(_, &value)| value > Self::EPSILON)
                                 .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
                         }
-                        match self.fractional_delivery_heuristic(&mut assignment)? {
+                        match self.fractional_delivery_heuristic(&assignment)? {
                             Some(routes) => {
                                 self.update_best_solution(routes);
                             }

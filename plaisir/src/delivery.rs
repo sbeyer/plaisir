@@ -25,6 +25,48 @@ impl Ord for Delivery {
     }
 }
 
+/// Vector indexed by day, vehicle and customer containing the number of delivered items
+pub struct Deliveries(Vec<Vec<Vec<usize>>>);
+
+impl Deliveries {
+    pub fn new(problem: &Problem) -> Self {
+        Deliveries(
+            problem
+                .all_days()
+                .map(|_| {
+                    problem
+                        .all_vehicles()
+                        .map(|_| vec![0; problem.num_customers])
+                        .collect()
+                })
+                .collect(),
+        )
+    }
+
+    pub fn set(&mut self, t: usize, v: usize, i: usize, quantity: usize) {
+        self.0[t][v][i - 1] = quantity;
+    }
+
+    pub fn get(&self, t: usize, v: usize, i: usize) -> usize {
+        self.0[t][v][i - 1]
+    }
+
+    pub fn change_vehicle(&mut self, t: usize, from_v: usize, to_v: usize, i: usize) {
+        let quantity = self.get(t, from_v, i);
+        self.set(t, from_v, i, 0);
+        self.set(t, to_v, i, quantity);
+    }
+
+    pub fn get_all_delivered_customers(&self, t: usize, v: usize) -> Vec<usize> {
+        self.0[t][v]
+            .iter()
+            .enumerate()
+            .filter(|(_, quantity)| *quantity > &0)
+            .map(|(i, _)| i + 1)
+            .collect()
+    }
+}
+
 pub struct Solver<'a> {
     problem: &'a Problem,
     pub model: grb::Model,
