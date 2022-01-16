@@ -30,17 +30,13 @@ pub struct Deliveries(Vec<Vec<Vec<usize>>>);
 
 impl Deliveries {
     pub fn new(problem: &Problem) -> Self {
-        Deliveries(
-            problem
-                .all_days()
-                .map(|_| {
-                    problem
-                        .all_vehicles()
-                        .map(|_| vec![0; problem.num_customers])
-                        .collect()
-                })
-                .collect(),
-        )
+        Deliveries(vec![
+            vec![
+                vec![0; problem.num_customers];
+                problem.num_vehicles
+            ];
+            problem.num_days
+        ])
     }
 
     pub fn set(&mut self, t: usize, v: usize, i: usize, quantity: usize) {
