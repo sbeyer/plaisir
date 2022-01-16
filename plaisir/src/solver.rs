@@ -600,21 +600,21 @@ impl<'a> SolverData<'a> {
         self.start_time.elapsed().as_millis() as f64 * 1e-3
     }
 
-    fn is_edge_in_route(&self, solution: &[f64], t: usize, v: usize, i: usize, j: usize) -> bool {
+    fn is_edge_in_route(&self, assignment: &[f64], t: usize, v: usize, i: usize, j: usize) -> bool {
         let var_route = self.vars.route_index_undirected(t, v, i, j);
-        solution[var_route].round() > Self::EPSILON
+        assignment[var_route].round() > Self::EPSILON
     }
 
-    fn get_delivery_amount(&self, solution: &[f64], t: usize, v: usize, target: usize) -> usize {
+    fn get_delivery_amount(&self, assignment: &[f64], t: usize, v: usize, target: usize) -> usize {
         if target == 0 {
             0
         } else {
             let var_deliver = self.vars.deliver_index(t, v, target);
-            solution[var_deliver].round() as usize
+            assignment[var_deliver].round() as usize
         }
     }
 
-    fn get_routes(&self, solution: &[f64]) -> Routes {
+    fn get_routes(&self, assignment: &[f64]) -> Routes {
         eprintln!("# Get routes, time {}", self.elapsed_seconds());
 
         self.problem
@@ -631,7 +631,7 @@ impl<'a> SolverData<'a> {
                         let mut adjacencies = vec![Vec::with_capacity(2); self.problem.num_sites];
                         for i in self.problem.all_sites() {
                             for j in self.problem.all_sites_after(i) {
-                                if self.is_edge_in_route(solution, t, v, i, j) {
+                                if self.is_edge_in_route(assignment, t, v, i, j) {
                                     adjacencies[i].push(j);
                                     adjacencies[j].push(i);
                                 }
@@ -647,7 +647,7 @@ impl<'a> SolverData<'a> {
 
                             for j in adjacencies[i].iter() {
                                 if !visited[*j] {
-                                    let quantity = self.get_delivery_amount(solution, t, v, *j);
+                                    let quantity = self.get_delivery_amount(assignment, t, v, *j);
 
                                     if quantity > 0 && *j != 0 {
                                         route.push(Delivery {
@@ -726,19 +726,19 @@ impl<'a> SolverData<'a> {
     }
 
     /// Solve Minimum-Cost Flow LP to improve deliveries (based on currently visited customers)
-    fn adjust_deliveries(&mut self, solution: &[f64]) -> grb::Result<Option<Deliveries>> {
+    fn adjust_deliveries(&mut self, assignment: &[f64]) -> grb::Result<Option<Deliveries>> {
         eprintln!("# Adjust deliveries, time {}", self.elapsed_seconds());
 
         self.deliveries.set_all_statuses(|t, v, i| {
             let var_deliver = self.vars.deliver_index(t, v, i);
-            solution[var_deliver] > 0.5
+            assignment[var_deliver] > 0.5
         })?;
         let result = self.compute_new_deliveries()?;
 
         Ok(result)
     }
 
-    fn fractional_delivery_heuristic(&mut self, solution: &[f64]) -> grb::Result<Option<Routes>> {
+    fn fractional_delivery_heuristic(&mut self, assignment: &[f64]) -> grb::Result<Option<Routes>> {
         let vehicle_choices = self
             .problem
             .all_days()
@@ -749,7 +749,7 @@ impl<'a> SolverData<'a> {
                         let mut vehicle_delivery = self
                             .problem
                             .all_vehicles()
-                            .map(|v| (v, solution[self.vars.deliver_index(t, v, i)]))
+                            .map(|v| (v, assignment[self.vars.deliver_index(t, v, i)]))
                             .filter(|(_, delivery)| *delivery > Self::EPSILON)
                             .collect::<Vec<_>>();
 
@@ -777,7 +777,7 @@ impl<'a> SolverData<'a> {
         })?;
         let opt_deliveries = match self.compute_new_deliveries()? {
             Some(deliveries) => Some(deliveries),
-            None => match self.adjust_deliveries(solution)? {
+            None => match self.adjust_deliveries(assignment)? {
                 Some(mut deliveries) => {
                     eprintln!("# Attempting fallback heuristic...");
                     let fixed = self.fix_deliveries_fallback(&mut deliveries)?;
