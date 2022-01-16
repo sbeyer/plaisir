@@ -2,6 +2,7 @@ use std::error::Error;
 
 mod delivery;
 mod problem;
+mod solution;
 mod solver;
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
