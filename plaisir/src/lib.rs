@@ -1,14 +1,17 @@
 use std::error::Error;
 
-mod irp;
+mod delivery;
+mod problem;
+mod solution;
+mod solver;
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     println!("Reading problem from file {:?}", config.filename);
 
-    let problem = irp::Problem::read_from_file(config.filename)?;
+    let problem = problem::Problem::read_from_file(config.filename)?;
     println!("{}", problem);
 
-    irp::solver::solve(problem, config.cpu);
+    solver::solve(problem, config.cpu);
 
     Ok(())
 }

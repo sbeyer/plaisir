@@ -1,6 +1,8 @@
-use super::*;
-use grb::prelude as gurobi;
-use std::cmp::{Ordering, Reverse};
+use crate::delivery::Solver as DeliverySolver;
+use crate::delivery::{Deliveries, Delivery};
+use crate::problem::*;
+use crate::solution::*;
+use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::time;
 
@@ -11,7 +13,7 @@ const PRINT_ELIMINATED_SUBTOURS: bool = false;
 
 struct Variables<'a> {
     problem: &'a Problem,
-    variables: Vec<gurobi::Var>,
+    variables: Vec<grb::Var>,
     route_range: (usize, usize),
     deliver_range: (usize, usize),
     visit_range: (usize, usize),
@@ -20,7 +22,7 @@ struct Variables<'a> {
 
 #[allow(clippy::many_single_char_names)]
 impl<'a> Variables<'a> {
-    fn new(problem: &'a Problem, lp: &mut gurobi::Model) -> grb::Result<Self> {
+    fn new(problem: &'a Problem, lp: &mut grb::Model) -> grb::Result<Self> {
         let num_variables_route = problem.num_days
             * problem.num_vehicles
             * (problem.num_sites * problem.num_customers / 2);
@@ -52,9 +54,9 @@ impl<'a> Variables<'a> {
                         let var = lp.add_var(
                             &name,
                             if i == 0 {
-                                gurobi::VarType::Integer
+                                grb::VarType::Integer
                             } else {
-                                gurobi::VarType::Binary
+                                grb::VarType::Binary
                             },
                             coeff,
                             bounds.0,
@@ -80,7 +82,7 @@ impl<'a> Variables<'a> {
                     let bounds = (0.0, 1.0);
                     let var = lp.add_var(
                         &name,
-                        gurobi::VarType::Binary,
+                        grb::VarType::Binary,
                         coeff,
                         bounds.0,
                         bounds.1,
@@ -105,7 +107,7 @@ impl<'a> Variables<'a> {
                 let bounds = site.level_bounds();
                 let var = lp.add_var(
                     &name,
-                    gurobi::VarType::Continuous,
+                    grb::VarType::Continuous,
                     coeff,
                     bounds.0,
                     bounds.1 + site.level_change(),
@@ -131,7 +133,7 @@ impl<'a> Variables<'a> {
                     let bounds = (0.0, problem.capacity as f64);
                     let var = lp.add_var(
                         &name,
-                        gurobi::VarType::Continuous,
+                        grb::VarType::Continuous,
                         coeff,
                         bounds.0,
                         bounds.1,
@@ -178,7 +180,7 @@ impl<'a> Variables<'a> {
         }
     }
 
-    fn route(&self, t: usize, v: usize, i: usize, j: usize) -> gurobi::Var {
+    fn route(&self, t: usize, v: usize, i: usize, j: usize) -> grb::Var {
         let index = self.route_index_undirected(t, v, i, j);
         self.variables[index]
     }
@@ -197,7 +199,7 @@ impl<'a> Variables<'a> {
         result
     }
 
-    fn visit(&self, t: usize, v: usize, i: usize) -> gurobi::Var {
+    fn visit(&self, t: usize, v: usize, i: usize) -> grb::Var {
         self.variables[self.visit_index(t, v, i)]
     }
 
@@ -213,7 +215,7 @@ impl<'a> Variables<'a> {
         result
     }
 
-    fn inventory(&self, t: usize, i: usize) -> gurobi::Var {
+    fn inventory(&self, t: usize, i: usize) -> grb::Var {
         self.variables[self.inventory_index(t, i)]
     }
 
@@ -232,289 +234,8 @@ impl<'a> Variables<'a> {
         result
     }
 
-    fn deliver(&self, t: usize, v: usize, i: usize) -> gurobi::Var {
+    fn deliver(&self, t: usize, v: usize, i: usize) -> grb::Var {
         self.variables[self.deliver_index(t, v, i)]
-    }
-}
-
-#[derive(Eq)]
-struct Delivery {
-    quantity: usize,
-    customer: usize,
-}
-
-impl PartialEq for Delivery {
-    fn eq(&self, other: &Self) -> bool {
-        self.quantity == other.quantity
-    }
-}
-
-impl PartialOrd for Delivery {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Delivery {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.quantity.cmp(&other.quantity)
-    }
-}
-
-type Routes = Vec<Vec<Vec<Delivery>>>;
-
-struct Solution {
-    routes: Routes,
-    cost_transportation: f64,
-    cost_inventory_depot: f64,
-    cost_inventory_customers: f64,
-    cost_total: f64,
-    processor: String,
-    time: f64,
-}
-
-impl Solution {
-    fn empty() -> Self {
-        Self {
-            routes: Vec::new(),
-            cost_transportation: f64::INFINITY,
-            cost_inventory_depot: f64::INFINITY,
-            cost_inventory_customers: f64::INFINITY,
-            cost_total: f64::INFINITY,
-            processor: String::new(),
-            time: 0.0,
-        }
-    }
-
-    fn new(problem: &Problem, routes: Routes, time: f64, cpu: &str) -> Self {
-        let mut sol = Solution {
-            routes,
-            cost_transportation: 0.,
-            cost_inventory_depot: 0.,
-            cost_inventory_customers: 0.,
-            cost_total: 0.,
-            processor: cpu.to_string(),
-            time,
-        };
-
-        // transportation cost
-        for day_routes in sol.routes.iter() {
-            for route in day_routes.iter() {
-                let mut tour: Vec<usize> = route.iter().map(|x| x.customer).collect();
-                if tour.len() > 1 {
-                    tour.push(0);
-                    for path in tour.windows(2) {
-                        sol.cost_transportation += problem.distance(path[0], path[1]) as f64
-                    }
-                }
-            }
-        }
-
-        // inventory cost
-        let mut inventory: Vec<f64> = problem
-            .all_sites()
-            .map(|i| problem.site(i).level_start())
-            .collect();
-        let mut cost_inventory = vec![0.; problem.num_sites];
-
-        for day_routes in sol.routes.iter() {
-            // step one: deliveries
-            for route in day_routes.iter() {
-                for Delivery { quantity, customer } in route.iter() {
-                    inventory[*customer] += *quantity as f64;
-                    inventory[0] -= *quantity as f64;
-                }
-            }
-
-            // step two: daily change (production at depot, consumption at customers)
-            for i in problem.all_sites() {
-                inventory[i] += problem.site(i).level_change();
-            }
-
-            // update inventory costs
-            for i in problem.all_sites() {
-                cost_inventory[i] += problem.site(i).cost() * inventory[i]
-            }
-        }
-
-        sol.cost_inventory_depot = cost_inventory[0];
-        sol.cost_inventory_customers = cost_inventory[1..].iter().sum();
-
-        // total cost
-        sol.cost_total =
-            sol.cost_transportation + sol.cost_inventory_depot + sol.cost_inventory_customers;
-
-        sol
-    }
-}
-
-impl fmt::Display for Solution {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Routes
-        for (t, routes) in self.routes.iter().enumerate() {
-            writeln!(f, "Day {}", t + 1)?;
-            for (route_idx, route) in routes.iter().enumerate() {
-                write!(f, "Route {}: ", route_idx + 1)?;
-                for route_stop in route.iter() {
-                    write!(f, "{} ", route_stop.customer)?;
-                    if route_stop.quantity != 0 {
-                        write!(f, "( {} ) ", route_stop.quantity)?;
-                    }
-                    write!(f, "- ")?;
-                }
-                writeln!(f, "{}", route[0].customer)?;
-            }
-        }
-
-        // Costs
-        writeln!(f, "{}", self.cost_transportation)?;
-        writeln!(f, "{:.2}", self.cost_inventory_customers)?;
-        writeln!(f, "{:.2}", self.cost_inventory_depot)?;
-        writeln!(f, "{:.2}", self.cost_total)?;
-
-        // Meta
-        writeln!(f, "{}", self.processor)?;
-        writeln!(f, "{}", self.time)?;
-
-        Ok(())
-    }
-}
-
-struct McfSubproblem {
-    model: gurobi::Model,
-    delivery_vars: Vec<Vec<Vec<gurobi::Var>>>,
-}
-
-impl McfSubproblem {
-    fn new(env: &gurobi::Env, problem: &Problem) -> grb::Result<Self> {
-        let mut model = gurobi::Model::with_env("deliveries", env)?;
-
-        model.set_objective(0, gurobi::ModelSense::Minimize)?;
-
-        let inventory_vars = problem
-            .all_days()
-            .map(|t| {
-                problem
-                    .all_sites()
-                    .map(|i| {
-                        let site = problem.site(i);
-                        let name = format!("i_{}_{}", t, i);
-                        let coeff = site.cost();
-                        let bounds = site.level_bounds();
-                        model
-                            .add_var(
-                                &name,
-                                gurobi::VarType::Continuous,
-                                coeff,
-                                bounds.0,
-                                bounds.1 + site.level_change(),
-                                std::iter::empty(),
-                            )
-                            .unwrap()
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-
-        let delivery_vars = problem
-            .all_days()
-            .map(|t| {
-                problem
-                    .all_vehicles()
-                    .map(|v| {
-                        problem
-                            .all_customers()
-                            .map(|i| {
-                                let name = format!("d_{}_{}_{}", t, v, i);
-                                let coeff = 0.0;
-                                let bounds = (0.0, 0.0);
-                                model
-                                    .add_var(
-                                        &name,
-                                        gurobi::VarType::Continuous,
-                                        coeff,
-                                        bounds.0,
-                                        bounds.1,
-                                        std::iter::empty(),
-                                    )
-                                    .unwrap()
-                            })
-                            .collect::<Vec<_>>()
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-
-        let mut mcf = McfSubproblem {
-            model,
-            delivery_vars,
-        };
-        // Use the original constraints from Solver here, too:
-
-        // ensure vehicle capacity is not exceeded
-        for t in problem.all_days() {
-            for v in problem.all_vehicles() {
-                let mut lhs = grb::expr::LinExpr::new();
-                for i in problem.all_customers() {
-                    lhs.add_term(1.0, mcf.delivery_var(t, v, i));
-                }
-
-                mcf.model.add_constr(
-                    &format!("VC_{}_{}", t, v),
-                    grb::c!(lhs <= problem.capacity as f64),
-                )?;
-            }
-        }
-
-        // inventory flow for depot
-        for t in problem.all_days() {
-            let mut lhs = grb::expr::LinExpr::new();
-            for v in problem.all_vehicles() {
-                for j in problem.all_customers() {
-                    lhs.add_term(-1.0, mcf.delivery_var(t, v, j));
-                }
-            }
-            lhs.add_term(-1.0, inventory_vars[t][0]); // outgoing inventory
-            let depot = problem.site(0);
-            let mut value = -depot.level_change();
-
-            if t == 0 {
-                value -= depot.level_start();
-            } else {
-                lhs.add_term(1.0, inventory_vars[t - 1][0]); // incoming inventory
-            }
-
-            mcf.model
-                .add_constr(&format!("Ifd_{}", t), grb::c!(lhs == value))?;
-        }
-
-        // inventory flow for customers
-        for t in problem.all_days() {
-            for i in problem.all_customers() {
-                let mut lhs = grb::expr::LinExpr::new();
-                for v in problem.all_vehicles() {
-                    lhs.add_term(1.0, mcf.delivery_var(t, v, i)); // delivered
-                }
-                lhs.add_term(-1.0, inventory_vars[t][i]); // outgoing inventory
-                let customer = problem.site(i);
-                let mut value = -customer.level_change();
-
-                if t == 0 {
-                    value -= customer.level_start();
-                } else {
-                    lhs.add_term(1.0, inventory_vars[t - 1][i]); // incoming inventory
-                }
-
-                mcf.model
-                    .add_constr(&format!("Ifc_{}_{}", t, i), grb::c!(lhs == value))?;
-            }
-        }
-
-        Ok(mcf)
-    }
-
-    fn delivery_var(&self, t: usize, v: usize, i: usize) -> grb::Var {
-        self.delivery_vars[t][v][i - 1]
     }
 }
 
@@ -525,7 +246,7 @@ struct SolverData<'a> {
     start_time: time::Instant,
     cpu: &'a str,
     ncalls: usize,
-    mcf: McfSubproblem,
+    deliveries: DeliverySolver<'a>,
     best_solution: Solution,
     is_new_solution_just_set: bool,
 }
@@ -535,8 +256,8 @@ impl<'a> SolverData<'a> {
 
     fn new(
         problem: &'a Problem,
-        lp: &mut gurobi::Model,
-        env: &'a gurobi::Env,
+        lp: &mut grb::Model,
+        env: &'a grb::Env,
         cpu: &'a str,
     ) -> grb::Result<Self> {
         let start_time = time::Instant::now();
@@ -548,7 +269,7 @@ impl<'a> SolverData<'a> {
             .map(|var| lp.get_obj_attr(grb::attr::VarName, var).unwrap())
             .collect();
 
-        let mcf = McfSubproblem::new(env, problem)?;
+        let deliveries = DeliverySolver::new(env, problem)?;
 
         let best_solution = Solution::empty();
 
@@ -559,7 +280,7 @@ impl<'a> SolverData<'a> {
             start_time,
             cpu,
             ncalls: 0,
-            mcf,
+            deliveries,
             best_solution,
             is_new_solution_just_set: false,
         })
@@ -674,7 +395,7 @@ impl<'a> SolverData<'a> {
         let mut assignment = vec![0.0; self.vars.variables.len()];
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
-                let route = &self.best_solution.routes[t][v];
+                let route = &self.best_solution.route(t, v);
                 if route.len() > 1 {
                     for delivery in route.iter() {
                         let i = delivery.customer;
@@ -716,16 +437,17 @@ impl<'a> SolverData<'a> {
         assignment
     }
 
-    fn update_best_solution(&mut self, routes: Routes) {
-        let solution = Solution::new(self.problem, routes, self.elapsed_seconds(), self.cpu);
+    fn update_best_solution(&mut self, schedule: Schedule) {
+        let solution = Solution::new(self.problem, schedule, self.elapsed_seconds(), self.cpu);
 
-        if solution.cost_total < self.best_solution.cost_total {
+        if solution.value() < self.best_solution.value() {
             eprintln!("{}", solution);
             self.best_solution = solution;
         } else {
             eprintln!(
                 "# Found solution of objective value {} not better than {}",
-                solution.cost_total, self.best_solution.cost_total
+                solution.value(),
+                self.best_solution.value()
             );
         }
     }
@@ -735,7 +457,7 @@ impl<'a> SolverData<'a> {
         ctx: grb::callback::MIPNodeCtx,
     ) -> grb::Result<()> {
         let best_objective = ctx.obj_best()?;
-        if self.best_solution.cost_total < best_objective {
+        if self.best_solution.value() < best_objective {
             let best_solution_assignment = self.get_best_solution_variable_assignment();
             let set_result =
                 ctx.set_solution(self.vars.variables.iter().zip(best_solution_assignment))?;
@@ -743,7 +465,8 @@ impl<'a> SolverData<'a> {
                 self.is_new_solution_just_set = true;
                 eprintln!(
                     "# New best solution with objective value {} (old: {}) set successfully",
-                    self.best_solution.cost_total, best_objective
+                    self.best_solution.value(),
+                    best_objective
                 );
             } else {
                 eprintln!(
@@ -760,32 +483,22 @@ impl<'a> SolverData<'a> {
         self.start_time.elapsed().as_millis() as f64 * 1e-3
     }
 
-    fn is_edge_in_route(&self, solution: &[f64], t: usize, v: usize, i: usize, j: usize) -> bool {
+    fn is_edge_in_route(&self, assignment: &[f64], t: usize, v: usize, i: usize, j: usize) -> bool {
         let var_route = self.vars.route_index_undirected(t, v, i, j);
-        solution[var_route].round() > Self::EPSILON
+        assignment[var_route].round() > Self::EPSILON
     }
 
-    fn get_visited_customers(&self, solution: &[f64], t: usize, v: usize) -> Vec<usize> {
-        self.problem
-            .all_customers()
-            .filter(|i| {
-                let var_deliver = self.vars.deliver_index(t, v, *i);
-                solution[var_deliver] > 0.5
-            })
-            .collect()
-    }
-
-    fn get_delivery_amount(&self, solution: &[f64], t: usize, v: usize, target: usize) -> usize {
+    fn get_delivery_amount(&self, assignment: &[f64], t: usize, v: usize, target: usize) -> usize {
         if target == 0 {
             0
         } else {
             let var_deliver = self.vars.deliver_index(t, v, target);
-            solution[var_deliver].round() as usize
+            assignment[var_deliver].round() as usize
         }
     }
 
-    fn get_routes(&self, solution: &[f64]) -> Routes {
-        eprintln!("# Get routes, time {}", self.elapsed_seconds());
+    fn get_schedule(&self, assignment: &[f64]) -> Schedule {
+        eprintln!("# Get schedule, time {}", self.elapsed_seconds());
 
         self.problem
             .all_days()
@@ -801,7 +514,7 @@ impl<'a> SolverData<'a> {
                         let mut adjacencies = vec![Vec::with_capacity(2); self.problem.num_sites];
                         for i in self.problem.all_sites() {
                             for j in self.problem.all_sites_after(i) {
-                                if self.is_edge_in_route(solution, t, v, i, j) {
+                                if self.is_edge_in_route(assignment, t, v, i, j) {
                                     adjacencies[i].push(j);
                                     adjacencies[j].push(i);
                                 }
@@ -817,7 +530,7 @@ impl<'a> SolverData<'a> {
 
                             for j in adjacencies[i].iter() {
                                 if !visited[*j] {
-                                    let quantity = self.get_delivery_amount(solution, t, v, *j);
+                                    let quantity = self.get_delivery_amount(assignment, t, v, *j);
 
                                     if quantity > 0 && *j != 0 {
                                         route.push(Delivery {
@@ -846,100 +559,23 @@ impl<'a> SolverData<'a> {
             .collect()
     }
 
-    fn update_mcf_delivery_bounds<F>(&mut self, is_visited: F) -> grb::Result<()>
-    where
-        F: Fn(usize, usize, usize) -> bool,
-    {
-        for t in self.problem.all_days() {
-            for v in self.problem.all_vehicles() {
-                for i in self.problem.all_customers() {
-                    self.mcf.model.set_obj_attr(
-                        grb::attr::UB,
-                        &self.mcf.delivery_var(t, v, i),
-                        if is_visited(t, v, i) {
-                            self.problem.capacity as f64
-                        } else {
-                            0.0
-                        },
-                    )?;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// Solve Minimum-Cost Flow LP to improve deliveries (use after update_mcf_delivery_bounds())
-    fn compute_new_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
-        self.mcf.model.optimize()?;
-
-        let status = self.mcf.model.status()?;
-        let good_solution = status == grb::Status::Optimal;
-        if good_solution {
-            if true {
-                eprintln!("#### MIP solution status: {:?}", status);
-
-                let objective = self.mcf.model.get_attr(gurobi::attr::ObjVal)?;
-                eprintln!("#### MIP solution value: {}", objective);
-
-                for delivery_vars_per_day in self.mcf.delivery_vars.iter() {
-                    for delivery_vars_per_customer in delivery_vars_per_day.iter() {
-                        for var in delivery_vars_per_customer.iter() {
-                            let name = self.mcf.model.get_obj_attr(grb::attr::VarName, var)?;
-                            let value = self.mcf.model.get_obj_attr(grb::attr::X, var)?;
-                            if value > SolverData::EPSILON {
-                                eprintln!("####   - {}: {}", name, value);
-                            }
-                        }
-                    }
-                }
-            }
-
-            if status == grb::Status::Optimal {
-                for t in self.problem.all_days() {
-                    for v in self.problem.all_vehicles() {
-                        for i in self.problem.all_customers() {
-                            let var = self.mcf.delivery_var(t, v, i);
-                            let value = self.mcf.model.get_obj_attr(grb::attr::X, &var)?;
-                            solution[self.vars.deliver_index(t, v, i)] = value;
-                        }
-                    }
-                }
-            }
-        }
-
-        Ok(good_solution)
-    }
-
     /// Solve Minimum-Cost Flow LP to improve deliveries (based on currently visited customers)
-    fn adjust_deliveries(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
+    fn adjust_deliveries(&mut self, assignment: &[f64]) -> grb::Result<Option<Deliveries>> {
         eprintln!("# Adjust deliveries, time {}", self.elapsed_seconds());
 
-        // Update bounds of deliveries (TODO: re-use update_mcf_delivery_bounds())
-        for t in self.problem.all_days() {
-            for v in self.problem.all_vehicles() {
-                for i in self.problem.all_customers() {
-                    let var_deliver = self.vars.deliver_index(t, v, i);
-                    self.mcf.model.set_obj_attr(
-                        grb::attr::UB,
-                        &self.mcf.delivery_var(t, v, i),
-                        if solution[var_deliver] > 0.5 {
-                            self.problem.capacity as f64
-                        } else {
-                            0.0
-                        },
-                    )?;
-                }
-            }
-        }
-        let result = self.compute_new_deliveries(solution)?;
+        self.deliveries.set_all_statuses(|t, v, i| {
+            let var_deliver = self.vars.deliver_index(t, v, i);
+            assignment[var_deliver] > 0.5
+        })?;
+        let result = self.deliveries.solve()?;
 
         Ok(result)
     }
 
     fn fractional_delivery_heuristic(
         &mut self,
-        solution: &mut [f64],
-    ) -> grb::Result<Option<Routes>> {
+        assignment: &[f64],
+    ) -> grb::Result<Option<Schedule>> {
         let vehicle_choices = self
             .problem
             .all_days()
@@ -950,7 +586,7 @@ impl<'a> SolverData<'a> {
                         let mut vehicle_delivery = self
                             .problem
                             .all_vehicles()
-                            .map(|v| (v, solution[self.vars.deliver_index(t, v, i)]))
+                            .map(|v| (v, assignment[self.vars.deliver_index(t, v, i)]))
                             .filter(|(_, delivery)| *delivery > Self::EPSILON)
                             .collect::<Vec<_>>();
 
@@ -968,7 +604,7 @@ impl<'a> SolverData<'a> {
             .collect::<Vec<_>>();
 
         eprintln!("# Compute new deliveries, time {}", self.elapsed_seconds());
-        self.update_mcf_delivery_bounds(|t, v, i| {
+        self.deliveries.set_all_statuses(|t, v, i| {
             let customer_vehicle_choices = &vehicle_choices[t][i - 1];
             if customer_vehicle_choices.is_empty() {
                 false
@@ -976,30 +612,27 @@ impl<'a> SolverData<'a> {
                 customer_vehicle_choices[0] == v
             }
         })?;
-        let mut success = self.compute_new_deliveries(solution)?;
-        if !success {
-            eprintln!("# Attempting fallback heuristic...");
-            success = self.fix_deliveries_fallback(solution)?;
-        }
+        let opt_deliveries = match self.deliveries.solve()? {
+            Some(deliveries) => Some(deliveries),
+            None => match self.adjust_deliveries(assignment)? {
+                Some(mut deliveries) => {
+                    eprintln!("# Attempting fallback heuristic...");
+                    let fixed = self.fix_deliveries_fallback(&mut deliveries)?;
+                    if fixed {
+                        Some(deliveries)
+                    } else {
+                        None
+                    }
+                }
+                None => None,
+            },
+        };
 
-        Ok(if success {
-            Some(self.get_routes_heuristically(solution))
-        } else {
-            None
-        })
+        Ok(opt_deliveries.map(|deliveries| self.get_schedule_heuristically(&deliveries)))
     }
 
     /// A really stupid heuristic that does not take anything into consideration that would be sane
-    ///
-    /// Note that this method just changes the delivery values although it would also have
-    /// to change other values to get a feasible solution. We are assuming that all following
-    /// methods ignore the parts that are not related to deliveries.
-    fn fix_deliveries_fallback(&mut self, solution: &mut [f64]) -> grb::Result<bool> {
-        let adjusted = self.adjust_deliveries(solution)?;
-        if !adjusted {
-            return Ok(false);
-        }
-
+    fn fix_deliveries_fallback(&mut self, deliveries: &mut Deliveries) -> grb::Result<bool> {
         eprintln!("# Fix deliveries, time {}", self.elapsed_seconds());
         for t in self.problem.all_days() {
             eprintln!("# Fixing day {}", t);
@@ -1011,7 +644,7 @@ impl<'a> SolverData<'a> {
                 .map(|v| {
                     self.problem
                         .all_customers()
-                        .map(|i| self.get_delivery_amount(solution, t, v, i))
+                        .map(|i| deliveries.get(t, v, i))
                         .sum()
                 })
                 .collect::<Vec<usize>>();
@@ -1027,13 +660,13 @@ impl<'a> SolverData<'a> {
                 let mut total_delivery: usize = self
                     .problem
                     .all_vehicles()
-                    .map(|v| self.get_delivery_amount(solution, t, v, i))
+                    .map(|v| deliveries.get(t, v, i))
                     .sum();
 
                 for v in self.problem.all_vehicles() {
-                    let value = self.get_delivery_amount(solution, t, v, i);
+                    let value = deliveries.get(t, v, i);
                     if value > 0 {
-                        solution[self.vars.deliver_index(t, v, i)] = total_delivery as f64;
+                        deliveries.set(t, v, i, total_delivery);
                         total_delivery = 0;
                     }
                 }
@@ -1046,7 +679,7 @@ impl<'a> SolverData<'a> {
                 .map(|v| {
                     self.problem
                         .all_customers()
-                        .map(|i| self.get_delivery_amount(solution, t, v, i))
+                        .map(|i| deliveries.get(t, v, i))
                         .sum()
                 })
                 .collect::<Vec<usize>>();
@@ -1067,12 +700,12 @@ impl<'a> SolverData<'a> {
                 let v = *v_ref;
                 let v_next = sorted_vehicles[i + 1];
                 if load[v] > self.problem.capacity {
-                    let mut heap = self
-                        .get_visited_customers(solution, t, v)
+                    let mut heap = deliveries
+                        .get_all_delivered_customers(t, v)
                         .into_iter()
                         .map(|i| {
                             Reverse(Delivery {
-                                quantity: self.get_delivery_amount(solution, t, v, i),
+                                quantity: deliveries.get(t, v, i),
                                 customer: i,
                             })
                         })
@@ -1084,9 +717,7 @@ impl<'a> SolverData<'a> {
                             load[v] -= amount;
                             load[v_next] += amount;
 
-                            let i = delivery.0.customer;
-                            solution[self.vars.deliver_index(t, v, i)] = 0.0;
-                            solution[self.vars.deliver_index(t, v_next, i)] = amount as f64;
+                            deliveries.change_vehicle(t, v, v_next, delivery.0.customer);
                         } else {
                             panic!("Logic error: as long as the load is positive, we must have elements on the heap")
                         };
@@ -1101,7 +732,7 @@ impl<'a> SolverData<'a> {
                 .map(|v| {
                     self.problem
                         .all_customers()
-                        .map(|i| self.get_delivery_amount(solution, t, v, i))
+                        .map(|i| deliveries.get(t, v, i))
                         .sum()
                 })
                 .collect::<Vec<usize>>();
@@ -1116,12 +747,13 @@ impl<'a> SolverData<'a> {
         }
 
         Ok(true)
+        // Ok(None)
     }
 
     /// Runs LKH heuristic on visited sites to get a feasible route
-    fn get_routes_heuristically(&self, solution: &[f64]) -> Routes {
+    fn get_schedule_heuristically(&self, deliveries: &Deliveries) -> Schedule {
         eprintln!(
-            "# Get routes heuristically, time {}",
+            "# Get schedule heuristically, time {}",
             self.elapsed_seconds()
         );
         self.problem
@@ -1130,17 +762,17 @@ impl<'a> SolverData<'a> {
                 self.problem
                     .all_vehicles()
                     .map(|v| {
-                        let mut visited_sites = self.get_visited_customers(solution, t, v);
+                        let mut visited_sites = deliveries.get_all_delivered_customers(t, v);
                         visited_sites.push(0); // add depot
 
-                        let tsp_instance: Vec<(usize, f64, f64)> = visited_sites
+                        let tsp_instance = visited_sites
                             .iter()
                             .map(|site| {
                                 let site = self.problem.site(*site);
                                 let pos = &site.position();
                                 (site.id(), pos.x, pos.y)
                             })
-                            .collect();
+                            .collect::<Vec<_>>();
                         let mut tsp_tour = lkh::run(&tsp_instance);
 
                         let depot_position = tsp_tour
@@ -1152,7 +784,11 @@ impl<'a> SolverData<'a> {
                         tsp_tour
                             .iter()
                             .map(|site| Delivery {
-                                quantity: self.get_delivery_amount(solution, t, v, *site),
+                                quantity: if *site == 0 {
+                                    0
+                                } else {
+                                    deliveries.get(t, v, *site)
+                                },
                                 customer: *site,
                             })
                             .collect()
@@ -1164,11 +800,11 @@ impl<'a> SolverData<'a> {
 }
 
 impl<'a> grb::callback::Callback for SolverData<'a> {
-    fn callback(&mut self, w: gurobi::Where) -> grb::callback::CbResult {
+    fn callback(&mut self, w: grb::callback::Where) -> grb::callback::CbResult {
         match w {
-            gurobi::Where::MIPSol(ctx) => {
+            grb::callback::Where::MIPSol(ctx) => {
                 self.ncalls += 1;
-                let mut assignment = ctx.get_solution(&self.vars.variables)?;
+                let assignment = ctx.get_solution(&self.vars.variables)?;
                 eprintln!("# Incumbent {}!", self.ncalls);
                 eprintln!("#    current obj: {}", ctx.obj()?);
                 eprintln!("#       best obj: {}", ctx.obj_best()?);
@@ -1186,15 +822,17 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                 .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
                         }
 
-                        let adjusted = self.adjust_deliveries(&mut assignment)?;
-                        if adjusted {
-                            let routes = self.get_routes_heuristically(&assignment);
-                            self.update_best_solution(routes);
-                        } else {
-                            eprintln!(
-                                "# Failed to find a feasible adjusted solution. \
+                        match self.adjust_deliveries(&assignment)? {
+                            Some(deliveries) => {
+                                let schedule = self.get_schedule_heuristically(&deliveries);
+                                self.update_best_solution(schedule);
+                            }
+                            None => {
+                                eprintln!(
+                                    "# Failed to find a feasible adjusted solution. \
                                    This is weird, because we are in MIPSol."
-                            );
+                                );
+                            }
                         }
                     }
 
@@ -1202,14 +840,14 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         .integral_subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
 
                     if !new_subtour_constraints {
-                        let routes = self.get_routes(&assignment);
-                        self.update_best_solution(routes);
+                        let schedule = self.get_schedule(&assignment);
+                        self.update_best_solution(schedule);
                     }
 
                     eprintln!("# Callback finish time: {}", self.elapsed_seconds());
                 }
             }
-            gurobi::Where::MIPNode(ctx) => {
+            grb::callback::Where::MIPNode(ctx) => {
                 let status = ctx.status()?;
                 if status == grb::Status::Optimal {
                     eprintln!(
@@ -1223,7 +861,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     eprintln!("#                 time: {}", self.elapsed_seconds());
 
                     if true {
-                        let mut assignment = ctx.get_solution(&self.vars.variables)?;
+                        let assignment = ctx.get_solution(&self.vars.variables)?;
                         if PRINT_VARIABLE_VALUES {
                             self.varnames
                                 .iter()
@@ -1231,9 +869,9 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                 .filter(|(_, &value)| value > Self::EPSILON)
                                 .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
                         }
-                        match self.fractional_delivery_heuristic(&mut assignment)? {
-                            Some(routes) => {
-                                self.update_best_solution(routes);
+                        match self.fractional_delivery_heuristic(&assignment)? {
+                            Some(schedule) => {
+                                self.update_best_solution(schedule);
                             }
                             None => {
                                 eprintln!("# Failed to find a feasible solution.");
@@ -1257,10 +895,10 @@ struct Solver {}
 
 impl Solver {
     fn solve(problem: &Problem, cpu: String) -> grb::Result<()> {
-        let mut env = gurobi::Env::new("")?;
+        let mut env = grb::Env::new("")?;
         env.set(grb::param::Threads, 1)?;
 
-        let mut lp = gurobi::Model::with_env("irp", &env)?;
+        let mut lp = grb::Model::with_env("irp", &env)?;
 
         lp.set_param(grb::param::LazyConstraints, 1)?;
         lp.set_param(grb::param::Method, 1)?; // use dual simplex
@@ -1283,7 +921,7 @@ impl Solver {
 
         lp.set_param(grb::param::Presolve, 2)?;
 
-        lp.set_objective(0, gurobi::ModelSense::Minimize)?;
+        lp.set_objective(0, grb::ModelSense::Minimize)?;
 
         let mut data = SolverData::new(problem, &mut lp, &env, &cpu)?;
 
@@ -1400,19 +1038,19 @@ impl Solver {
         lp.optimize_with_callback(&mut data)?;
         Self::print_raw_solution(&data, &lp)?;
         let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
-        let routes = data.get_routes(&assignment);
-        let solution = Solution::new(problem, routes, data.elapsed_seconds(), data.cpu);
+        let schedule = data.get_schedule(&assignment);
+        let solution = Solution::new(problem, schedule, data.elapsed_seconds(), data.cpu);
         eprintln!("# Final solution");
         eprintln!("{}", solution);
 
         Ok(())
     }
 
-    fn print_raw_solution(data: &SolverData, lp: &gurobi::Model) -> grb::Result<()> {
+    fn print_raw_solution(data: &SolverData, lp: &grb::Model) -> grb::Result<()> {
         let status = lp.status()?;
         eprintln!("# MIP solution status: {:?}", status);
 
-        let objective = lp.get_attr(gurobi::attr::ObjVal)?;
+        let objective = lp.get_attr(grb::attr::ObjVal)?;
         eprintln!("# MIP solution value: {}", objective);
 
         if PRINT_VARIABLE_VALUES {
