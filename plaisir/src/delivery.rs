@@ -1,4 +1,29 @@
 use crate::problem::*;
+use std::cmp::Ordering;
+
+#[derive(Eq)]
+pub struct Delivery {
+    pub quantity: usize,
+    pub customer: usize,
+}
+
+impl PartialEq for Delivery {
+    fn eq(&self, other: &Self) -> bool {
+        self.quantity == other.quantity
+    }
+}
+
+impl PartialOrd for Delivery {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Delivery {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.quantity.cmp(&other.quantity)
+    }
+}
 
 pub struct Solver<'a> {
     problem: &'a Problem,

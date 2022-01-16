@@ -1,6 +1,7 @@
 use crate::delivery::Solver as DeliverySolver;
+use crate::delivery::Delivery;
 use crate::problem::*;
-use std::cmp::{Ordering, Reverse};
+use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::fmt;
 use std::time;
@@ -235,30 +236,6 @@ impl<'a> Variables<'a> {
 
     fn deliver(&self, t: usize, v: usize, i: usize) -> grb::Var {
         self.variables[self.deliver_index(t, v, i)]
-    }
-}
-
-#[derive(Eq)]
-struct Delivery {
-    quantity: usize,
-    customer: usize,
-}
-
-impl PartialEq for Delivery {
-    fn eq(&self, other: &Self) -> bool {
-        self.quantity == other.quantity
-    }
-}
-
-impl PartialOrd for Delivery {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Delivery {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.quantity.cmp(&other.quantity)
     }
 }
 
