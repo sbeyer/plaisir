@@ -3,10 +3,10 @@ use crate::problem::Problem;
 use std::fmt;
 
 pub type Route = Vec<Delivery>;
-pub type Routes = Vec<Vec<Route>>;
+pub type Schedule = Vec<Vec<Route>>;
 
 pub struct Solution {
-    routes: Routes,
+    schedule: Schedule,
     cost_transportation: f64,
     cost_inventory_depot: f64,
     cost_inventory_customers: f64,
@@ -18,7 +18,7 @@ pub struct Solution {
 impl Solution {
     pub fn empty() -> Self {
         Self {
-            routes: Vec::new(),
+            schedule: Vec::new(),
             cost_transportation: f64::INFINITY,
             cost_inventory_depot: f64::INFINITY,
             cost_inventory_customers: f64::INFINITY,
@@ -28,9 +28,9 @@ impl Solution {
         }
     }
 
-    pub fn new(problem: &Problem, routes: Routes, time: f64, cpu: &str) -> Self {
+    pub fn new(problem: &Problem, schedule: Schedule, time: f64, cpu: &str) -> Self {
         let mut sol = Solution {
-            routes,
+            schedule,
             cost_transportation: 0.,
             cost_inventory_depot: 0.,
             cost_inventory_customers: 0.,
@@ -40,8 +40,8 @@ impl Solution {
         };
 
         // transportation cost
-        for day_routes in sol.routes.iter() {
-            for route in day_routes.iter() {
+        for day_schedule in sol.schedule.iter() {
+            for route in day_schedule.iter() {
                 let mut tour: Vec<usize> = route.iter().map(|x| x.customer).collect();
                 if tour.len() > 1 {
                     tour.push(0);
@@ -59,9 +59,9 @@ impl Solution {
             .collect();
         let mut cost_inventory = vec![0.; problem.num_sites];
 
-        for day_routes in sol.routes.iter() {
+        for day_schedule in sol.schedule.iter() {
             // step one: deliveries
-            for route in day_routes.iter() {
+            for route in day_schedule.iter() {
                 for Delivery { quantity, customer } in route.iter() {
                     inventory[*customer] += *quantity as f64;
                     inventory[0] -= *quantity as f64;
@@ -90,7 +90,7 @@ impl Solution {
     }
 
     pub fn route(&self, t: usize, v: usize) -> &Route {
-        &self.routes[t][v]
+        &self.schedule[t][v]
     }
 
     pub fn value(&self) -> f64 {
@@ -100,10 +100,9 @@ impl Solution {
 
 impl fmt::Display for Solution {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Routes
-        for (t, routes) in self.routes.iter().enumerate() {
+        for (t, day_schedule) in self.schedule.iter().enumerate() {
             writeln!(f, "Day {}", t + 1)?;
-            for (route_idx, route) in routes.iter().enumerate() {
+            for (route_idx, route) in day_schedule.iter().enumerate() {
                 write!(f, "Route {}: ", route_idx + 1)?;
                 for route_stop in route.iter() {
                     write!(f, "{} ", route_stop.customer)?;

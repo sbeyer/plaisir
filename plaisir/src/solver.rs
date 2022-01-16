@@ -437,8 +437,8 @@ impl<'a> SolverData<'a> {
         assignment
     }
 
-    fn update_best_solution(&mut self, routes: Routes) {
-        let solution = Solution::new(self.problem, routes, self.elapsed_seconds(), self.cpu);
+    fn update_best_solution(&mut self, schedule: Schedule) {
+        let solution = Solution::new(self.problem, schedule, self.elapsed_seconds(), self.cpu);
 
         if solution.value() < self.best_solution.value() {
             eprintln!("{}", solution);
@@ -497,8 +497,8 @@ impl<'a> SolverData<'a> {
         }
     }
 
-    fn get_routes(&self, assignment: &[f64]) -> Routes {
-        eprintln!("# Get routes, time {}", self.elapsed_seconds());
+    fn get_schedule(&self, assignment: &[f64]) -> Schedule {
+        eprintln!("# Get schedule, time {}", self.elapsed_seconds());
 
         self.problem
             .all_days()
@@ -572,7 +572,10 @@ impl<'a> SolverData<'a> {
         Ok(result)
     }
 
-    fn fractional_delivery_heuristic(&mut self, assignment: &[f64]) -> grb::Result<Option<Routes>> {
+    fn fractional_delivery_heuristic(
+        &mut self,
+        assignment: &[f64],
+    ) -> grb::Result<Option<Schedule>> {
         let vehicle_choices = self
             .problem
             .all_days()
@@ -625,7 +628,7 @@ impl<'a> SolverData<'a> {
             },
         };
 
-        Ok(opt_deliveries.map(|deliveries| self.get_routes_heuristically(&deliveries)))
+        Ok(opt_deliveries.map(|deliveries| self.get_schedule_heuristically(&deliveries)))
     }
 
     /// A really stupid heuristic that does not take anything into consideration that would be sane
@@ -748,9 +751,9 @@ impl<'a> SolverData<'a> {
     }
 
     /// Runs LKH heuristic on visited sites to get a feasible route
-    fn get_routes_heuristically(&self, deliveries: &Deliveries) -> Routes {
+    fn get_schedule_heuristically(&self, deliveries: &Deliveries) -> Schedule {
         eprintln!(
-            "# Get routes heuristically, time {}",
+            "# Get schedule heuristically, time {}",
             self.elapsed_seconds()
         );
         self.problem
@@ -821,8 +824,8 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
 
                         match self.adjust_deliveries(&assignment)? {
                             Some(deliveries) => {
-                                let routes = self.get_routes_heuristically(&deliveries);
-                                self.update_best_solution(routes);
+                                let schedule = self.get_schedule_heuristically(&deliveries);
+                                self.update_best_solution(schedule);
                             }
                             None => {
                                 eprintln!(
@@ -837,8 +840,8 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         .integral_subtour_elimination(&assignment, |constr| ctx.add_lazy(constr))?;
 
                     if !new_subtour_constraints {
-                        let routes = self.get_routes(&assignment);
-                        self.update_best_solution(routes);
+                        let schedule = self.get_schedule(&assignment);
+                        self.update_best_solution(schedule);
                     }
 
                     eprintln!("# Callback finish time: {}", self.elapsed_seconds());
@@ -867,8 +870,8 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                 .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
                         }
                         match self.fractional_delivery_heuristic(&assignment)? {
-                            Some(routes) => {
-                                self.update_best_solution(routes);
+                            Some(schedule) => {
+                                self.update_best_solution(schedule);
                             }
                             None => {
                                 eprintln!("# Failed to find a feasible solution.");
@@ -1035,8 +1038,8 @@ impl Solver {
         lp.optimize_with_callback(&mut data)?;
         Self::print_raw_solution(&data, &lp)?;
         let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
-        let routes = data.get_routes(&assignment);
-        let solution = Solution::new(problem, routes, data.elapsed_seconds(), data.cpu);
+        let schedule = data.get_schedule(&assignment);
+        let solution = Solution::new(problem, schedule, data.elapsed_seconds(), data.cpu);
         eprintln!("# Final solution");
         eprintln!("{}", solution);
 
