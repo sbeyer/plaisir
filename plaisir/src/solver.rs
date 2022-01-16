@@ -395,7 +395,7 @@ impl<'a> SolverData<'a> {
         let mut assignment = vec![0.0; self.vars.variables.len()];
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
-                let route = &self.best_solution.routes[t][v];
+                let route = &self.best_solution.route(t, v);
                 if route.len() > 1 {
                     for delivery in route.iter() {
                         let i = delivery.customer;

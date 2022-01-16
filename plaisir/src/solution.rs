@@ -2,10 +2,11 @@ use crate::delivery::Delivery;
 use crate::problem::Problem;
 use std::fmt;
 
-pub type Routes = Vec<Vec<Vec<Delivery>>>;
+pub type Route = Vec<Delivery>;
+pub type Routes = Vec<Vec<Route>>;
 
 pub struct Solution {
-    pub routes: Routes,
+    routes: Routes,
     cost_transportation: f64,
     cost_inventory_depot: f64,
     cost_inventory_customers: f64,
@@ -86,6 +87,10 @@ impl Solution {
             sol.cost_transportation + sol.cost_inventory_depot + sol.cost_inventory_customers;
 
         sol
+    }
+
+    pub fn route(&self, t: usize, v: usize) -> &Route {
+        &self.routes[t][v]
     }
 
     pub fn value(&self) -> f64 {
