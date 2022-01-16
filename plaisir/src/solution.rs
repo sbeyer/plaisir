@@ -9,7 +9,7 @@ pub struct Solution {
     cost_transportation: f64,
     cost_inventory_depot: f64,
     cost_inventory_customers: f64,
-    pub cost_total: f64,
+    cost_total: f64,
     processor: String,
     time: f64,
 }
@@ -86,6 +86,10 @@ impl Solution {
             sol.cost_transportation + sol.cost_inventory_depot + sol.cost_inventory_customers;
 
         sol
+    }
+
+    pub fn value(&self) -> f64 {
+        self.cost_total
     }
 }
 

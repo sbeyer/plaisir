@@ -440,13 +440,14 @@ impl<'a> SolverData<'a> {
     fn update_best_solution(&mut self, routes: Routes) {
         let solution = Solution::new(self.problem, routes, self.elapsed_seconds(), self.cpu);
 
-        if solution.cost_total < self.best_solution.cost_total {
+        if solution.value() < self.best_solution.value() {
             eprintln!("{}", solution);
             self.best_solution = solution;
         } else {
             eprintln!(
                 "# Found solution of objective value {} not better than {}",
-                solution.cost_total, self.best_solution.cost_total
+                solution.value(),
+                self.best_solution.value()
             );
         }
     }
@@ -456,7 +457,7 @@ impl<'a> SolverData<'a> {
         ctx: grb::callback::MIPNodeCtx,
     ) -> grb::Result<()> {
         let best_objective = ctx.obj_best()?;
-        if self.best_solution.cost_total < best_objective {
+        if self.best_solution.value() < best_objective {
             let best_solution_assignment = self.get_best_solution_variable_assignment();
             let set_result =
                 ctx.set_solution(self.vars.variables.iter().zip(best_solution_assignment))?;
@@ -464,7 +465,8 @@ impl<'a> SolverData<'a> {
                 self.is_new_solution_just_set = true;
                 eprintln!(
                     "# New best solution with objective value {} (old: {}) set successfully",
-                    self.best_solution.cost_total, best_objective
+                    self.best_solution.value(),
+                    best_objective
                 );
             } else {
                 eprintln!(
