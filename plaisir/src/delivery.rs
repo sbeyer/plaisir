@@ -1,6 +1,9 @@
 use crate::problem::*;
 use std::cmp::Ordering;
 
+const PRINT_VARIABLE_VALUES: bool = false;
+const MIP_EPSILON: f64 = 1e-7;
+
 #[derive(Eq)]
 pub struct Delivery {
     pub quantity: usize,
@@ -65,8 +68,8 @@ impl Deliveries {
 
 pub struct Solver<'a> {
     problem: &'a Problem,
-    pub model: grb::Model,
-    pub vars: Vec<Vec<Vec<grb::Var>>>,
+    model: grb::Model,
+    vars: Vec<Vec<Vec<grb::Var>>>,
 }
 
 impl<'a> Solver<'a> {
@@ -230,5 +233,51 @@ impl<'a> Solver<'a> {
             }
         }
         Ok(())
+    }
+
+    /// Solve Minimum-Cost Flow LP to improve deliveries
+    pub fn solve(&mut self) -> grb::Result<Option<Deliveries>> {
+        let mut deliveries = Deliveries::new(self.problem);
+
+        self.model.optimize()?;
+
+        let status = self.model.status()?;
+        if status == grb::Status::Optimal {
+            if PRINT_VARIABLE_VALUES {
+                eprintln!("#### MIP solution status: {:?}", status);
+
+                let objective = self.model.get_attr(grb::attr::ObjVal)?;
+                eprintln!("#### MIP solution value: {}", objective);
+
+                for delivery_vars_per_day in self.vars.iter() {
+                    for delivery_vars_per_customer in delivery_vars_per_day.iter() {
+                        for var in delivery_vars_per_customer.iter() {
+                            let name = self.model.get_obj_attr(grb::attr::VarName, var)?;
+                            let value = self.model.get_obj_attr(grb::attr::X, var)?;
+                            if value > MIP_EPSILON {
+                                eprintln!("####   - {}: {}", name, value);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if status == grb::Status::Optimal {
+                for t in self.problem.all_days() {
+                    for v in self.problem.all_vehicles() {
+                        for i in self.problem.all_customers() {
+                            let var = self.var(t, v, i);
+                            let value = self.model.get_obj_attr(grb::attr::X, &var)?;
+
+                            deliveries.set(t, v, i, value.round() as usize);
+                        }
+                    }
+                }
+            }
+
+            Ok(Some(deliveries))
+        } else {
+            Ok(None)
+        }
     }
 }

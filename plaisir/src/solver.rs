@@ -676,55 +676,6 @@ impl<'a> SolverData<'a> {
             .collect()
     }
 
-    /// Solve Minimum-Cost Flow LP to improve deliveries
-    fn compute_new_deliveries(&mut self) -> grb::Result<Option<Deliveries>> {
-        let mut deliveries = Deliveries::new(self.problem);
-
-        self.deliveries.model.optimize()?;
-
-        let status = self.deliveries.model.status()?;
-        if status == grb::Status::Optimal {
-            if true {
-                eprintln!("#### MIP solution status: {:?}", status);
-
-                let objective = self.deliveries.model.get_attr(grb::attr::ObjVal)?;
-                eprintln!("#### MIP solution value: {}", objective);
-
-                for delivery_vars_per_day in self.deliveries.vars.iter() {
-                    for delivery_vars_per_customer in delivery_vars_per_day.iter() {
-                        for var in delivery_vars_per_customer.iter() {
-                            let name = self
-                                .deliveries
-                                .model
-                                .get_obj_attr(grb::attr::VarName, var)?;
-                            let value = self.deliveries.model.get_obj_attr(grb::attr::X, var)?;
-                            if value > SolverData::EPSILON {
-                                eprintln!("####   - {}: {}", name, value);
-                            }
-                        }
-                    }
-                }
-            }
-
-            if status == grb::Status::Optimal {
-                for t in self.problem.all_days() {
-                    for v in self.problem.all_vehicles() {
-                        for i in self.problem.all_customers() {
-                            let var = self.deliveries.var(t, v, i);
-                            let value = self.deliveries.model.get_obj_attr(grb::attr::X, &var)?;
-
-                            deliveries.set(t, v, i, value.round() as usize);
-                        }
-                    }
-                }
-            }
-
-            Ok(Some(deliveries))
-        } else {
-            Ok(None)
-        }
-    }
-
     /// Solve Minimum-Cost Flow LP to improve deliveries (based on currently visited customers)
     fn adjust_deliveries(&mut self, assignment: &[f64]) -> grb::Result<Option<Deliveries>> {
         eprintln!("# Adjust deliveries, time {}", self.elapsed_seconds());
@@ -733,7 +684,7 @@ impl<'a> SolverData<'a> {
             let var_deliver = self.vars.deliver_index(t, v, i);
             assignment[var_deliver] > 0.5
         })?;
-        let result = self.compute_new_deliveries()?;
+        let result = self.deliveries.solve()?;
 
         Ok(result)
     }
@@ -775,7 +726,7 @@ impl<'a> SolverData<'a> {
                 customer_vehicle_choices[0] == v
             }
         })?;
-        let opt_deliveries = match self.compute_new_deliveries()? {
+        let opt_deliveries = match self.deliveries.solve()? {
             Some(deliveries) => Some(deliveries),
             None => match self.adjust_deliveries(assignment)? {
                 Some(mut deliveries) => {
