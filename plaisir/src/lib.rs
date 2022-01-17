@@ -1,6 +1,7 @@
 use std::error::Error;
 
 mod delivery;
+mod heuristic;
 mod problem;
 mod solution;
 mod solver;

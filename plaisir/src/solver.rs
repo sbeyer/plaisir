@@ -1,5 +1,6 @@
 use crate::delivery::Solver as DeliverySolver;
 use crate::delivery::{Deliveries, Delivery};
+use crate::heuristic::*;
 use crate::problem::*;
 use crate::solution::*;
 use std::cmp::Reverse;
@@ -249,6 +250,7 @@ struct SolverData<'a> {
     deliveries: DeliverySolver<'a>,
     best_solution: Solution,
     is_new_solution_just_set: bool,
+    heuristic: RandomHeuristic,
 }
 
 impl<'a> SolverData<'a> {
@@ -283,6 +285,7 @@ impl<'a> SolverData<'a> {
             deliveries,
             best_solution,
             is_new_solution_just_set: false,
+            heuristic: RandomHeuristic::new(),
         })
     }
 
@@ -785,6 +788,10 @@ impl<'a> SolverData<'a> {
             })
             .collect()
     }
+
+    fn run_heuristic(&mut self) {
+        self.heuristic.solve(self.problem);
+    }
 }
 
 impl<'a> grb::callback::Callback for SolverData<'a> {
@@ -1022,6 +1029,8 @@ impl Solver {
                 lp.add_constr(&format!("Ifc_{t}_{i}"), grb::c!(lhs == value))?;
             }
         }
+
+        data.run_heuristic();
 
         lp.optimize_with_callback(&mut data)?;
         Self::print_raw_solution(&data, &lp)?;
