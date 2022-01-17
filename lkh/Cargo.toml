@@ -2,6 +2,7 @@
 name = "lkh"
 version = "0.1.0"
 authors = ["Stephan Beyer <s-beyer@gmx.net>"]
+rust-version = "1.58"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
