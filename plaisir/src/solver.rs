@@ -47,7 +47,7 @@ impl<'a> Variables<'a> {
             for v in problem.all_vehicles() {
                 for i in problem.all_sites() {
                     for j in problem.all_sites_after(i) {
-                        let name = format!("r_{}_{}_{}_{}", t, v, i, j);
+                        let name = format!("r_{t}_{v}_{i}_{j}");
                         let coeff = problem.distance(i, j).into();
                         let bounds = (0.0, if i == 0 { 2.0 } else { 1.0 });
                         //let var = grb::add_binvar!(lp, name: &name, obj: coeff)?;
@@ -77,7 +77,7 @@ impl<'a> Variables<'a> {
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
                 for i in problem.all_sites() {
-                    let name = format!("v_{}_{}_{}", t, v, i);
+                    let name = format!("v_{t}_{v}_{i}");
                     let coeff = 0.0;
                     let bounds = (0.0, 1.0);
                     let var = lp.add_var(
@@ -102,7 +102,7 @@ impl<'a> Variables<'a> {
         for t in problem.all_days() {
             for i in problem.all_sites() {
                 let site = problem.site(i);
-                let name = format!("i_{}_{}", t, i);
+                let name = format!("i_{t}_{i}");
                 let coeff = site.cost();
                 let bounds = site.level_bounds();
                 let var = lp.add_var(
@@ -128,7 +128,7 @@ impl<'a> Variables<'a> {
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
                 for i in problem.all_customers() {
-                    let name = format!("d_{}_{}_{}", t, v, i);
+                    let name = format!("d_{t}_{v}_{i}");
                     let coeff = 0.0;
                     let bounds = (0.0, problem.capacity as f64);
                     let var = lp.add_var(
@@ -299,7 +299,7 @@ impl<'a> SolverData<'a> {
                 .iter()
                 .zip(assignment.iter())
                 .filter(|(_, &value)| value > Self::EPSILON)
-                .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+                .for_each(|(var, value)| eprintln!("#   - {var}: {value}"));
         }
 
         // collect node sets of connected components for every day and every vehicle
@@ -341,7 +341,7 @@ impl<'a> SolverData<'a> {
             for set in sets.iter() {
                 eprintln!("# Add node set for all days and vehicles:");
                 for i in set.iter() {
-                    eprintln!("#  * {}", i);
+                    eprintln!("#  * {i}");
                 }
             }
         }
@@ -469,10 +469,7 @@ impl<'a> SolverData<'a> {
                     best_objective
                 );
             } else {
-                eprintln!(
-                    "# No new solution set, keeping best objective value  {}",
-                    best_objective
-                );
+                eprintln!("# No new solution set, keeping best objective value {best_objective}");
             }
         }
 
@@ -635,7 +632,7 @@ impl<'a> SolverData<'a> {
     fn fix_deliveries_fallback(&mut self, deliveries: &mut Deliveries) -> grb::Result<bool> {
         eprintln!("# Fix deliveries, time {}", self.elapsed_seconds());
         for t in self.problem.all_days() {
-            eprintln!("# Fixing day {}", t);
+            eprintln!("# Fixing day {t}");
 
             // Compute load for each vehicle
             let load = self
@@ -648,10 +645,7 @@ impl<'a> SolverData<'a> {
                         .sum()
                 })
                 .collect::<Vec<usize>>();
-            eprintln!(
-                "## Loads {}: {:?} capacity {}",
-                t, load, self.problem.capacity
-            );
+            eprintln!("## Loads {t}: {load:?} capacity {}", self.problem.capacity);
 
             // Move delivieries to the same customer on different routes to the first route
             // with such a delivery. (Note that this does not change anything for customers
@@ -683,10 +677,7 @@ impl<'a> SolverData<'a> {
                         .sum()
                 })
                 .collect::<Vec<usize>>();
-            eprintln!(
-                "## Loads {}: {:?} capacity {}",
-                t, load, self.problem.capacity
-            );
+            eprintln!("## Loads {t}: {load:?} capacity {}", self.problem.capacity);
 
             // Sort vehicles by descending load
             let mut sorted_vehicles = self.problem.all_vehicles().collect::<Vec<_>>();
@@ -736,10 +727,7 @@ impl<'a> SolverData<'a> {
                         .sum()
                 })
                 .collect::<Vec<usize>>();
-            eprintln!(
-                "## Loads {}: {:?} capacity {}",
-                t, load, self.problem.capacity
-            );
+            eprintln!("## Loads {t}: {load:?} capacity {}", self.problem.capacity);
 
             if load[sorted_vehicles[sorted_vehicles.len() - 1]] > self.problem.capacity {
                 return Ok(false);
@@ -819,7 +807,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                 .iter()
                                 .zip(assignment.iter())
                                 .filter(|(_, &value)| value > Self::EPSILON)
-                                .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+                                .for_each(|(var, value)| eprintln!("#   - {var}: {value}"));
                         }
 
                         match self.adjust_deliveries(&assignment)? {
@@ -867,7 +855,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                                 .iter()
                                 .zip(assignment.iter())
                                 .filter(|(_, &value)| value > Self::EPSILON)
-                                .for_each(|(var, value)| eprintln!("#   - {}: {}", var, value));
+                                .for_each(|(var, value)| eprintln!("#   - {var}: {value}"));
                         }
                         match self.fractional_delivery_heuristic(&assignment)? {
                             Some(schedule) => {
@@ -936,7 +924,7 @@ impl Solver {
                         lhs.add_term(1.0, data.vars.route(t, v, i, j));
                     }
 
-                    lp.add_constr(&format!("Rd_{}_{}_{}", t, v, i), grb::c!(lhs == 0.0))?;
+                    lp.add_constr(&format!("Rd_{t}_{v}_{i}"), grb::c!(lhs == 0.0))?;
                 }
             }
         }
@@ -949,7 +937,7 @@ impl Solver {
                     lhs.add_term(1.0, data.vars.visit(t, v, 0));
                     lhs.add_term(-1.0, data.vars.visit(t, v, i));
 
-                    lp.add_constr(&format!("DC_{}_{}_{}", t, v, i), grb::c!(lhs >= 0.0))?;
+                    lp.add_constr(&format!("DC_{t}_{v}_{i}"), grb::c!(lhs >= 0.0))?;
                 }
             }
         }
@@ -961,7 +949,7 @@ impl Solver {
                 for v in problem.all_vehicles() {
                     lhs.add_term(1.0, data.vars.visit(t, v, i));
                 }
-                lp.add_constr(&format!("V1d_{}_{}", t, i), grb::c!(lhs <= 1.0))?;
+                lp.add_constr(&format!("V1d_{t}_{i}"), grb::c!(lhs <= 1.0))?;
             }
         }
 
@@ -973,7 +961,7 @@ impl Solver {
                     lhs.add_term(problem.capacity as f64, data.vars.visit(t, v, i));
                     lhs.add_term(-1.0, data.vars.deliver(t, v, i));
 
-                    lp.add_constr(&format!("Gdv_{}_{}_{}", t, v, i), grb::c!(lhs >= 0.0))?;
+                    lp.add_constr(&format!("Gdv_{t}_{v}_{i}"), grb::c!(lhs >= 0.0))?;
                 }
             }
         }
@@ -987,7 +975,7 @@ impl Solver {
                 }
 
                 lp.add_constr(
-                    &format!("VC_{}_{}", t, v),
+                    &format!("VC_{t}_{v}"),
                     grb::c!(lhs <= problem.capacity as f64),
                 )?;
             }
@@ -1011,7 +999,7 @@ impl Solver {
                 lhs.add_term(1.0, data.vars.inventory(t - 1, 0)); // incoming inventory
             }
 
-            lp.add_constr(&format!("Ifd_{}", t), grb::c!(lhs == value))?;
+            lp.add_constr(&format!("Ifd_{t}"), grb::c!(lhs == value))?;
         }
 
         // inventory flow for customers
@@ -1031,7 +1019,7 @@ impl Solver {
                     lhs.add_term(1.0, data.vars.inventory(t - 1, i)); // incoming inventory
                 }
 
-                lp.add_constr(&format!("Ifc_{}_{}", t, i), grb::c!(lhs == value))?;
+                lp.add_constr(&format!("Ifc_{t}_{i}"), grb::c!(lhs == value))?;
             }
         }
 
@@ -1041,24 +1029,24 @@ impl Solver {
         let schedule = data.get_schedule(&assignment);
         let solution = Solution::new(problem, schedule, data.elapsed_seconds(), data.cpu);
         eprintln!("# Final solution");
-        eprintln!("{}", solution);
+        eprintln!("{solution}");
 
         Ok(())
     }
 
     fn print_raw_solution(data: &SolverData, lp: &grb::Model) -> grb::Result<()> {
         let status = lp.status()?;
-        eprintln!("# MIP solution status: {:?}", status);
+        eprintln!("# MIP solution status: {status:?}");
 
         let objective = lp.get_attr(grb::attr::ObjVal)?;
-        eprintln!("# MIP solution value: {}", objective);
+        eprintln!("# MIP solution value: {objective}");
 
         if PRINT_VARIABLE_VALUES {
             for var in data.vars.variables.iter() {
                 let name = lp.get_obj_attr(grb::attr::VarName, var)?;
                 let value = lp.get_obj_attr(grb::attr::X, var)?;
                 if value > SolverData::EPSILON {
-                    eprintln!("#   - {}: {}", name, value);
+                    eprintln!("#   - {name}: {value}");
                 }
             }
         }

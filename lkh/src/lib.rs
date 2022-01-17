@@ -37,9 +37,7 @@ mod tests {
         for (site, _, _) in coords.iter() {
             assert!(
                 tour.contains(site),
-                "tour {:?} does not contain site {}",
-                tour,
-                site
+                "tour {tour:?} does not contain site {site}"
             );
         }
     }

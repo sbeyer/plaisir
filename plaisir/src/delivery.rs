@@ -85,7 +85,7 @@ impl<'a> Solver<'a> {
                     .all_sites()
                     .map(|i| {
                         let site = problem.site(i);
-                        let name = format!("i_{}_{}", t, i);
+                        let name = format!("i_{t}_{i}");
                         let coeff = site.cost();
                         let bounds = site.level_bounds();
                         model
@@ -112,7 +112,7 @@ impl<'a> Solver<'a> {
                         problem
                             .all_customers()
                             .map(|i| {
-                                let name = format!("d_{}_{}_{}", t, v, i);
+                                let name = format!("d_{t}_{v}_{i}");
                                 let coeff = 0.0;
                                 let bounds = (0.0, 0.0);
                                 model
@@ -148,7 +148,7 @@ impl<'a> Solver<'a> {
                 }
 
                 solver.model.add_constr(
-                    &format!("VC_{}_{}", t, v),
+                    &format!("VC_{t}_{v}"),
                     grb::c!(lhs <= problem.capacity as f64),
                 )?;
             }
@@ -174,7 +174,7 @@ impl<'a> Solver<'a> {
 
             solver
                 .model
-                .add_constr(&format!("Ifd_{}", t), grb::c!(lhs == value))?;
+                .add_constr(&format!("Ifd_{t}"), grb::c!(lhs == value))?;
         }
 
         // inventory flow for customers
@@ -196,7 +196,7 @@ impl<'a> Solver<'a> {
 
                 solver
                     .model
-                    .add_constr(&format!("Ifc_{}_{}", t, i), grb::c!(lhs == value))?;
+                    .add_constr(&format!("Ifc_{t}_{i}"), grb::c!(lhs == value))?;
             }
         }
 
@@ -244,10 +244,10 @@ impl<'a> Solver<'a> {
         let status = self.model.status()?;
         if status == grb::Status::Optimal {
             if PRINT_VARIABLE_VALUES {
-                eprintln!("#### MIP solution status: {:?}", status);
+                eprintln!("#### MIP solution status: {status:?}");
 
                 let objective = self.model.get_attr(grb::attr::ObjVal)?;
-                eprintln!("#### MIP solution value: {}", objective);
+                eprintln!("#### MIP solution value: {objective}");
 
                 for delivery_vars_per_day in self.vars.iter() {
                     for delivery_vars_per_customer in delivery_vars_per_day.iter() {
@@ -255,7 +255,7 @@ impl<'a> Solver<'a> {
                             let name = self.model.get_obj_attr(grb::attr::VarName, var)?;
                             let value = self.model.get_obj_attr(grb::attr::X, var)?;
                             if value > MIP_EPSILON {
-                                eprintln!("####   - {}: {}", name, value);
+                                eprintln!("####   - {name}: {value}");
                             }
                         }
                     }
