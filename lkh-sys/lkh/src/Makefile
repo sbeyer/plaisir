@@ -5,7 +5,7 @@ TREE_TYPE = TWO_LEVEL_TREE
 # CC = gcc
 IDIR = include
 ODIR = obj
-CFLAGS = -O3 -Wall -I$(IDIR) -D$(TREE_TYPE) -g -DNDEBUG
+CFLAGS = -O3 -flto -Wall -I$(IDIR) -D$(TREE_TYPE) -g -DNDEBUG
 
 _DEPS = Delaunay.h GainType.h Genetic.h GeoConversion.h Hashing.h      \
         Heap.h libLKH.h LKH.h Segment.h Sequence.h gpx.h
