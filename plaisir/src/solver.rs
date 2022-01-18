@@ -250,7 +250,7 @@ struct SolverData<'a> {
     deliveries: DeliverySolver<'a>,
     best_solution: Solution,
     is_new_solution_just_set: bool,
-    heuristic: RandomHeuristic,
+    heuristic: RandomHeuristic<'a>,
 }
 
 impl<'a> SolverData<'a> {
@@ -285,7 +285,7 @@ impl<'a> SolverData<'a> {
             deliveries,
             best_solution,
             is_new_solution_just_set: false,
-            heuristic: RandomHeuristic::new(),
+            heuristic: RandomHeuristic::new(problem),
         })
     }
 
@@ -790,7 +790,7 @@ impl<'a> SolverData<'a> {
     }
 
     fn run_heuristic(&mut self) {
-        self.heuristic.solve(self.problem);
+        self.heuristic.solve();
     }
 }
 
