@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 const PRINT_VARIABLE_VALUES: bool = false;
 const MIP_EPSILON: f64 = 1e-7;
 
-#[derive(Eq)]
+#[derive(Debug, Eq)]
 pub struct Delivery {
     pub quantity: usize,
     pub customer: usize,
@@ -29,6 +29,7 @@ impl Ord for Delivery {
 }
 
 /// Vector indexed by day, vehicle and customer containing the number of delivered items
+#[derive(Debug)]
 pub struct Deliveries(Vec<Vec<Vec<usize>>>);
 
 impl Deliveries {

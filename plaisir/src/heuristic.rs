@@ -1,3 +1,4 @@
+use crate::delivery::Solver as DeliverySolver;
 use crate::problem::*;
 use rand::distributions::{Distribution, Uniform};
 use rand_xoshiro::rand_core::SeedableRng;
@@ -22,10 +23,24 @@ impl<'a> RandomHeuristic<'a> {
         Self { problem, dist, rng }
     }
 
-    pub fn solve(&mut self) {
+    pub fn solve(&mut self, delivery_solver: &mut DeliverySolver) -> grb::Result<()> {
         loop {
             let vehicle_plan = self.make_random_vehicle_plan();
             eprintln!("# plan {:?}", vehicle_plan);
+
+            delivery_solver.set_all_statuses(|t, v, i| {
+                if let Some(vehicle_choice) = vehicle_plan.0[t][i - 1] {
+                    vehicle_choice == v
+                } else {
+                    false
+                }
+            })?;
+            let opt_deliveries = delivery_solver.solve()?;
+            if let Some(deliveries) = opt_deliveries {
+                eprintln!("# -> deliveries {:?}", deliveries);
+            } else {
+                eprintln!("# -> infeasible deliveries");
+            }
         }
     }
 

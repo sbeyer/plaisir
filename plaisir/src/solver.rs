@@ -275,6 +275,8 @@ impl<'a> SolverData<'a> {
 
         let best_solution = Solution::empty();
 
+        let heuristic = RandomHeuristic::new(problem);
+
         Ok(SolverData {
             problem,
             vars,
@@ -285,7 +287,7 @@ impl<'a> SolverData<'a> {
             deliveries,
             best_solution,
             is_new_solution_just_set: false,
-            heuristic: RandomHeuristic::new(problem),
+            heuristic,
         })
     }
 
@@ -789,8 +791,10 @@ impl<'a> SolverData<'a> {
             .collect()
     }
 
-    fn run_heuristic(&mut self) {
-        self.heuristic.solve();
+    fn run_heuristic(&mut self) -> grb::Result<()> {
+        self.heuristic.solve(&mut self.deliveries)?;
+
+        Ok(())
     }
 }
 
@@ -1030,7 +1034,7 @@ impl Solver {
             }
         }
 
-        data.run_heuristic();
+        data.run_heuristic()?;
 
         lp.optimize_with_callback(&mut data)?;
         Self::print_raw_solution(&data, &lp)?;
