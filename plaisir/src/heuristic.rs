@@ -25,9 +25,11 @@ impl<'a> RandomHeuristic<'a> {
     }
 
     pub fn solve(&mut self, delivery_solver: &mut DeliverySolver) -> grb::Result<()> {
+        let start_time = std::time::Instant::now();
+        let mut best_solution = Solution::empty();
         loop {
             let vehicle_plan = self.make_random_vehicle_plan();
-            eprintln!("# plan {:?}", vehicle_plan);
+            //eprintln!("# plan {:?}", vehicle_plan);
 
             delivery_solver.set_all_statuses(|t, v, i| {
                 if let Some(vehicle_choice) = vehicle_plan.0[t as usize][i as usize - 1] {
@@ -38,12 +40,31 @@ impl<'a> RandomHeuristic<'a> {
             })?;
             let opt_deliveries = delivery_solver.solve()?;
             if let Some(deliveries) = opt_deliveries {
-                eprintln!("# -> deliveries {deliveries:?}");
+                //eprintln!("# -> deliveries {deliveries:?}");
                 let schedule = Schedule::new_via_heuristic(self.problem, &deliveries);
-                eprintln!("# -> schedule {schedule:?}");
-            } else {
-                eprintln!("# -> infeasible deliveries");
-            }
+                //eprintln!("# -> schedule {schedule:?}");
+                // TODO: struct SolutionPool or something like that
+                let solution = Solution::new(
+                    self.problem,
+                    schedule,
+                    start_time.elapsed().as_millis() as f64 * 1e-3,
+                    "Foo",
+                );
+
+                if solution.value() < best_solution.value() {
+                    eprintln!("{}", solution);
+                    best_solution = solution;
+                }
+                /*else {
+                    eprintln!(
+                        "# Found solution of objective value {} not better than {}",
+                        solution.value(),
+                        best_solution.value()
+                    );
+                }*/
+            } /*else {
+                  eprintln!("# -> infeasible deliveries");
+              }*/
         }
     }
 
