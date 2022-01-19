@@ -49,8 +49,6 @@ impl<'a> RandomHeuristic<'a> {
     pub fn solve(&mut self, delivery_solver: &mut DeliverySolver) -> grb::Result<()> {
         let start_time = std::time::Instant::now();
         let mut best_solution = Solution::empty();
-        let mut counter_no_improvement = 0usize;
-        let mut counter_infeasible = 0usize;
         loop {
             let threshold = self
                 .dist_visit_threshold
@@ -60,51 +58,60 @@ impl<'a> RandomHeuristic<'a> {
             } else {
                 threshold
             };
-            let vehicle_plan = self.make_random_vehicle_plan(threshold);
-            //eprintln!("# plan {:?}", vehicle_plan);
 
-            delivery_solver.set_all_statuses(|t, v, i| {
-                if let Some(vehicle_choice) = vehicle_plan.0[t as usize][i as usize - 1] {
-                    vehicle_choice == v
-                } else {
-                    false
-                }
-            })?;
-            let opt_deliveries = delivery_solver.solve()?;
-            if let Some(deliveries) = opt_deliveries {
-                //eprintln!("# -> deliveries {deliveries:?}");
-                let schedule = Schedule::new_via_heuristic(self.problem, &deliveries);
-                //eprintln!("# -> schedule {schedule:?}");
-                // TODO: struct SolutionPool or something like that
-                let solution = Solution::new(
-                    self.problem,
-                    schedule,
-                    start_time.elapsed().as_millis() as f64 * 1e-3,
-                    "Intel Core i5-10210U @ 1.60GHz", // TODO
-                );
+            eprintln!(
+                "# Finding random solutions with visit threshold {}",
+                threshold * 100.0
+            );
+            let mut counter_no_improvement = 0usize;
+            let mut counter_infeasible = 0usize;
+            while counter_no_improvement <= 10000 {
+                let vehicle_plan = self.make_random_vehicle_plan(threshold);
+                //eprintln!("# plan {:?}", vehicle_plan);
 
-                if solution.value() < best_solution.value() {
-                    eprintln!(
+                delivery_solver.set_all_statuses(|t, v, i| {
+                    if let Some(vehicle_choice) = vehicle_plan.0[t as usize][i as usize - 1] {
+                        vehicle_choice == v
+                    } else {
+                        false
+                    }
+                })?;
+                let opt_deliveries = delivery_solver.solve()?;
+                if let Some(deliveries) = opt_deliveries {
+                    //eprintln!("# -> deliveries {deliveries:?}");
+                    let schedule = Schedule::new_via_heuristic(self.problem, &deliveries);
+                    //eprintln!("# -> schedule {schedule:?}");
+                    // TODO: struct SolutionPool or something like that
+                    let solution = Solution::new(
+                        self.problem,
+                        schedule,
+                        start_time.elapsed().as_millis() as f64 * 1e-3,
+                        "Intel Core i5-10210U @ 1.60GHz", // TODO
+                    );
+
+                    if solution.value() < best_solution.value() {
+                        eprintln!(
                         "# New best solution of value {} (improving {}) with visit probability {} after {} iterations since last best value",
                         solution.value(),
                         best_solution.value(),
                         threshold * 100.0,
                         counter_no_improvement
                     );
-                    eprintln!("{}", solution);
-                    best_solution = solution;
-                    counter_no_improvement = 0;
-                    counter_infeasible = 0;
+                        eprintln!("{}", solution);
+                        best_solution = solution;
+                        counter_no_improvement = 0;
+                        counter_infeasible = 0;
+                    }
+                } else {
+                    counter_infeasible += 1;
                 }
-            } else {
-                counter_infeasible += 1;
-            }
 
-            if counter_no_improvement > 0 && counter_no_improvement % 1000 == 0 {
-                eprintln!("# No new best solution found after {counter_no_improvement} iterations of which {counter_infeasible} were infeasible");
-            }
+                if counter_no_improvement > 0 && counter_no_improvement % 1000 == 0 {
+                    eprintln!("# No new best solution found after {counter_no_improvement} iterations of which {counter_infeasible} were infeasible");
+                }
 
-            counter_no_improvement += 1;
+                counter_no_improvement += 1;
+            }
         }
     }
 
