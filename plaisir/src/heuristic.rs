@@ -1,7 +1,7 @@
 use crate::delivery::Solver as DeliverySolver;
 use crate::problem::*;
 use crate::solution::*;
-use rand::distributions::{Distribution, Uniform};
+use rand_distr::{Distribution, SkewNormal, Uniform};
 use rand_xoshiro::rand_core::SeedableRng;
 
 /// Assigns (day, customer) to vehicle
@@ -11,7 +11,7 @@ struct VehiclePlan(Vec<Vec<Option<VehicleId>>>);
 pub struct RandomHeuristic<'a> {
     problem: &'a Problem,
     dist_vehicle: Uniform<VehicleId>,
-    dist_visit_threshold: Uniform<f64>,
+    dist_visit_threshold: SkewNormal<f64>,
     dist_visit: Uniform<f64>,
     rng_vehicle: rand_xoshiro::Xoshiro128StarStar,
     rng_visit_threshold: rand_xoshiro::Xoshiro128StarStar,
@@ -33,7 +33,7 @@ impl<'a> RandomHeuristic<'a> {
         let rng_visit_threshold = rand_xoshiro::Xoshiro128StarStar::from_seed(SEED_VISIT_THRESHOLD);
         let rng_visit = rand_xoshiro::Xoshiro128StarStar::from_seed(SEED_VISIT);
         let dist_vehicle = Uniform::from(0..(problem.num_vehicles as VehicleId));
-        let dist_visit_threshold = Uniform::from(0.2..1f64);
+        let dist_visit_threshold = SkewNormal::<f64>::new(0.95, 0.3, -5.0).unwrap();
         let dist_visit = Uniform::from(0f64..1f64);
         Self {
             problem,
@@ -55,6 +55,11 @@ impl<'a> RandomHeuristic<'a> {
             let threshold = self
                 .dist_visit_threshold
                 .sample(&mut self.rng_visit_threshold);
+            let threshold = if threshold < 0.1 {
+                1.0 - threshold
+            } else {
+                threshold
+            };
             let vehicle_plan = self.make_random_vehicle_plan(threshold);
             //eprintln!("# plan {:?}", vehicle_plan);
 
