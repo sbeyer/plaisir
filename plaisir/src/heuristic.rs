@@ -116,23 +116,27 @@ impl<'a> RandomHeuristic<'a> {
         }
     }
 
+    /// Make a random vehicle plan based on visit probability `threshold`
     fn make_random_vehicle_plan(&mut self, threshold: f64) -> VehiclePlan {
+        // Notes:
+        //  - The first used vehicles per day are always 0,1,...,#vehicles
+        //    in ascending order.
         VehiclePlan(
             self.problem
                 .all_days()
                 .map(|_| {
-                    let mut some_customer_visited = false;
+                    let mut vehicles_used = 0;
                     self.problem
                         .all_customers()
                         .map(|_| {
                             let value = self.dist_visit.sample(&mut self.rng_visit);
                             if value < threshold {
-                                if some_customer_visited {
-                                    Some(self.dist_vehicle.sample(&mut self.rng_vehicle))
-                                } else {
-                                    some_customer_visited = true;
-                                    Some(0)
+                                let mut vehicle = self.dist_vehicle.sample(&mut self.rng_vehicle);
+                                if vehicles_used < vehicle {
+                                    vehicle = vehicles_used;
+                                    vehicles_used += 1;
                                 }
+                                Some(vehicle)
                             } else {
                                 None
                             }
