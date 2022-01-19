@@ -6,8 +6,8 @@ const MIP_EPSILON: f64 = 1e-7;
 
 #[derive(Eq)]
 pub struct Delivery {
-    pub quantity: usize,
-    pub customer: usize,
+    pub quantity: Load,
+    pub customer: SiteId,
 }
 
 impl PartialEq for Delivery {
@@ -42,26 +42,26 @@ impl Deliveries {
         ])
     }
 
-    pub fn set(&mut self, t: usize, v: usize, i: usize, quantity: usize) {
-        self.0[t][v][i - 1] = quantity;
+    pub fn set(&mut self, t: DayId, v: VehicleId, i: SiteId, quantity: Load) {
+        self.0[t as usize][v as usize][i as usize - 1] = quantity;
     }
 
-    pub fn get(&self, t: usize, v: usize, i: usize) -> usize {
-        self.0[t][v][i - 1]
+    pub fn get(&self, t: DayId, v: VehicleId, i: SiteId) -> Load {
+        self.0[t as usize][v as usize][i as usize - 1]
     }
 
-    pub fn change_vehicle(&mut self, t: usize, from_v: usize, to_v: usize, i: usize) {
+    pub fn change_vehicle(&mut self, t: DayId, from_v: VehicleId, to_v: VehicleId, i: SiteId) {
         let quantity = self.get(t, from_v, i);
         self.set(t, from_v, i, 0);
         self.set(t, to_v, i, quantity);
     }
 
-    pub fn get_all_delivered_customers(&self, t: usize, v: usize) -> Vec<usize> {
-        self.0[t][v]
+    pub fn get_all_delivered_customers(&self, t: DayId, v: VehicleId) -> Vec<SiteId> {
+        self.0[t as usize][v as usize]
             .iter()
             .enumerate()
             .filter(|(_, quantity)| *quantity > &0)
-            .map(|(i, _)| i + 1)
+            .map(|(i, _)| i as SiteId + 1)
             .collect()
     }
 }
@@ -162,14 +162,14 @@ impl<'a> Solver<'a> {
                     lhs.add_term(-1.0, solver.var(t, v, j));
                 }
             }
-            lhs.add_term(-1.0, inventory_vars[t][0]); // outgoing inventory
+            lhs.add_term(-1.0, inventory_vars[t as usize][0]); // outgoing inventory
             let depot = problem.site(0);
             let mut value = -depot.level_change();
 
             if t == 0 {
                 value -= depot.level_start();
             } else {
-                lhs.add_term(1.0, inventory_vars[t - 1][0]); // incoming inventory
+                lhs.add_term(1.0, inventory_vars[t as usize - 1][0]); // incoming inventory
             }
 
             solver
@@ -184,14 +184,15 @@ impl<'a> Solver<'a> {
                 for v in problem.all_vehicles() {
                     lhs.add_term(1.0, solver.var(t, v, i)); // delivered
                 }
-                lhs.add_term(-1.0, inventory_vars[t][i]); // outgoing inventory
+                lhs.add_term(-1.0, inventory_vars[t as usize][i as usize]); // outgoing inventory
                 let customer = problem.site(i);
                 let mut value = -customer.level_change();
 
                 if t == 0 {
                     value -= customer.level_start();
                 } else {
-                    lhs.add_term(1.0, inventory_vars[t - 1][i]); // incoming inventory
+                    lhs.add_term(1.0, inventory_vars[t as usize - 1][i as usize]);
+                    // incoming inventory
                 }
 
                 solver
@@ -203,12 +204,18 @@ impl<'a> Solver<'a> {
         Ok(solver)
     }
 
-    pub fn var(&self, t: usize, v: usize, i: usize) -> grb::Var {
-        self.vars[t][v][i - 1]
+    pub fn var(&self, t: DayId, v: VehicleId, i: SiteId) -> grb::Var {
+        self.vars[t as usize][v as usize][i as usize - 1]
     }
 
     /// Sets whether the delivery at day `t` with vehicle `v` to customer `i` is active or not
-    pub fn set_status(&mut self, t: usize, v: usize, i: usize, active: bool) -> grb::Result<()> {
+    pub fn set_status(
+        &mut self,
+        t: DayId,
+        v: VehicleId,
+        i: SiteId,
+        active: bool,
+    ) -> grb::Result<()> {
         self.model.set_obj_attr(
             grb::attr::UB,
             &self.var(t, v, i),
@@ -223,7 +230,7 @@ impl<'a> Solver<'a> {
     /// Sets whether all deliveries are active or not using a function
     pub fn set_all_statuses<F>(&mut self, is_active: F) -> grb::Result<()>
     where
-        F: Fn(usize, usize, usize) -> bool,
+        F: Fn(DayId, VehicleId, SiteId) -> bool,
     {
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {

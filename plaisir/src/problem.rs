@@ -48,9 +48,14 @@ impl fmt::Display for Depot {
     }
 }
 
+pub type SiteId = u8;
+pub type DayId = u8;
+pub type VehicleId = u8;
+pub type Load = usize;
+
 #[derive(Debug)]
 pub struct Customer {
-    pub id: usize,
+    pub id: SiteId,
     pub position: Position,
     pub start_level: i32,
     pub max_level: i32,
@@ -77,7 +82,7 @@ impl fmt::Display for Customer {
 
 pub trait Site {
     /// Returns the numeric identifer
-    fn id(&self) -> usize;
+    fn id(&self) -> SiteId;
 
     /// Returns the start inventory level
     fn level_start(&self) -> f64;
@@ -96,7 +101,7 @@ pub trait Site {
 }
 
 impl Site for Depot {
-    fn id(&self) -> usize {
+    fn id(&self) -> SiteId {
         0
     }
 
@@ -122,7 +127,7 @@ impl Site for Depot {
 }
 
 impl Site for Customer {
-    fn id(&self) -> usize {
+    fn id(&self) -> SiteId {
         self.id
     }
 
@@ -153,7 +158,7 @@ pub struct Problem {
     pub num_customers: usize,
     pub num_days: usize,
     pub num_vehicles: usize,
-    pub capacity: usize,
+    pub capacity: Load,
     pub depot: Depot,
     pub customers: Vec<Customer>,
 }
@@ -163,11 +168,11 @@ impl Problem {
         let contents = fs::read_to_string(filename)?;
         let mut iter = contents.split_whitespace();
 
-        let num_nodes = iter.next().unwrap().parse::<usize>()?;
+        let num_sites = iter.next().unwrap().parse::<usize>()?;
         let num_days = iter.next().unwrap().parse::<usize>()?;
-        let capacity = iter.next().unwrap().parse::<usize>()?;
+        let capacity = iter.next().unwrap().parse::<Load>()?;
         let num_vehicles = iter.next().unwrap().parse::<usize>()?;
-        let depot_id = iter.next().unwrap().parse::<i32>()?;
+        let depot_id = iter.next().unwrap().parse::<usize>()?;
         assert!(depot_id == 0, "Depot identifier is not 0");
         let depot_x = iter.next().unwrap().parse::<f64>()?;
         let depot_y = iter.next().unwrap().parse::<f64>()?;
@@ -177,7 +182,7 @@ impl Problem {
 
         let mut customers = Vec::new();
         let mut index: usize = 0;
-        while index < num_nodes - 1 {
+        while index < num_sites - 1 {
             index += 1;
             let c_id = iter.next().unwrap().parse::<usize>()?;
             assert!(c_id == index, "Customer does not have expected index");
@@ -190,7 +195,7 @@ impl Problem {
             let c_cost = iter.next().unwrap().parse::<f64>()?;
 
             customers.push(Customer {
-                id: c_id,
+                id: c_id as SiteId,
                 position: Position::new(c_x, c_y),
                 start_level: c_start_level,
                 max_level: c_max_level,
@@ -202,8 +207,8 @@ impl Problem {
         assert!(iter.next() == None, "There is junk at the end of the file");
 
         Ok(Problem {
-            num_sites: num_nodes,
-            num_customers: num_nodes - 1,
+            num_sites,
+            num_customers: num_sites - 1,
             num_days,
             num_vehicles,
             capacity,
@@ -217,15 +222,15 @@ impl Problem {
         })
     }
 
-    pub fn site(&self, index: usize) -> &dyn Site {
+    pub fn site(&self, index: SiteId) -> &dyn Site {
         if index == 0 {
             &self.depot
         } else {
-            &self.customers[index - 1]
+            &self.customers[index as usize - 1]
         }
     }
 
-    pub fn distance(&self, i: usize, j: usize) -> i32 {
+    pub fn distance(&self, i: SiteId, j: SiteId) -> i32 {
         if i == j {
             0
         } else {
@@ -235,28 +240,28 @@ impl Problem {
         }
     }
 
-    pub fn all_days(&self) -> impl Iterator<Item = usize> {
-        0..self.num_days
+    pub fn all_days(&self) -> impl Iterator<Item = DayId> {
+        0..(self.num_days as DayId)
     }
 
-    pub fn all_vehicles(&self) -> impl Iterator<Item = usize> {
-        0..self.num_vehicles
+    pub fn all_vehicles(&self) -> impl Iterator<Item = VehicleId> {
+        0..(self.num_vehicles as VehicleId)
     }
 
-    pub fn all_sites(&self) -> impl Iterator<Item = usize> {
-        0..self.num_sites
+    pub fn all_sites(&self) -> impl Iterator<Item = SiteId> {
+        0..(self.num_sites as SiteId)
     }
 
-    pub fn all_sites_except(&self, exception: usize) -> impl Iterator<Item = usize> {
+    pub fn all_sites_except(&self, exception: SiteId) -> impl Iterator<Item = SiteId> {
         self.all_sites().filter(move |i| *i != exception)
     }
 
-    pub fn all_sites_after(&self, after: usize) -> impl Iterator<Item = usize> {
-        after + 1..self.num_sites
+    pub fn all_sites_after(&self, after: SiteId) -> impl Iterator<Item = SiteId> {
+        after + 1..(self.num_sites as SiteId)
     }
 
-    pub fn all_customers(&self) -> impl Iterator<Item = usize> {
-        1..self.num_sites
+    pub fn all_customers(&self) -> impl Iterator<Item = SiteId> {
+        1..(self.num_sites as SiteId)
     }
 }
 
