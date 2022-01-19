@@ -101,16 +101,17 @@ impl<'a> RandomHeuristic<'a> {
                         best_solution = solution;
                         counter_no_improvement = 0;
                         counter_infeasible = 0;
+                    } else {
+                        counter_no_improvement += 1;
                     }
                 } else {
                     counter_infeasible += 1;
+                    counter_no_improvement += 1;
                 }
 
                 if counter_no_improvement > 0 && counter_no_improvement % 1000 == 0 {
                     eprintln!("# No new best solution found after {counter_no_improvement} iterations of which {counter_infeasible} were infeasible");
                 }
-
-                counter_no_improvement += 1;
             }
         }
     }
