@@ -30,7 +30,7 @@ impl Ord for Delivery {
 
 /// Vector indexed by day, vehicle and customer containing the number of delivered items
 #[derive(Debug)]
-pub struct Deliveries(Vec<Vec<Vec<usize>>>);
+pub struct Deliveries(Vec<Vec<Vec<Load>>>);
 
 impl Deliveries {
     pub fn new(problem: &Problem) -> Self {

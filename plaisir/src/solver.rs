@@ -2,6 +2,7 @@ use crate::delivery::Solver as DeliverySolver;
 use crate::delivery::{Deliveries, Delivery};
 use crate::heuristic::*;
 use crate::problem::*;
+use crate::route::Solver as RouteSolver;
 use crate::solution::*;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -784,26 +785,10 @@ impl<'a> SolverData<'a> {
                 self.problem
                     .all_vehicles()
                     .map(|v| {
-                        let mut visited_sites = deliveries.get_all_delivered_customers(t, v);
-                        visited_sites.push(0); // add depot
-
-                        let tsp_instance = visited_sites
-                            .iter()
-                            .map(|site| {
-                                let site = self.problem.site(*site);
-                                let pos = &site.position();
-                                (site.id() as usize, pos.x, pos.y)
-                            })
-                            .collect::<Vec<_>>();
-                        let mut tsp_tour = lkh::run(&tsp_instance);
-
-                        let depot_position = tsp_tour
-                            .iter()
-                            .position(|site| *site == 0)
-                            .expect("Depot is expected to be in TSP tour");
-                        tsp_tour.rotate_left(depot_position);
+                        let tsp_tour = RouteSolver::solve(self.problem, deliveries, t, v);
 
                         tsp_tour
+                            .0
                             .iter()
                             .map(|site| Delivery {
                                 quantity: if *site == 0 {

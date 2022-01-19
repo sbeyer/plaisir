@@ -3,6 +3,7 @@ use std::error::Error;
 mod delivery;
 mod heuristic;
 mod problem;
+mod route;
 mod solution;
 mod solver;
 
