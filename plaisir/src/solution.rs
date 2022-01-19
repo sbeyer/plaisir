@@ -1,5 +1,5 @@
 use crate::delivery::Delivery;
-use crate::problem::Problem;
+use crate::problem::{DayId, Problem, SiteId, VehicleId};
 use std::fmt;
 
 pub type Route = Vec<Delivery>;
@@ -42,7 +42,7 @@ impl Solution {
         // transportation cost
         for day_schedule in sol.schedule.iter() {
             for route in day_schedule.iter() {
-                let mut tour: Vec<usize> = route.iter().map(|x| x.customer).collect();
+                let mut tour: Vec<SiteId> = route.iter().map(|x| x.customer).collect();
                 if tour.len() > 1 {
                     tour.push(0);
                     for path in tour.windows(2) {
@@ -63,19 +63,19 @@ impl Solution {
             // step one: deliveries
             for route in day_schedule.iter() {
                 for Delivery { quantity, customer } in route.iter() {
-                    inventory[*customer] += *quantity as f64;
+                    inventory[*customer as usize] += *quantity as f64;
                     inventory[0] -= *quantity as f64;
                 }
             }
 
             // step two: daily change (production at depot, consumption at customers)
             for i in problem.all_sites() {
-                inventory[i] += problem.site(i).level_change();
+                inventory[i as usize] += problem.site(i).level_change();
             }
 
             // update inventory costs
             for i in problem.all_sites() {
-                cost_inventory[i] += problem.site(i).cost() * inventory[i]
+                cost_inventory[i as usize] += problem.site(i).cost() * inventory[i as usize]
             }
         }
 
@@ -89,8 +89,8 @@ impl Solution {
         sol
     }
 
-    pub fn route(&self, t: usize, v: usize) -> &Route {
-        &self.schedule[t][v]
+    pub fn route(&self, t: DayId, v: VehicleId) -> &Route {
+        &self.schedule[t as usize][v as usize]
     }
 
     pub fn value(&self) -> f64 {

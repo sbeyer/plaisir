@@ -154,7 +154,12 @@ impl<'a> Variables<'a> {
         Ok(vars)
     }
 
-    fn route_index(&self, t: usize, v: usize, i: usize, j: usize) -> usize {
+    fn route_index(&self, t: DayId, v: VehicleId, i: SiteId, j: SiteId) -> usize {
+        let t = t as usize;
+        let v = v as usize;
+        let i = i as usize;
+        let j = j as usize;
+
         debug_assert!(t < self.problem.num_days);
         debug_assert!(v < self.problem.num_vehicles);
         debug_assert!(i < j);
@@ -173,7 +178,7 @@ impl<'a> Variables<'a> {
         result
     }
 
-    fn route_index_undirected(&self, t: usize, v: usize, i: usize, j: usize) -> usize {
+    fn route_index_undirected(&self, t: DayId, v: VehicleId, i: SiteId, j: SiteId) -> usize {
         if i < j {
             self.route_index(t, v, i, j)
         } else {
@@ -181,12 +186,16 @@ impl<'a> Variables<'a> {
         }
     }
 
-    fn route(&self, t: usize, v: usize, i: usize, j: usize) -> grb::Var {
+    fn route(&self, t: DayId, v: VehicleId, i: SiteId, j: SiteId) -> grb::Var {
         let index = self.route_index_undirected(t, v, i, j);
         self.variables[index]
     }
 
-    fn visit_index(&self, t: usize, v: usize, i: usize) -> usize {
+    fn visit_index(&self, t: DayId, v: VehicleId, i: SiteId) -> usize {
+        let t = t as usize;
+        let v = v as usize;
+        let i = i as usize;
+
         debug_assert!(t < self.problem.num_days);
         debug_assert!(v < self.problem.num_vehicles);
         debug_assert!(i <= self.problem.num_customers);
@@ -200,11 +209,14 @@ impl<'a> Variables<'a> {
         result
     }
 
-    fn visit(&self, t: usize, v: usize, i: usize) -> grb::Var {
+    fn visit(&self, t: DayId, v: VehicleId, i: SiteId) -> grb::Var {
         self.variables[self.visit_index(t, v, i)]
     }
 
-    fn inventory_index(&self, t: usize, i: usize) -> usize {
+    fn inventory_index(&self, t: DayId, i: SiteId) -> usize {
+        let t = t as usize;
+        let i = i as usize;
+
         debug_assert!(t < self.problem.num_days);
         debug_assert!(i <= self.problem.num_customers);
 
@@ -216,11 +228,15 @@ impl<'a> Variables<'a> {
         result
     }
 
-    fn inventory(&self, t: usize, i: usize) -> grb::Var {
+    fn inventory(&self, t: DayId, i: SiteId) -> grb::Var {
         self.variables[self.inventory_index(t, i)]
     }
 
-    fn deliver_index(&self, t: usize, v: usize, i: usize) -> usize {
+    fn deliver_index(&self, t: DayId, v: VehicleId, i: SiteId) -> usize {
+        let t = t as usize;
+        let v = v as usize;
+        let i = i as usize;
+
         debug_assert!(t < self.problem.num_days);
         debug_assert!(v < self.problem.num_vehicles);
         debug_assert!(i >= 1);
@@ -235,7 +251,7 @@ impl<'a> Variables<'a> {
         result
     }
 
-    fn deliver(&self, t: usize, v: usize, i: usize) -> grb::Var {
+    fn deliver(&self, t: DayId, v: VehicleId, i: SiteId) -> grb::Var {
         self.variables[self.deliver_index(t, v, i)]
     }
 }
@@ -308,7 +324,7 @@ impl<'a> SolverData<'a> {
         }
 
         // collect node sets of connected components for every day and every vehicle
-        let mut sets: Vec<Vec<usize>> = Vec::new();
+        let mut sets: Vec<Vec<SiteId>> = Vec::new();
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
                 // find connected components with union-find data structure
@@ -317,7 +333,7 @@ impl<'a> SolverData<'a> {
                     for j in self.problem.all_sites_after(i) {
                         let idx = self.vars.route_index(t, v, i, j);
                         if assignment[idx] > 0.5 {
-                            uf.union(i, j);
+                            uf.union(i as usize, j as usize);
                         }
                     }
                 }
@@ -327,7 +343,7 @@ impl<'a> SolverData<'a> {
                 for set in uf.all_sets() {
                     let mut set_vec = Vec::new();
                     for (index, _) in set {
-                        set_vec.push(index);
+                        set_vec.push(index as SiteId);
                     }
                     if set_vec.len() > 1 && !set_vec.contains(&0) {
                         sets.push(set_vec);
@@ -411,7 +427,7 @@ impl<'a> SolverData<'a> {
                             assignment[deliver_index] = delivery.quantity as f64;
 
                             levels[0] -= delivery.quantity as isize;
-                            levels[i] += delivery.quantity as isize;
+                            levels[i as usize] += delivery.quantity as isize;
                         }
                     }
                     for deliveries in route.windows(2) {
@@ -433,9 +449,9 @@ impl<'a> SolverData<'a> {
 
             // Set inventory variable values
             for i in self.problem.all_sites() {
-                levels[i] += self.problem.site(i).level_change() as isize;
+                levels[i as usize] += self.problem.site(i).level_change() as isize;
                 let index = self.vars.inventory_index(t, i);
-                assignment[index] = levels[i] as f64;
+                assignment[index] = levels[i as usize] as f64;
             }
         }
 
@@ -485,12 +501,25 @@ impl<'a> SolverData<'a> {
         self.start_time.elapsed().as_millis() as f64 * 1e-3
     }
 
-    fn is_edge_in_route(&self, assignment: &[f64], t: usize, v: usize, i: usize, j: usize) -> bool {
+    fn is_edge_in_route(
+        &self,
+        assignment: &[f64],
+        t: DayId,
+        v: VehicleId,
+        i: SiteId,
+        j: SiteId,
+    ) -> bool {
         let var_route = self.vars.route_index_undirected(t, v, i, j);
         assignment[var_route].round() > Self::EPSILON
     }
 
-    fn get_delivery_amount(&self, assignment: &[f64], t: usize, v: usize, target: usize) -> usize {
+    fn get_delivery_amount(
+        &self,
+        assignment: &[f64],
+        t: DayId,
+        v: VehicleId,
+        target: SiteId,
+    ) -> usize {
         if target == 0 {
             0
         } else {
@@ -517,8 +546,8 @@ impl<'a> SolverData<'a> {
                         for i in self.problem.all_sites() {
                             for j in self.problem.all_sites_after(i) {
                                 if self.is_edge_in_route(assignment, t, v, i, j) {
-                                    adjacencies[i].push(j);
-                                    adjacencies[j].push(i);
+                                    adjacencies[i as usize].push(j);
+                                    adjacencies[j as usize].push(i);
                                 }
                             }
                         }
@@ -531,7 +560,7 @@ impl<'a> SolverData<'a> {
                             let mut found = false;
 
                             for j in adjacencies[i].iter() {
-                                if !visited[*j] {
+                                if !visited[*j as usize] {
                                     let quantity = self.get_delivery_amount(assignment, t, v, *j);
 
                                     if quantity > 0 && *j != 0 {
@@ -541,9 +570,9 @@ impl<'a> SolverData<'a> {
                                         });
                                     }
 
-                                    visited[*j] = true;
+                                    visited[*j as usize] = true;
                                     found = true;
-                                    i = *j;
+                                    i = *j as usize;
 
                                     break;
                                 }
@@ -607,7 +636,7 @@ impl<'a> SolverData<'a> {
 
         eprintln!("# Compute new deliveries, time {}", self.elapsed_seconds());
         self.deliveries.set_all_statuses(|t, v, i| {
-            let customer_vehicle_choices = &vehicle_choices[t][i - 1];
+            let customer_vehicle_choices = &vehicle_choices[t as usize][i as usize - 1];
             if customer_vehicle_choices.is_empty() {
                 false
             } else {
@@ -686,7 +715,7 @@ impl<'a> SolverData<'a> {
 
             // Sort vehicles by descending load
             let mut sorted_vehicles = self.problem.all_vehicles().collect::<Vec<_>>();
-            sorted_vehicles.sort_by_cached_key(|a| Reverse(load[*a]));
+            sorted_vehicles.sort_by_cached_key(|a| Reverse(load[*a as usize]));
 
             // Move the smallest deliveries that overload the capacity to the next route
             for (i, v_ref) in sorted_vehicles[..sorted_vehicles.len() - 1]
@@ -695,7 +724,7 @@ impl<'a> SolverData<'a> {
             {
                 let v = *v_ref;
                 let v_next = sorted_vehicles[i + 1];
-                if load[v] > self.problem.capacity {
+                if load[v as usize] > self.problem.capacity {
                     let mut heap = deliveries
                         .get_all_delivered_customers(t, v)
                         .into_iter()
@@ -707,11 +736,11 @@ impl<'a> SolverData<'a> {
                         })
                         .collect::<BinaryHeap<_>>();
 
-                    while load[v] > self.problem.capacity {
+                    while load[v as usize] > self.problem.capacity {
                         if let Some(delivery) = heap.pop() {
                             let amount = delivery.0.quantity;
-                            load[v] -= amount;
-                            load[v_next] += amount;
+                            load[v as usize] -= amount;
+                            load[v_next as usize] += amount;
 
                             deliveries.change_vehicle(t, v, v_next, delivery.0.customer);
                         } else {
@@ -734,7 +763,7 @@ impl<'a> SolverData<'a> {
                 .collect::<Vec<usize>>();
             eprintln!("## Loads {t}: {load:?} capacity {}", self.problem.capacity);
 
-            if load[sorted_vehicles[sorted_vehicles.len() - 1]] > self.problem.capacity {
+            if load[sorted_vehicles[sorted_vehicles.len() - 1] as usize] > self.problem.capacity {
                 return Ok(false);
             }
         }
@@ -763,7 +792,7 @@ impl<'a> SolverData<'a> {
                             .map(|site| {
                                 let site = self.problem.site(*site);
                                 let pos = &site.position();
-                                (site.id(), pos.x, pos.y)
+                                (site.id() as usize, pos.x, pos.y)
                             })
                             .collect::<Vec<_>>();
                         let mut tsp_tour = lkh::run(&tsp_instance);
@@ -780,9 +809,9 @@ impl<'a> SolverData<'a> {
                                 quantity: if *site == 0 {
                                     0
                                 } else {
-                                    deliveries.get(t, v, *site)
+                                    deliveries.get(t, v, *site as SiteId)
                                 },
-                                customer: *site,
+                                customer: *site as SiteId,
                             })
                             .collect()
                     })

@@ -5,11 +5,11 @@ use rand_xoshiro::rand_core::SeedableRng;
 
 /// Assigns (day, customer) to vehicle
 #[derive(Debug)]
-struct VehiclePlan(Vec<Vec<Option<usize>>>);
+struct VehiclePlan(Vec<Vec<Option<VehicleId>>>);
 
 pub struct RandomHeuristic<'a> {
     problem: &'a Problem,
-    dist: Uniform<usize>,
+    dist: Uniform<VehicleId>,
     rng: rand_xoshiro::Xoshiro128StarStar,
 }
 
@@ -19,7 +19,7 @@ impl<'a> RandomHeuristic<'a> {
             42, 228, 59, 86, 175, 57, 79, 176, 13, 49, 245, 187, 66, 136, 74, 182,
         ];
         let rng = rand_xoshiro::Xoshiro128StarStar::from_seed(SEED);
-        let dist = Uniform::from(0..problem.num_vehicles);
+        let dist = Uniform::from(0..(problem.num_vehicles as VehicleId));
         Self { problem, dist, rng }
     }
 
@@ -29,7 +29,7 @@ impl<'a> RandomHeuristic<'a> {
             eprintln!("# plan {:?}", vehicle_plan);
 
             delivery_solver.set_all_statuses(|t, v, i| {
-                if let Some(vehicle_choice) = vehicle_plan.0[t][i - 1] {
+                if let Some(vehicle_choice) = vehicle_plan.0[t as usize][i as usize - 1] {
                     vehicle_choice == v
                 } else {
                     false
