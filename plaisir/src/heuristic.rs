@@ -50,23 +50,26 @@ impl<'a> RandomHeuristic<'a> {
         let start_time = std::time::Instant::now();
         let mut best_solution = Solution::empty();
         loop {
-            let threshold = self
-                .dist_visit_threshold
-                .sample(&mut self.rng_visit_threshold);
-            let threshold = if threshold < 0.1 {
-                1.0 - threshold
-            } else {
-                threshold
-            };
+            let thresholds = self
+                .problem
+                .all_days()
+                .map(|_| {
+                    let threshold = self
+                        .dist_visit_threshold
+                        .sample(&mut self.rng_visit_threshold);
+                    if threshold < 0.1 {
+                        1.0 - threshold
+                    } else {
+                        threshold
+                    }
+                })
+                .collect::<Vec<_>>();
 
-            eprintln!(
-                "# Finding random solutions with visit threshold {}",
-                threshold * 100.0
-            );
+            eprintln!("# Finding random solutions with visit thresholds {thresholds:?}",);
             let mut counter_no_improvement = 0usize;
             let mut counter_infeasible = 0usize;
             while counter_no_improvement <= 10000 {
-                let vehicle_plan = self.make_random_vehicle_plan(threshold);
+                let vehicle_plan = self.make_random_vehicle_plan(&thresholds);
                 //eprintln!("# plan {:?}", vehicle_plan);
 
                 delivery_solver.set_all_statuses(|t, v, i| {
@@ -91,11 +94,9 @@ impl<'a> RandomHeuristic<'a> {
 
                     if solution.value() < best_solution.value() {
                         eprintln!(
-                        "# New best solution of value {} (improving {}) with visit probability {} after {} iterations since last best value",
+                        "# New best solution of value {} (improving {}) with visit probabilities {thresholds:?} after {counter_no_improvement} iterations since last best value",
                         solution.value(),
                         best_solution.value(),
-                        threshold * 100.0,
-                        counter_no_improvement
                     );
                         eprintln!("{}", solution);
                         best_solution = solution;
@@ -117,20 +118,22 @@ impl<'a> RandomHeuristic<'a> {
     }
 
     /// Make a random vehicle plan based on visit probability `threshold`
-    fn make_random_vehicle_plan(&mut self, threshold: f64) -> VehiclePlan {
+    fn make_random_vehicle_plan(&mut self, thresholds: &[f64]) -> VehiclePlan {
+        debug_assert_eq!(self.problem.all_days().count(), thresholds.len());
+
         // Notes:
         //  - The first used vehicles per day are always 0,1,...,#vehicles
         //    in ascending order.
         VehiclePlan(
-            self.problem
-                .all_days()
-                .map(|_| {
+            thresholds
+                .iter()
+                .map(|threshold| {
                     let mut vehicles_used = 0;
                     self.problem
                         .all_customers()
                         .map(|_| {
                             let value = self.dist_visit.sample(&mut self.rng_visit);
-                            if value < threshold {
+                            if value < *threshold {
                                 let mut vehicle = self.dist_vehicle.sample(&mut self.rng_vehicle);
                                 if vehicles_used < vehicle {
                                     vehicle = vehicles_used;
