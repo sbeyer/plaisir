@@ -1,6 +1,6 @@
 use crate::delivery::Solver as DeliverySolver;
 use crate::problem::*;
-use crate::route::Solver as RouteSolver;
+use crate::solution::*;
 use rand::distributions::{Distribution, Uniform};
 use rand_xoshiro::rand_core::SeedableRng;
 
@@ -38,13 +38,9 @@ impl<'a> RandomHeuristic<'a> {
             })?;
             let opt_deliveries = delivery_solver.solve()?;
             if let Some(deliveries) = opt_deliveries {
-                eprintln!("# -> deliveries {:?}", deliveries);
-                for t in self.problem.all_days() {
-                    for v in self.problem.all_vehicles() {
-                        let route = RouteSolver::solve(self.problem, &deliveries, t, v);
-                        eprintln!("#   -> t={t}, v={v}, route={route:?}");
-                    }
-                }
+                eprintln!("# -> deliveries {deliveries:?}");
+                let schedule = Schedule::new_via_heuristic(self.problem, &deliveries);
+                eprintln!("# -> schedule {schedule:?}");
             } else {
                 eprintln!("# -> infeasible deliveries");
             }

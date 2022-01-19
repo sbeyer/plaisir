@@ -1,13 +1,10 @@
 use crate::delivery::Deliveries;
 use crate::problem::*;
 
-#[derive(Debug)]
-pub struct Route(pub Vec<SiteId>);
-
 pub struct Solver {}
 
 impl Solver {
-    pub fn solve(problem: &Problem, deliveries: &Deliveries, t: DayId, v: VehicleId) -> Route {
+    pub fn solve(problem: &Problem, deliveries: &Deliveries, t: DayId, v: VehicleId) -> Vec<usize> {
         let mut visited_sites = deliveries.get_all_delivered_customers(t, v);
         visited_sites.push(0); // add depot
 
@@ -27,6 +24,6 @@ impl Solver {
             .expect("Depot is expected to be in TSP tour");
         tsp_tour.rotate_left(depot_position);
 
-        Route(tsp_tour.iter().map(|site| *site as SiteId).collect())
+        tsp_tour
     }
 }

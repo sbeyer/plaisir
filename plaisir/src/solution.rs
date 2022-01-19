@@ -1,9 +1,42 @@
-use crate::delivery::Delivery;
+use crate::delivery::{Deliveries, Delivery};
 use crate::problem::{DayId, Problem, SiteId, VehicleId};
+use crate::route::Solver as RouteSolver;
 use std::fmt;
 
 pub type Route = Vec<Delivery>;
-pub type Schedule = Vec<Vec<Route>>;
+
+#[derive(Debug)]
+pub struct Schedule(pub Vec<Vec<Route>>);
+
+impl Schedule {
+    pub fn new_via_heuristic(problem: &Problem, deliveries: &Deliveries) -> Self {
+        Schedule(
+            problem
+                .all_days()
+                .map(|t| {
+                    problem
+                        .all_vehicles()
+                        .map(|v| {
+                            let tsp_tour = RouteSolver::solve(problem, deliveries, t, v);
+
+                            tsp_tour
+                                .iter()
+                                .map(|site| Delivery {
+                                    quantity: if *site == 0 {
+                                        0
+                                    } else {
+                                        deliveries.get(t, v, *site as SiteId)
+                                    },
+                                    customer: *site as SiteId,
+                                })
+                                .collect()
+                        })
+                        .collect()
+                })
+                .collect(),
+        )
+    }
+}
 
 pub struct Solution {
     schedule: Schedule,
@@ -18,7 +51,7 @@ pub struct Solution {
 impl Solution {
     pub fn empty() -> Self {
         Self {
-            schedule: Vec::new(),
+            schedule: Schedule(Vec::new()),
             cost_transportation: f64::INFINITY,
             cost_inventory_depot: f64::INFINITY,
             cost_inventory_customers: f64::INFINITY,
@@ -40,7 +73,7 @@ impl Solution {
         };
 
         // transportation cost
-        for day_schedule in sol.schedule.iter() {
+        for day_schedule in sol.schedule.0.iter() {
             for route in day_schedule.iter() {
                 let mut tour: Vec<SiteId> = route.iter().map(|x| x.customer).collect();
                 if tour.len() > 1 {
@@ -59,7 +92,7 @@ impl Solution {
             .collect();
         let mut cost_inventory = vec![0.; problem.num_sites];
 
-        for day_schedule in sol.schedule.iter() {
+        for day_schedule in sol.schedule.0.iter() {
             // step one: deliveries
             for route in day_schedule.iter() {
                 for Delivery { quantity, customer } in route.iter() {
@@ -90,7 +123,7 @@ impl Solution {
     }
 
     pub fn route(&self, t: DayId, v: VehicleId) -> &Route {
-        &self.schedule[t as usize][v as usize]
+        &self.schedule.0[t as usize][v as usize]
     }
 
     pub fn value(&self) -> f64 {
@@ -100,7 +133,7 @@ impl Solution {
 
 impl fmt::Display for Solution {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (t, day_schedule) in self.schedule.iter().enumerate() {
+        for (t, day_schedule) in self.schedule.0.iter().enumerate() {
             writeln!(f, "Day {}", t + 1)?;
             for (route_idx, route) in day_schedule.iter().enumerate() {
                 write!(f, "Route {}: ", route_idx + 1)?;

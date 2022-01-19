@@ -2,7 +2,6 @@ use crate::delivery::Solver as DeliverySolver;
 use crate::delivery::{Deliveries, Delivery};
 use crate::heuristic::*;
 use crate::problem::*;
-use crate::route::Solver as RouteSolver;
 use crate::solution::*;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -532,63 +531,67 @@ impl<'a> SolverData<'a> {
     fn get_schedule(&self, assignment: &[f64]) -> Schedule {
         eprintln!("# Get schedule, time {}", self.elapsed_seconds());
 
-        self.problem
-            .all_days()
-            .map(|t| {
-                self.problem
-                    .all_vehicles()
-                    .map(|v| {
-                        let mut route = vec![Delivery {
-                            quantity: 0,
-                            customer: 0,
-                        }];
+        Schedule(
+            self.problem
+                .all_days()
+                .map(|t| {
+                    self.problem
+                        .all_vehicles()
+                        .map(|v| {
+                            let mut route = vec![Delivery {
+                                quantity: 0,
+                                customer: 0,
+                            }];
 
-                        let mut adjacencies = vec![Vec::with_capacity(2); self.problem.num_sites];
-                        for i in self.problem.all_sites() {
-                            for j in self.problem.all_sites_after(i) {
-                                if self.is_edge_in_route(assignment, t, v, i, j) {
-                                    adjacencies[i as usize].push(j);
-                                    adjacencies[j as usize].push(i);
+                            let mut adjacencies =
+                                vec![Vec::with_capacity(2); self.problem.num_sites];
+                            for i in self.problem.all_sites() {
+                                for j in self.problem.all_sites_after(i) {
+                                    if self.is_edge_in_route(assignment, t, v, i, j) {
+                                        adjacencies[i as usize].push(j);
+                                        adjacencies[j as usize].push(i);
+                                    }
                                 }
                             }
-                        }
 
-                        let mut visited = vec![false; self.problem.num_sites];
-                        visited[0] = true;
+                            let mut visited = vec![false; self.problem.num_sites];
+                            visited[0] = true;
 
-                        let mut i = 0; // last visited site
-                        loop {
-                            let mut found = false;
+                            let mut i = 0; // last visited site
+                            loop {
+                                let mut found = false;
 
-                            for j in adjacencies[i].iter() {
-                                if !visited[*j as usize] {
-                                    let quantity = self.get_delivery_amount(assignment, t, v, *j);
+                                for j in adjacencies[i].iter() {
+                                    if !visited[*j as usize] {
+                                        let quantity =
+                                            self.get_delivery_amount(assignment, t, v, *j);
 
-                                    if quantity > 0 && *j != 0 {
-                                        route.push(Delivery {
-                                            quantity,
-                                            customer: *j,
-                                        });
+                                        if quantity > 0 && *j != 0 {
+                                            route.push(Delivery {
+                                                quantity,
+                                                customer: *j,
+                                            });
+                                        }
+
+                                        visited[*j as usize] = true;
+                                        found = true;
+                                        i = *j as usize;
+
+                                        break;
                                     }
+                                }
 
-                                    visited[*j as usize] = true;
-                                    found = true;
-                                    i = *j as usize;
-
+                                if !found || i == 0 {
                                     break;
                                 }
                             }
 
-                            if !found || i == 0 {
-                                break;
-                            }
-                        }
-
-                        route
-                    })
-                    .collect()
-            })
-            .collect()
+                            route
+                        })
+                        .collect()
+                })
+                .collect(),
+        )
     }
 
     /// Solve Minimum-Cost Flow LP to improve deliveries (based on currently visited customers)
@@ -779,30 +782,8 @@ impl<'a> SolverData<'a> {
             "# Get schedule heuristically, time {}",
             self.elapsed_seconds()
         );
-        self.problem
-            .all_days()
-            .map(|t| {
-                self.problem
-                    .all_vehicles()
-                    .map(|v| {
-                        let tsp_tour = RouteSolver::solve(self.problem, deliveries, t, v);
 
-                        tsp_tour
-                            .0
-                            .iter()
-                            .map(|site| Delivery {
-                                quantity: if *site == 0 {
-                                    0
-                                } else {
-                                    deliveries.get(t, v, *site as SiteId)
-                                },
-                                customer: *site as SiteId,
-                            })
-                            .collect()
-                    })
-                    .collect()
-            })
-            .collect()
+        Schedule::new_via_heuristic(self.problem, deliveries)
     }
 
     fn run_heuristic(&mut self) -> grb::Result<()> {
