@@ -1,6 +1,7 @@
 use crate::delivery::Deliveries;
 use crate::problem::*;
 
+#[derive(Debug)]
 pub struct Route(pub Vec<SiteId>);
 
 pub struct Solver {}
