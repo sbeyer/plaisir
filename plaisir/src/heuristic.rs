@@ -86,7 +86,7 @@ impl<'a> RandomHeuristic<'a> {
         loop {
             let thresholds = increasing_threshold_bounds
                 .iter()
-                .map(|lb| self.rng_visit_threshold.gen_range(*lb..1.0))
+                .map(|lb| self.rng_visit_threshold.gen_range(*lb..=1.0))
                 .collect::<Vec<_>>();
 
             self.threshold_loop(
