@@ -66,9 +66,11 @@ impl<'a> RandomHeuristic<'a> {
                 .collect::<Vec<_>>();
 
             eprintln!("# Finding random solutions with visit thresholds {thresholds:?}",);
+            const MAX_INFEASIBLES: usize = 1000;
+            const MAX_NO_IMPROVEMENT: usize = 20000;
             let mut counter_no_improvement = 0usize;
             let mut counter_infeasible = 0usize;
-            while counter_no_improvement <= 10000 {
+            loop {
                 let vehicle_plan = self.make_random_vehicle_plan(&thresholds);
                 //eprintln!("# plan {:?}", vehicle_plan);
 
@@ -112,6 +114,14 @@ impl<'a> RandomHeuristic<'a> {
 
                 if counter_no_improvement > 0 && counter_no_improvement % 1000 == 0 {
                     eprintln!("# No new best solution found after {counter_no_improvement} iterations of which {counter_infeasible} were infeasible");
+                }
+                if counter_no_improvement >= MAX_NO_IMPROVEMENT {
+                    eprintln!("# Stop attempts using these thresholds due to too many iterations ({counter_no_improvement}) without improvements, having {counter_infeasible} infeasibles");
+                    break;
+                }
+                if counter_infeasible >= MAX_INFEASIBLES {
+                    eprintln!("# Stop attempts using these thresholds due to too many infeasibles ({counter_infeasible}) during {counter_no_improvement} iterations without improvement");
+                    break;
                 }
             }
         }
