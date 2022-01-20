@@ -47,7 +47,6 @@ impl<'a> RandomHeuristic<'a> {
     }
 
     pub fn solve(&mut self, delivery_solver: &mut DeliverySolver) -> grb::Result<()> {
-        let start_time = std::time::Instant::now();
         let mut best_solution = Solution::empty();
         loop {
             let thresholds = self
@@ -65,69 +64,81 @@ impl<'a> RandomHeuristic<'a> {
                 })
                 .collect::<Vec<_>>();
 
-            eprintln!("# Finding random solutions with visit thresholds {thresholds:?}",);
-            const MAX_INFEASIBLES: usize = 1000;
-            const MAX_NO_IMPROVEMENT: usize = 20000;
-            let mut counter_no_improvement = 0usize;
-            let mut counter_infeasible = 0usize;
-            loop {
-                let vehicle_plan = self.make_random_vehicle_plan(&thresholds);
-                //eprintln!("# plan {:?}", vehicle_plan);
+            self.threshold_loop(&thresholds, delivery_solver, &mut best_solution)?;
+        }
+    }
 
-                delivery_solver.set_all_statuses(|t, v, i| {
-                    if let Some(vehicle_choice) = vehicle_plan.0[t as usize][i as usize - 1] {
-                        vehicle_choice == v
-                    } else {
-                        false
-                    }
-                })?;
-                let opt_deliveries = delivery_solver.solve()?;
-                if let Some(deliveries) = opt_deliveries {
-                    //eprintln!("# -> deliveries {deliveries:?}");
-                    let schedule = Schedule::new_via_heuristic(self.problem, &deliveries);
-                    //eprintln!("# -> schedule {schedule:?}");
-                    // TODO: struct SolutionPool or something like that
-                    let solution = Solution::new(
-                        self.problem,
-                        schedule,
-                        start_time.elapsed().as_millis() as f64 * 1e-3,
-                        "Intel Core i5-10210U @ 1.60GHz", // TODO
-                    );
+    /// Make a loop for a specific threshold configurations
+    fn threshold_loop(
+        &mut self,
+        thresholds: &[f64],
+        delivery_solver: &mut DeliverySolver,
+        best_solution: &mut Solution,
+    ) -> grb::Result<()> {
+        eprintln!("# Finding random solutions with visit thresholds {thresholds:?}",);
+        const MAX_INFEASIBLES: usize = 1000;
+        const MAX_NO_IMPROVEMENT: usize = 20000;
+        let mut counter_no_improvement = 0usize;
+        let mut counter_infeasible = 0usize;
+        loop {
+            let vehicle_plan = self.make_random_vehicle_plan(thresholds);
+            //eprintln!("# plan {:?}", vehicle_plan);
 
-                    if solution.value() < best_solution.value() {
-                        eprintln!(
+            delivery_solver.set_all_statuses(|t, v, i| {
+                if let Some(vehicle_choice) = vehicle_plan.0[t as usize][i as usize - 1] {
+                    vehicle_choice == v
+                } else {
+                    false
+                }
+            })?;
+            let opt_deliveries = delivery_solver.solve()?;
+            if let Some(deliveries) = opt_deliveries {
+                //eprintln!("# -> deliveries {deliveries:?}");
+                let schedule = Schedule::new_via_heuristic(self.problem, &deliveries);
+                //eprintln!("# -> schedule {schedule:?}");
+                // TODO: struct SolutionPool or something like that
+                let solution = Solution::new(
+                    self.problem,
+                    schedule,
+                    1337.0,                           // TODO
+                    "Intel Core i5-10210U @ 1.60GHz", // TODO
+                );
+
+                if solution.value() < best_solution.value() {
+                    eprintln!(
                         "# New best solution of value {} (improving {}) with visit probabilities {thresholds:?} after {counter_no_improvement} iterations since last best value",
                         solution.value(),
                         best_solution.value(),
                     );
-                        eprintln!("{}", solution);
-                        best_solution = solution;
-                        counter_no_improvement = 0;
-                        counter_infeasible = 0;
-                    } else {
-                        counter_no_improvement += 1;
-                    }
+                    eprintln!("{}", solution);
+                    *best_solution = solution;
+                    counter_no_improvement = 0;
+                    counter_infeasible = 0;
                 } else {
-                    counter_infeasible += 1;
                     counter_no_improvement += 1;
                 }
+            } else {
+                counter_infeasible += 1;
+                counter_no_improvement += 1;
+            }
 
-                if counter_no_improvement > 0 && counter_no_improvement % 1000 == 0 {
-                    eprintln!("# No new best solution found after {counter_no_improvement} iterations of which {counter_infeasible} were infeasible");
-                }
-                if counter_no_improvement >= MAX_NO_IMPROVEMENT {
-                    eprintln!("# Stop attempts using these thresholds due to too many iterations ({counter_no_improvement}) without improvements, having {counter_infeasible} infeasibles");
-                    break;
-                }
-                if counter_infeasible >= MAX_INFEASIBLES {
-                    eprintln!("# Stop attempts using these thresholds due to too many infeasibles ({counter_infeasible}) during {counter_no_improvement} iterations without improvement");
-                    break;
-                }
+            if counter_no_improvement > 0 && counter_no_improvement % 1000 == 0 {
+                eprintln!("# No new best solution found after {counter_no_improvement} iterations of which {counter_infeasible} were infeasible");
+            }
+            if counter_no_improvement >= MAX_NO_IMPROVEMENT {
+                eprintln!("# Stop attempts using these thresholds due to too many iterations ({counter_no_improvement}) without improvements, having {counter_infeasible} infeasibles");
+                break;
+            }
+            if counter_infeasible >= MAX_INFEASIBLES {
+                eprintln!("# Stop attempts using these thresholds due to too many infeasibles ({counter_infeasible}) during {counter_no_improvement} iterations without improvement");
+                break;
             }
         }
+
+        Ok(())
     }
 
-    /// Make a random vehicle plan based on visit probability `threshold`
+    /// Make a random vehicle plan based on visit probabilities `thresholds` (one for each day)
     fn make_random_vehicle_plan(&mut self, thresholds: &[f64]) -> VehiclePlan {
         debug_assert_eq!(self.problem.all_days().count(), thresholds.len());
 
