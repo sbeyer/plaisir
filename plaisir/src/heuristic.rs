@@ -63,7 +63,7 @@ impl<'a> RandomHeuristic<'a> {
                 )?;
 
                 let threshold_old = increasing_threshold_bounds[i];
-                increasing_threshold_bounds[i] *= 0.8 * (1.0 - infeasible_freq) + infeasible_freq;
+                increasing_threshold_bounds[i] *= 0.67 * (1.0 - infeasible_freq) + infeasible_freq;
 
                 // Finish up if threshold didn't change too much
                 if approx::abs_diff_eq!(
