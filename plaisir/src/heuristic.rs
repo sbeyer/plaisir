@@ -45,6 +45,9 @@ impl<'a> RandomHeuristic<'a> {
     }
 
     pub fn solve(&mut self, delivery_solver: &mut DeliverySolver) -> grb::Result<()> {
+        const LOWER_BOUND_SEARCH_DESCENT: f64 = 0.67;
+        const LOWER_BOUND_SEARCH_ABSDIFF: f64 = 0.01;
+
         let mut best_solution = Solution::empty();
 
         eprintln!(
@@ -63,13 +66,14 @@ impl<'a> RandomHeuristic<'a> {
                 )?;
 
                 let threshold_old = increasing_threshold_bounds[i];
-                increasing_threshold_bounds[i] *= 0.67 * (1.0 - infeasible_freq) + infeasible_freq;
+                increasing_threshold_bounds[i] *=
+                    LOWER_BOUND_SEARCH_DESCENT * (1.0 - infeasible_freq) + infeasible_freq;
 
                 // Finish up if threshold didn't change too much
                 if approx::abs_diff_eq!(
                     threshold_old,
                     increasing_threshold_bounds[i],
-                    epsilon = 0.01
+                    epsilon = LOWER_BOUND_SEARCH_ABSDIFF
                 ) {
                     break;
                 }
