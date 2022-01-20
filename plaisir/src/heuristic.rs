@@ -1,7 +1,8 @@
 use crate::delivery::Solver as DeliverySolver;
 use crate::problem::*;
 use crate::solution::*;
-use rand_distr::{Distribution, SkewNormal, Uniform};
+use rand::distributions::{Distribution, Uniform};
+use rand::Rng;
 use rand_xoshiro::rand_core::SeedableRng;
 
 /// Assigns (day, customer) to vehicle
@@ -11,7 +12,6 @@ struct VehiclePlan(Vec<Vec<Option<VehicleId>>>);
 pub struct RandomHeuristic<'a> {
     problem: &'a Problem,
     dist_vehicle: Uniform<VehicleId>,
-    dist_visit_threshold: SkewNormal<f64>,
     dist_visit: Uniform<f64>,
     rng_vehicle: rand_xoshiro::Xoshiro128StarStar,
     rng_visit_threshold: rand_xoshiro::Xoshiro128StarStar,
@@ -33,12 +33,10 @@ impl<'a> RandomHeuristic<'a> {
         let rng_visit_threshold = rand_xoshiro::Xoshiro128StarStar::from_seed(SEED_VISIT_THRESHOLD);
         let rng_visit = rand_xoshiro::Xoshiro128StarStar::from_seed(SEED_VISIT);
         let dist_vehicle = Uniform::from(0..(problem.num_vehicles as VehicleId));
-        let dist_visit_threshold = SkewNormal::<f64>::new(0.95, 0.3, -5.0).unwrap();
         let dist_visit = Uniform::from(0f64..1f64);
         Self {
             problem,
             dist_vehicle,
-            dist_visit_threshold,
             dist_visit,
             rng_vehicle,
             rng_visit_threshold,
@@ -48,23 +46,52 @@ impl<'a> RandomHeuristic<'a> {
 
     pub fn solve(&mut self, delivery_solver: &mut DeliverySolver) -> grb::Result<()> {
         let mut best_solution = Solution::empty();
+
+        eprintln!(
+            "# RandomHeuristic Step 1: Find good lower bounds for thresholds (increasing by day)"
+        );
+        let mut increasing_threshold_bounds = vec![1.0; self.problem.num_days];
+        for i in 0..increasing_threshold_bounds.len() {
+            eprintln!("# RandomHeuristic Step 1.{i}: Find good lower bound for threshold {i}");
+            loop {
+                let infeasible_freq = self.threshold_loop(
+                    &increasing_threshold_bounds,
+                    delivery_solver,
+                    &mut best_solution,
+                    5000,
+                    1000,
+                )?;
+
+                let threshold_old = increasing_threshold_bounds[i];
+                increasing_threshold_bounds[i] *= 0.8 * (1.0 - infeasible_freq) + infeasible_freq;
+
+                // Finish up if threshold didn't change too much
+                if approx::abs_diff_eq!(
+                    threshold_old,
+                    increasing_threshold_bounds[i],
+                    epsilon = 0.01
+                ) {
+                    break;
+                }
+            }
+        }
+        eprintln!("# RandomHeuristic Finished Step 1 with {increasing_threshold_bounds:?}");
+
+        eprintln!("#");
+        eprintln!("# RandomHeuristic Step 2: Sample thresholds and try to find better solutions");
         loop {
-            let thresholds = self
-                .problem
-                .all_days()
-                .map(|_| {
-                    let threshold = self
-                        .dist_visit_threshold
-                        .sample(&mut self.rng_visit_threshold);
-                    if threshold < 0.1 {
-                        1.0 - threshold
-                    } else {
-                        threshold
-                    }
-                })
+            let thresholds = increasing_threshold_bounds
+                .iter()
+                .map(|lb| self.rng_visit_threshold.gen_range(*lb..1.0))
                 .collect::<Vec<_>>();
 
-            self.threshold_loop(&thresholds, delivery_solver, &mut best_solution)?;
+            self.threshold_loop(
+                &thresholds,
+                delivery_solver,
+                &mut best_solution,
+                10000,
+                2000,
+            )?;
         }
     }
 
@@ -74,10 +101,10 @@ impl<'a> RandomHeuristic<'a> {
         thresholds: &[f64],
         delivery_solver: &mut DeliverySolver,
         best_solution: &mut Solution,
-    ) -> grb::Result<()> {
+        max_count_no_improvement: usize,
+        max_count_infeasibles: usize,
+    ) -> grb::Result<f64> {
         eprintln!("# Finding random solutions with visit thresholds {thresholds:?}",);
-        const MAX_INFEASIBLES: usize = 1000;
-        const MAX_NO_IMPROVEMENT: usize = 20000;
         let mut counter_no_improvement = 0usize;
         let mut counter_infeasible = 0usize;
         loop {
@@ -125,17 +152,18 @@ impl<'a> RandomHeuristic<'a> {
             if counter_no_improvement > 0 && counter_no_improvement % 1000 == 0 {
                 eprintln!("# No new best solution found after {counter_no_improvement} iterations of which {counter_infeasible} were infeasible");
             }
-            if counter_no_improvement >= MAX_NO_IMPROVEMENT {
+            if counter_no_improvement >= max_count_no_improvement {
                 eprintln!("# Stop attempts using these thresholds due to too many iterations ({counter_no_improvement}) without improvements, having {counter_infeasible} infeasibles");
+
                 break;
             }
-            if counter_infeasible >= MAX_INFEASIBLES {
+            if counter_infeasible >= max_count_infeasibles {
                 eprintln!("# Stop attempts using these thresholds due to too many infeasibles ({counter_infeasible}) during {counter_no_improvement} iterations without improvement");
                 break;
             }
         }
 
-        Ok(())
+        Ok(counter_infeasible as f64 / counter_no_improvement as f64)
     }
 
     /// Make a random vehicle plan based on visit probabilities `thresholds` (one for each day)
