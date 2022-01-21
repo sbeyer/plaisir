@@ -261,10 +261,9 @@ struct SolverData<'a> {
     vars: Variables<'a>,
     varnames: Vec<String>,
     start_time: time::Instant,
-    cpu: &'a str,
     ncalls: usize,
     deliveries: DeliverySolver<'a>,
-    best_solution: Solution,
+    solution_pool: SolutionPool<'a>,
     is_new_solution_just_set: bool,
     heuristic: RandomHeuristic<'a>,
 }
@@ -289,7 +288,7 @@ impl<'a> SolverData<'a> {
 
         let deliveries = DeliverySolver::new(env, problem)?;
 
-        let best_solution = Solution::empty();
+        let solution_pool = SolutionPool::new(32, cpu);
 
         let heuristic = RandomHeuristic::new(problem);
 
@@ -298,10 +297,9 @@ impl<'a> SolverData<'a> {
             vars,
             varnames,
             start_time,
-            cpu,
             ncalls: 0,
             deliveries,
-            best_solution,
+            solution_pool,
             is_new_solution_just_set: false,
             heuristic,
         })
@@ -416,7 +414,7 @@ impl<'a> SolverData<'a> {
         let mut assignment = vec![0.0; self.vars.variables.len()];
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
-                let route = &self.best_solution.route(t, v);
+                let route = &self.solution_pool.get_best().route(t, v);
                 if route.len() > 1 {
                     for delivery in route.iter() {
                         let i = delivery.customer;
@@ -458,27 +456,12 @@ impl<'a> SolverData<'a> {
         assignment
     }
 
-    fn update_best_solution(&mut self, schedule: Schedule) {
-        let solution = Solution::new(self.problem, schedule, self.elapsed_seconds(), self.cpu);
-
-        if solution.value() < self.best_solution.value() {
-            eprintln!("{}", solution);
-            self.best_solution = solution;
-        } else {
-            eprintln!(
-                "# Found solution of objective value {} not better than {}",
-                solution.value(),
-                self.best_solution.value()
-            );
-        }
-    }
-
     fn give_new_best_solution_to_solver(
         &mut self,
         ctx: grb::callback::MIPNodeCtx,
     ) -> grb::Result<()> {
         let best_objective = ctx.obj_best()?;
-        if self.best_solution.value() < best_objective {
+        if self.solution_pool.get_best().value() < best_objective {
             let best_solution_assignment = self.get_best_solution_variable_assignment();
             let set_result =
                 ctx.set_solution(self.vars.variables.iter().zip(best_solution_assignment))?;
@@ -486,7 +469,7 @@ impl<'a> SolverData<'a> {
                 self.is_new_solution_just_set = true;
                 eprintln!(
                     "# New best solution with objective value {} (old: {}) set successfully",
-                    self.best_solution.value(),
+                    self.solution_pool.get_best().value(),
                     best_objective
                 );
             } else {
@@ -819,7 +802,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         match self.adjust_deliveries(&assignment)? {
                             Some(deliveries) => {
                                 let schedule = self.get_schedule_heuristically(&deliveries);
-                                self.update_best_solution(schedule);
+                                self.solution_pool.add(self.problem, schedule);
                             }
                             None => {
                                 eprintln!(
@@ -835,7 +818,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
 
                     if !new_subtour_constraints {
                         let schedule = self.get_schedule(&assignment);
-                        self.update_best_solution(schedule);
+                        self.solution_pool.add(self.problem, schedule);
                     }
 
                     eprintln!("# Callback finish time: {}", self.elapsed_seconds());
@@ -865,7 +848,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         }
                         match self.fractional_delivery_heuristic(&assignment)? {
                             Some(schedule) => {
-                                self.update_best_solution(schedule);
+                                self.solution_pool.add(self.problem, schedule);
                             }
                             None => {
                                 eprintln!("# Failed to find a feasible solution.");
@@ -1035,9 +1018,14 @@ impl Solver {
         Self::print_raw_solution(&data, &lp)?;
         let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
         let schedule = data.get_schedule(&assignment);
-        let solution = Solution::new(problem, schedule, data.elapsed_seconds(), data.cpu);
-        eprintln!("# Final solution");
-        eprintln!("{solution}");
+        let opt_solution = data.solution_pool.add(problem, schedule);
+        if let Some(solution) = opt_solution {
+            eprintln!("# Final solution");
+            eprintln!("{solution}");
+        } else {
+            eprintln!("# Final solution not new, output best solution");
+            eprintln!("{}", data.solution_pool.get_best());
+        }
 
         Ok(())
     }

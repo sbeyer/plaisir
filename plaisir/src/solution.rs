@@ -2,6 +2,7 @@ use crate::delivery::{Deliveries, Delivery};
 use crate::problem::{DayId, Problem, SiteId, VehicleId};
 use crate::route::Solver as RouteSolver;
 use std::fmt;
+use std::time;
 
 pub type Route = Vec<Delivery>;
 
@@ -159,5 +160,87 @@ impl fmt::Display for Solution {
         writeln!(f, "{}", self.time)?;
 
         Ok(())
+    }
+}
+
+pub struct SolutionPool<'a> {
+    solutions: Vec<Solution>,
+    idx_best: usize,
+    idx_worst: usize,
+    time_init: time::Instant,
+    cpu: &'a str,
+}
+
+impl<'a> SolutionPool<'a> {
+    pub fn new(capacity: usize, cpu: &'a str) -> Self {
+        SolutionPool {
+            solutions: Vec::with_capacity(capacity + 1),
+            idx_best: 0,
+            idx_worst: 0,
+            time_init: time::Instant::now(),
+            cpu,
+        }
+    }
+
+    /// Attempts to add a new solution to the pool and return it if it really has been added
+    pub fn add(&mut self, problem: &Problem, schedule: Schedule) -> Option<&Solution> {
+        let solution = Solution::new(problem, schedule, self.elapsed_seconds(), self.cpu);
+
+        let len = self.solutions.len();
+        if len == self.solutions.capacity() - 1 {
+            if solution.value() < self.solutions[self.idx_worst].value() {
+                // overwrite worst
+                let idx_new = self.idx_worst;
+                self.solutions[idx_new] = solution;
+
+                // find new worst index
+                self.idx_worst = self
+                    .solutions
+                    .iter()
+                    .enumerate()
+                    .max_by(|(_, candidate_a), (_, candidate_b)| {
+                        candidate_a
+                            .value()
+                            .partial_cmp(&candidate_b.value())
+                            .unwrap()
+                    })
+                    .unwrap()
+                    .0;
+
+                self.update_best(idx_new);
+
+                Some(&self.solutions[idx_new])
+            } else {
+                None
+            }
+        } else if len == 0 {
+            self.solutions.push(solution);
+            Some(&self.solutions[0])
+        } else {
+            self.solutions.push(solution);
+            self.update_best(len);
+
+            if self.solutions[len].value() > self.solutions[self.idx_worst].value() {
+                self.idx_worst = len;
+            }
+            Some(&self.solutions[len])
+        }
+    }
+
+    fn update_best(&mut self, idx: usize) {
+        if self.solutions[idx].value() < self.solutions[self.idx_best].value() {
+            eprintln!("{}", self.solutions[idx]);
+            self.idx_best = idx;
+        }
+    }
+
+    pub fn get_best(&self) -> &Solution {
+        debug_assert!(!self.solutions.is_empty());
+
+        &self.solutions[self.idx_best]
+    }
+
+    fn elapsed_seconds(&self) -> f64 {
+        self.time_init.elapsed().as_millis() as f64 * 1e-3
     }
 }
