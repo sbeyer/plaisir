@@ -50,18 +50,6 @@ pub struct Solution {
 }
 
 impl Solution {
-    pub fn empty() -> Self {
-        Self {
-            schedule: Schedule(Vec::new()),
-            cost_transportation: f64::INFINITY,
-            cost_inventory_depot: f64::INFINITY,
-            cost_inventory_customers: f64::INFINITY,
-            cost_total: f64::INFINITY,
-            processor: String::new(),
-            time: 0.0,
-        }
-    }
-
     pub fn new(problem: &Problem, schedule: Schedule, time: f64, cpu: &str) -> Self {
         let mut sol = Solution {
             schedule,
@@ -182,8 +170,10 @@ impl<'a> SolutionPool<'a> {
         }
     }
 
-    /// Attempts to add a new solution to the pool and return it if it really has been added
-    pub fn add(&mut self, problem: &Problem, schedule: Schedule) -> Option<&Solution> {
+    /// Attempts to add a new solution to the pool and return a pair with a bool telling us whether
+    /// the best solution has been replaced, and return the new solution if it has been added.
+    /// Also prints the solution in case it is the new best one.
+    pub fn add(&mut self, problem: &Problem, schedule: Schedule) -> (bool, Option<&Solution>) {
         let solution = Solution::new(problem, schedule, self.elapsed_seconds(), self.cpu);
 
         let len = self.solutions.len();
@@ -207,31 +197,34 @@ impl<'a> SolutionPool<'a> {
                     .unwrap()
                     .0;
 
-                self.update_best(idx_new);
+                let new_best = self.update_best(idx_new);
 
-                Some(&self.solutions[idx_new])
+                (new_best, Some(&self.solutions[idx_new]))
             } else {
-                None
+                (false, None)
             }
         } else if len == 0 {
             self.solutions.push(solution);
-            Some(&self.solutions[0])
+            (true, Some(&self.solutions[0]))
         } else {
             self.solutions.push(solution);
-            self.update_best(len);
+            let new_best = self.update_best(len);
 
             if self.solutions[len].value() > self.solutions[self.idx_worst].value() {
                 self.idx_worst = len;
             }
-            Some(&self.solutions[len])
+            (new_best, Some(&self.solutions[len]))
         }
     }
 
-    fn update_best(&mut self, idx: usize) {
-        if self.solutions[idx].value() < self.solutions[self.idx_best].value() {
+    fn update_best(&mut self, idx: usize) -> bool {
+        let new_best = self.solutions[idx].value() < self.solutions[self.idx_best].value();
+        if new_best {
             eprintln!("{}", self.solutions[idx]);
             self.idx_best = idx;
         }
+
+        new_best
     }
 
     pub fn get_best(&self) -> &Solution {

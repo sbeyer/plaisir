@@ -770,7 +770,8 @@ impl<'a> SolverData<'a> {
     }
 
     fn run_heuristic(&mut self) -> grb::Result<()> {
-        self.heuristic.solve(&mut self.deliveries)?;
+        self.heuristic
+            .solve(&mut self.deliveries, &mut self.solution_pool)?;
 
         Ok(())
     }
@@ -1018,7 +1019,7 @@ impl Solver {
         Self::print_raw_solution(&data, &lp)?;
         let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
         let schedule = data.get_schedule(&assignment);
-        let opt_solution = data.solution_pool.add(problem, schedule);
+        let opt_solution = data.solution_pool.add(problem, schedule).1;
         if let Some(solution) = opt_solution {
             eprintln!("# Final solution");
             eprintln!("{solution}");

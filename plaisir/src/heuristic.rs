@@ -44,11 +44,13 @@ impl<'a> RandomHeuristic<'a> {
         }
     }
 
-    pub fn solve(&mut self, delivery_solver: &mut DeliverySolver) -> grb::Result<()> {
+    pub fn solve(
+        &mut self,
+        delivery_solver: &mut DeliverySolver,
+        solution_pool: &mut SolutionPool,
+    ) -> grb::Result<()> {
         const LOWER_BOUND_SEARCH_DESCENT: f64 = 0.67;
         const LOWER_BOUND_SEARCH_ABSDIFF: f64 = 0.01;
-
-        let mut best_solution = Solution::empty();
 
         eprintln!(
             "# RandomHeuristic Step 1: Find good lower bounds for thresholds (increasing by day)"
@@ -60,7 +62,7 @@ impl<'a> RandomHeuristic<'a> {
                 let infeasible_freq = self.threshold_loop(
                     &increasing_threshold_bounds,
                     delivery_solver,
-                    &mut best_solution,
+                    solution_pool,
                     5000,
                     1000,
                 )?;
@@ -89,13 +91,7 @@ impl<'a> RandomHeuristic<'a> {
                 .map(|lb| self.rng_visit_threshold.gen_range(*lb..=1.0))
                 .collect::<Vec<_>>();
 
-            self.threshold_loop(
-                &thresholds,
-                delivery_solver,
-                &mut best_solution,
-                10000,
-                2000,
-            )?;
+            self.threshold_loop(&thresholds, delivery_solver, solution_pool, 10000, 2000)?;
         }
     }
 
@@ -104,7 +100,7 @@ impl<'a> RandomHeuristic<'a> {
         &mut self,
         thresholds: &[f64],
         delivery_solver: &mut DeliverySolver,
-        best_solution: &mut Solution,
+        solution_pool: &mut SolutionPool,
         max_count_no_improvement: usize,
         max_count_infeasibles: usize,
     ) -> grb::Result<f64> {
@@ -128,21 +124,14 @@ impl<'a> RandomHeuristic<'a> {
                 let schedule = Schedule::new_via_heuristic(self.problem, &deliveries);
                 //eprintln!("# -> schedule {schedule:?}");
                 // TODO: struct SolutionPool or something like that
-                let solution = Solution::new(
-                    self.problem,
-                    schedule,
-                    1337.0,                           // TODO
-                    "Intel Core i5-10210U @ 1.60GHz", // TODO
-                );
+                let (new_best, opt_solution) = solution_pool.add(self.problem, schedule);
 
-                if solution.value() < best_solution.value() {
+                if new_best {
+                    let solution = opt_solution.unwrap();
                     eprintln!(
-                        "# New best solution of value {} (improving {}) with visit probabilities {thresholds:?} after {counter_no_improvement} iterations since last best value",
+                        "# New best solution of value {} with visit probabilities {thresholds:?} after {counter_no_improvement} iterations since last best value",
                         solution.value(),
-                        best_solution.value(),
                     );
-                    eprintln!("{}", solution);
-                    *best_solution = solution;
                     counter_no_improvement = 0;
                     counter_infeasible = 0;
                 } else {
