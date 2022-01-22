@@ -9,6 +9,7 @@ use rand_xoshiro::rand_core::SeedableRng;
 #[derive(Debug)]
 struct VehiclePlan(Vec<Vec<Option<VehicleId>>>);
 
+#[allow(dead_code)]
 pub struct RandomHeuristic<'a> {
     problem: &'a Problem,
     dist_vehicle: Uniform<VehicleId>,
@@ -18,6 +19,7 @@ pub struct RandomHeuristic<'a> {
     rng_visit: rand_xoshiro::Xoshiro128StarStar,
 }
 
+#[allow(dead_code)]
 impl<'a> RandomHeuristic<'a> {
     pub fn new(problem: &'a Problem) -> Self {
         const SEED_VEHICLE: [u8; 16] = [
@@ -190,5 +192,132 @@ impl<'a> RandomHeuristic<'a> {
                 })
                 .collect(),
         )
+    }
+}
+
+pub struct GeneticHeuristic<'a> {
+    problem: &'a Problem,
+    rng: rand_xoshiro::Xoshiro128StarStar,
+}
+
+impl<'a> GeneticHeuristic<'a> {
+    pub fn new(problem: &'a Problem) -> Self {
+        const SEED: [u8; 16] = [
+            42, 228, 59, 86, 175, 57, 79, 176, 13, 49, 245, 187, 66, 136, 74, 182,
+        ];
+        let rng = rand_xoshiro::Xoshiro128StarStar::from_seed(SEED);
+        Self { problem, rng }
+    }
+
+    pub fn solve(
+        &mut self,
+        delivery_solver: &mut DeliverySolver,
+        solution_pool: &mut SolutionPool,
+    ) -> grb::Result<()> {
+        if solution_pool.solutions.len() < 5 {
+            return Ok(());
+        }
+
+        eprintln!("# GeneticHeuristic start");
+        let mut count_iteration = 0;
+        let mut count_infeasible = 0;
+        let mut count_no_improvement = 0;
+        loop {
+            count_iteration += 1;
+
+            let sol_idx1 = self.rng.gen_range(0..solution_pool.solutions.len());
+            let mut sol_idx2 = self.rng.gen_range(0..solution_pool.solutions.len());
+            while sol_idx2 == sol_idx1 {
+                sol_idx2 = self.rng.gen_range(0..solution_pool.solutions.len());
+            }
+
+            let day_idx1 = self.rng.gen_range(0..self.problem.num_days);
+            let day_idx2 = self.rng.gen_range(0..self.problem.num_days);
+
+            let customer_idx1 = self.rng.gen_range(0..self.problem.num_customers);
+            let customer_idx2 = self.rng.gen_range(0..self.problem.num_customers);
+            let (customer_idx1, customer_idx2) = if customer_idx1 < customer_idx2 {
+                (customer_idx1, customer_idx2)
+            } else {
+                (customer_idx2, customer_idx1)
+            };
+
+            let solution1 = &solution_pool.solutions[sol_idx1];
+            let solution2 = &solution_pool.solutions[sol_idx2];
+
+            let vehicle_plan = VehiclePlan(
+                self.problem
+                    .all_days()
+                    .map(|t| {
+                        let mut day_plan = vec![None; self.problem.num_customers];
+
+                        for v in self.problem.all_vehicles() {
+                            let route = solution1.route(t, v);
+                            for delivery in route.iter().skip(1) {
+                                debug_assert_ne!(delivery.customer, 0);
+
+                                day_plan[delivery.customer as usize - 1] = Some(v);
+                            }
+                        }
+
+                        if t as usize == day_idx1 {
+                            // Perform crossover for this day
+                            #[allow(clippy::needless_range_loop)]
+                            for i in customer_idx1..=customer_idx2 {
+                                day_plan[i] = None;
+                            }
+                            for v in self.problem.all_vehicles() {
+                                let route = solution2.route(day_idx2 as SiteId, v);
+                                for delivery in route.iter().skip(1) {
+                                    debug_assert_ne!(delivery.customer, 0);
+
+                                    let i = delivery.customer as usize - 1;
+                                    if i >= customer_idx1 && i <= customer_idx2 {
+                                        day_plan[delivery.customer as usize - 1] = Some(v);
+                                    }
+                                }
+                            }
+                        }
+
+                        day_plan
+                    })
+                    .collect(),
+            );
+
+            delivery_solver.set_all_statuses(|t, v, i| {
+                if let Some(vehicle_choice) = vehicle_plan.0[t as usize][i as usize - 1] {
+                    vehicle_choice == v
+                } else {
+                    false
+                }
+            })?;
+            let opt_deliveries = delivery_solver.solve()?;
+
+            if let Some(deliveries) = opt_deliveries {
+                let schedule = Schedule::new_via_heuristic(self.problem, &deliveries);
+                let (new_best, opt_solution) = solution_pool.add(self.problem, schedule);
+                if new_best {
+                    let solution = opt_solution.unwrap();
+                    eprintln!("# New best solution of value {}", solution.value(),);
+                    count_no_improvement = 0;
+                    count_infeasible = 0;
+                } else {
+                    count_no_improvement += 1;
+                }
+            } else {
+                count_infeasible += 1;
+                count_no_improvement += 1;
+            }
+
+            if count_iteration % 100 == 50 {
+                eprintln!("# GeneticHeuristic Iteration {count_iteration} (#{count_infeasible} infeasible of #{count_no_improvement} no improvement)");
+            }
+            if count_infeasible == 1000 || count_no_improvement == 2000 {
+                break;
+            }
+        }
+
+        eprintln!("# GeneticHeuristic end after {count_iteration} iterations (#{count_infeasible} infeasible of #{count_no_improvement} no improvement)");
+        Ok(())
     }
 }

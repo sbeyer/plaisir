@@ -265,7 +265,7 @@ struct SolverData<'a> {
     deliveries: DeliverySolver<'a>,
     solution_pool: SolutionPool<'a>,
     is_new_solution_just_set: bool,
-    heuristic: RandomHeuristic<'a>,
+    heuristic: GeneticHeuristic<'a>,
 }
 
 impl<'a> SolverData<'a> {
@@ -290,7 +290,7 @@ impl<'a> SolverData<'a> {
 
         let solution_pool = SolutionPool::new(32, cpu);
 
-        let heuristic = RandomHeuristic::new(problem);
+        let heuristic = GeneticHeuristic::new(problem);
 
         Ok(SolverData {
             problem,
@@ -791,6 +791,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                 if self.is_new_solution_just_set {
                     self.is_new_solution_just_set = false;
                 } else {
+                    let mut has_new_solution = false;
                     {
                         if PRINT_VARIABLE_VALUES {
                             self.varnames
@@ -803,7 +804,11 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         match self.adjust_deliveries(&assignment)? {
                             Some(deliveries) => {
                                 let schedule = self.get_schedule_heuristically(&deliveries);
-                                self.solution_pool.add(self.problem, schedule);
+                                let (_, added) = self.solution_pool.add(self.problem, schedule);
+
+                                if added.is_some() {
+                                    has_new_solution = true;
+                                }
                             }
                             None => {
                                 eprintln!(
@@ -819,7 +824,15 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
 
                     if !new_subtour_constraints {
                         let schedule = self.get_schedule(&assignment);
-                        self.solution_pool.add(self.problem, schedule);
+                        let (_, added) = self.solution_pool.add(self.problem, schedule);
+
+                        if added.is_some() {
+                            has_new_solution = true;
+                        }
+                    }
+
+                    if has_new_solution {
+                        self.run_heuristic()?;
                     }
 
                     eprintln!("# Callback finish time: {}", self.elapsed_seconds());
@@ -839,6 +852,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     eprintln!("#                 time: {}", self.elapsed_seconds());
 
                     if true {
+                        let mut has_new_solution = false;
                         let assignment = ctx.get_solution(&self.vars.variables)?;
                         if PRINT_VARIABLE_VALUES {
                             self.varnames
@@ -849,11 +863,19 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         }
                         match self.fractional_delivery_heuristic(&assignment)? {
                             Some(schedule) => {
-                                self.solution_pool.add(self.problem, schedule);
+                                let (_, added) = self.solution_pool.add(self.problem, schedule);
+
+                                if added.is_some() {
+                                    has_new_solution = true;
+                                }
                             }
                             None => {
                                 eprintln!("# Failed to find a feasible solution.");
                             }
+                        }
+
+                        if has_new_solution {
+                            self.run_heuristic()?;
                         }
                     }
 
@@ -1012,8 +1034,6 @@ impl Solver {
                 lp.add_constr(&format!("Ifc_{t}_{i}"), grb::c!(lhs == value))?;
             }
         }
-
-        data.run_heuristic()?;
 
         lp.optimize_with_callback(&mut data)?;
         Self::print_raw_solution(&data, &lp)?;

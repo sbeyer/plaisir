@@ -152,7 +152,7 @@ impl fmt::Display for Solution {
 }
 
 pub struct SolutionPool<'a> {
-    solutions: Vec<Solution>,
+    pub solutions: Vec<Solution>,
     idx_best: usize,
     idx_worst: usize,
     time_init: time::Instant,
