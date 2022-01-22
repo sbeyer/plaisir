@@ -227,10 +227,12 @@ impl<'a> SolutionPool<'a> {
         new_best
     }
 
-    pub fn get_best(&self) -> &Solution {
-        debug_assert!(!self.solutions.is_empty());
-
-        &self.solutions[self.idx_best]
+    pub fn get_best(&self) -> Option<&Solution> {
+        if self.solutions.is_empty() {
+            None
+        } else {
+            Some(&self.solutions[self.idx_best])
+        }
     }
 
     fn elapsed_seconds(&self) -> f64 {

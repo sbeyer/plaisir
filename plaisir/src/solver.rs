@@ -404,6 +404,8 @@ impl<'a> SolverData<'a> {
     }
 
     fn get_best_solution_variable_assignment(&self) -> Vec<f64> {
+        debug_assert!(!self.solution_pool.solutions.is_empty());
+
         // Inventory levels, necessary for inventory variables
         let mut levels = self
             .problem
@@ -414,7 +416,7 @@ impl<'a> SolverData<'a> {
         let mut assignment = vec![0.0; self.vars.variables.len()];
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
-                let route = &self.solution_pool.get_best().route(t, v);
+                let route = &self.solution_pool.get_best().unwrap().route(t, v);
                 if route.len() > 1 {
                     for delivery in route.iter() {
                         let i = delivery.customer;
@@ -460,20 +462,25 @@ impl<'a> SolverData<'a> {
         &mut self,
         ctx: grb::callback::MIPNodeCtx,
     ) -> grb::Result<()> {
-        let best_objective = ctx.obj_best()?;
-        if self.solution_pool.get_best().value() < best_objective {
-            let best_solution_assignment = self.get_best_solution_variable_assignment();
-            let set_result =
-                ctx.set_solution(self.vars.variables.iter().zip(best_solution_assignment))?;
-            if set_result.is_some() {
-                self.is_new_solution_just_set = true;
-                eprintln!(
-                    "# New best solution with objective value {} (old: {}) set successfully",
-                    self.solution_pool.get_best().value(),
-                    best_objective
-                );
-            } else {
-                eprintln!("# No new solution set, keeping best objective value {best_objective}");
+        let opt_best_solution = self.solution_pool.get_best();
+        if let Some(best_solution) = opt_best_solution {
+            let best_objective = ctx.obj_best()?;
+            if best_solution.value() < best_objective {
+                let best_solution_assignment = self.get_best_solution_variable_assignment();
+                let set_result =
+                    ctx.set_solution(self.vars.variables.iter().zip(best_solution_assignment))?;
+                if set_result.is_some() {
+                    self.is_new_solution_just_set = true;
+                    eprintln!(
+                        "# New best solution with objective value {} (old: {}) set successfully",
+                        best_solution.value(),
+                        best_objective
+                    );
+                } else {
+                    eprintln!(
+                        "# No new solution set, keeping best objective value {best_objective}"
+                    );
+                }
             }
         }
 
@@ -1044,8 +1051,13 @@ impl Solver {
             eprintln!("# Final solution");
             eprintln!("{solution}");
         } else {
-            eprintln!("# Final solution not new, output best solution");
-            eprintln!("{}", data.solution_pool.get_best());
+            let opt_solution = data.solution_pool.get_best();
+            if let Some(solution) = opt_solution {
+                eprintln!("# Final solution not new, output best solution");
+                eprintln!("{}", solution);
+            } else {
+                eprintln!("# No final best solution exists");
+            }
         }
 
         Ok(())
