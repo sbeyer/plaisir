@@ -205,6 +205,7 @@ impl<'a> SolutionPool<'a> {
             }
         } else if len == 0 {
             self.solutions.push(solution);
+            eprintln!("{}", self.solutions[0]);
             (true, Some(&self.solutions[0]))
         } else {
             self.solutions.push(solution);
