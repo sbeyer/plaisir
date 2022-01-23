@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # Configuration
-TIMEOUT=120
-INSTANCES='S_abs4n25_2_L3 S_abs5n10_2_H6 S_abs2n35_4_L3 S_abs4n15_5_H6'
+TIMEOUT=300
+INSTANCES='L_abs1n50_4_L L_abs5n200_4_H L_abs3n50_4_L L_abs10n200_5_H'
 
 resultdir="results/$(git describe --tags --always)"
 
