@@ -6,7 +6,7 @@ use rand::Rng;
 use rand_xoshiro::rand_core::SeedableRng;
 
 /// Assigns (day, customer) to vehicle
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct VehiclePlan(Vec<Vec<Option<VehicleId>>>);
 
 #[allow(dead_code)]
@@ -232,7 +232,6 @@ impl<'a> GeneticHeuristic<'a> {
             }
 
             let day_idx1 = self.rng.gen_range(0..self.problem.num_days as DayId);
-            let day_idx2 = self.rng.gen_range(0..self.problem.num_days as DayId);
 
             let customer_idx_range = (
                 self.rng.gen_range(0..self.problem.num_customers as SiteId),
@@ -247,46 +246,57 @@ impl<'a> GeneticHeuristic<'a> {
             let solution1 = &solution_pool.solutions[sol_idx1];
             let solution2 = &solution_pool.solutions[sol_idx2];
 
-            let mut vehicle_plan = self.create_vehicle_plan_from_solution(solution1);
+            let vehicle_plan1 = self.create_vehicle_plan_from_solution(solution1);
 
-            self.crossover_vehicle_plan(
-                &mut vehicle_plan,
-                day_idx1 as DayId,
-                solution2,
-                day_idx2 as DayId,
-                customer_idx_range,
-            );
+            let vehicle_plans = self
+                .problem
+                .all_days()
+                .map(|source_day| {
+                    let mut vehicle_plan = vehicle_plan1.clone();
+                    self.crossover_vehicle_plan(
+                        &mut vehicle_plan,
+                        day_idx1 as DayId,
+                        solution2,
+                        source_day,
+                        customer_idx_range,
+                    );
+                    vehicle_plan
+                })
+                .collect::<Vec<VehiclePlan>>();
 
-            // Compute deliveries from vehicle plan
-            delivery_solver.set_all_statuses(|t, v, i| {
-                if let Some(vehicle_choice) = vehicle_plan.0[t as usize][i as usize - 1] {
-                    vehicle_choice == v
+            for vehicle_plan in vehicle_plans.iter() {
+                // Compute deliveries from vehicle plan
+                delivery_solver.set_all_statuses(|t, v, i| {
+                    if let Some(vehicle_choice) = vehicle_plan.0[t as usize][i as usize - 1] {
+                        vehicle_choice == v
+                    } else {
+                        false
+                    }
+                })?;
+                let opt_deliveries = delivery_solver.solve()?;
+
+                if let Some(deliveries) = opt_deliveries {
+                    let schedule = Schedule::new_via_heuristic(self.problem, &deliveries);
+                    let (new_best, opt_solution) = solution_pool.add(self.problem, schedule);
+                    if new_best {
+                        let solution = opt_solution.unwrap();
+                        eprintln!("# New best solution of value {}", solution.value(),);
+                        count_no_improvement = 0;
+                        count_infeasible = 0;
+                    } else {
+                        count_no_improvement += 1;
+                    }
                 } else {
-                    false
-                }
-            })?;
-            let opt_deliveries = delivery_solver.solve()?;
-
-            if let Some(deliveries) = opt_deliveries {
-                let schedule = Schedule::new_via_heuristic(self.problem, &deliveries);
-                let (new_best, opt_solution) = solution_pool.add(self.problem, schedule);
-                if new_best {
-                    let solution = opt_solution.unwrap();
-                    eprintln!("# New best solution of value {}", solution.value(),);
-                    count_no_improvement = 0;
-                    count_infeasible = 0;
-                } else {
+                    count_infeasible += 1;
                     count_no_improvement += 1;
                 }
-            } else {
-                count_infeasible += 1;
-                count_no_improvement += 1;
+
+                if count_iteration % 100 == 50 {
+                    eprintln!("# GeneticHeuristic Iteration {count_iteration} (#{count_infeasible} infeasible of #{count_no_improvement} no improvement)");
+                }
             }
 
-            if count_iteration % 100 == 50 {
-                eprintln!("# GeneticHeuristic Iteration {count_iteration} (#{count_infeasible} infeasible of #{count_no_improvement} no improvement)");
-            }
-            if count_infeasible == 1000 || count_no_improvement == 2000 {
+            if count_infeasible >= 1000 || count_no_improvement >= 2000 {
                 break;
             }
         }
