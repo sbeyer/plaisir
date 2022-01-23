@@ -197,6 +197,8 @@ impl<'a> RandomHeuristic<'a> {
 
 pub struct GeneticHeuristic<'a> {
     problem: &'a Problem,
+    dist_day: Uniform<DayId>,
+    dist_customer: Uniform<SiteId>,
     rng: rand_xoshiro::Xoshiro128StarStar,
 }
 
@@ -206,7 +208,15 @@ impl<'a> GeneticHeuristic<'a> {
             42, 228, 59, 86, 175, 57, 79, 176, 13, 49, 245, 187, 66, 136, 74, 182,
         ];
         let rng = rand_xoshiro::Xoshiro128StarStar::from_seed(SEED);
-        Self { problem, rng }
+
+        let dist_day = Uniform::from(0..problem.num_days as DayId);
+        let dist_customer = Uniform::from(0..problem.num_customers as SiteId);
+        Self {
+            problem,
+            dist_day,
+            dist_customer,
+            rng,
+        }
     }
 
     pub fn solve(
@@ -231,11 +241,11 @@ impl<'a> GeneticHeuristic<'a> {
                 sol_idx2 = self.rng.gen_range(0..solution_pool.solutions.len());
             }
 
-            let day_idx1 = self.rng.gen_range(0..self.problem.num_days as DayId);
+            let day_idx1 = self.rng.sample(self.dist_day);
 
             let customer_idx_range = (
-                self.rng.gen_range(0..self.problem.num_customers as SiteId),
-                self.rng.gen_range(0..self.problem.num_customers as SiteId),
+                self.rng.sample(self.dist_customer),
+                self.rng.sample(self.dist_customer),
             );
             let customer_idx_range = if customer_idx_range.0 < customer_idx_range.1 {
                 (customer_idx_range.0, customer_idx_range.1)
