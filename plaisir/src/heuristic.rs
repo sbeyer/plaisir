@@ -231,15 +231,17 @@ impl<'a> GeneticHeuristic<'a> {
                 sol_idx2 = self.rng.gen_range(0..solution_pool.solutions.len());
             }
 
-            let day_idx1 = self.rng.gen_range(0..self.problem.num_days);
-            let day_idx2 = self.rng.gen_range(0..self.problem.num_days);
+            let day_idx1 = self.rng.gen_range(0..self.problem.num_days as DayId);
+            let day_idx2 = self.rng.gen_range(0..self.problem.num_days as DayId);
 
-            let customer_idx1 = self.rng.gen_range(0..self.problem.num_customers);
-            let customer_idx2 = self.rng.gen_range(0..self.problem.num_customers);
-            let (customer_idx1, customer_idx2) = if customer_idx1 < customer_idx2 {
-                (customer_idx1, customer_idx2)
+            let customer_idx_range = (
+                self.rng.gen_range(0..self.problem.num_customers as SiteId),
+                self.rng.gen_range(0..self.problem.num_customers as SiteId),
+            );
+            let customer_idx_range = if customer_idx_range.0 < customer_idx_range.1 {
+                (customer_idx_range.0, customer_idx_range.1)
             } else {
-                (customer_idx2, customer_idx1)
+                (customer_idx_range.1, customer_idx_range.0)
             };
 
             let solution1 = &solution_pool.solutions[sol_idx1];
@@ -247,24 +249,13 @@ impl<'a> GeneticHeuristic<'a> {
 
             let mut vehicle_plan = self.create_vehicle_plan_from_solution(solution1);
 
-            // Prepare crossover for day_idx1
-            #[allow(clippy::needless_range_loop)]
-            for i in customer_idx1..=customer_idx2 {
-                vehicle_plan.0[day_idx1][i] = None;
-            }
-
-            // Apply crossover from solution2 with day_idx2
-            for v in self.problem.all_vehicles() {
-                let route = solution2.route(day_idx2 as SiteId, v);
-                for delivery in route.iter().skip(1) {
-                    debug_assert_ne!(delivery.customer, 0);
-
-                    let i = delivery.customer as usize - 1;
-                    if i >= customer_idx1 && i <= customer_idx2 {
-                        vehicle_plan.0[day_idx1][i] = Some(v);
-                    }
-                }
-            }
+            self.crossover_vehicle_plan(
+                &mut vehicle_plan,
+                day_idx1 as DayId,
+                solution2,
+                day_idx2 as DayId,
+                customer_idx_range,
+            );
 
             // Compute deliveries from vehicle plan
             delivery_solver.set_all_statuses(|t, v, i| {
@@ -324,5 +315,33 @@ impl<'a> GeneticHeuristic<'a> {
                 })
                 .collect(),
         )
+    }
+
+    fn crossover_vehicle_plan(
+        &self,
+        vehicle_plan: &mut VehiclePlan,
+        target_idx: DayId,
+        crossover_solution: &Solution,
+        crossover_day: DayId,
+        customer_idx_range: (SiteId, SiteId),
+    ) {
+        // Prepare crossover by cleaning the range
+        #[allow(clippy::needless_range_loop)]
+        for i in customer_idx_range.0..=customer_idx_range.1 {
+            vehicle_plan.0[target_idx as usize][i as usize] = None;
+        }
+
+        // Apply crossover
+        for v in self.problem.all_vehicles() {
+            let route = crossover_solution.route(crossover_day, v);
+            for delivery in route.iter().skip(1) {
+                debug_assert_ne!(delivery.customer, 0);
+
+                let i = delivery.customer;
+                if i >= customer_idx_range.0 && i <= customer_idx_range.1 {
+                    vehicle_plan.0[target_idx as usize][i as usize] = Some(v);
+                }
+            }
+        }
     }
 }
