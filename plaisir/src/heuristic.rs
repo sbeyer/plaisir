@@ -246,34 +246,22 @@ impl<'a> GeneticHeuristic<'a> {
             let solution1 = &solution_pool.solutions[sol_idx1];
             let solution2 = &solution_pool.solutions[sol_idx2];
 
-            let base_vehicle_plan1 = self.create_vehicle_plan_from_solution(solution1);
-            let base_vehicle_plan2 = self.create_vehicle_plan_from_solution(solution2);
+            let vehicle_plan1 = self.create_vehicle_plan_from_solution(solution1);
 
             let vehicle_plans = self
                 .problem
                 .all_days()
                 .map(|source_day| {
-                    let mut vehicle_plan1 = base_vehicle_plan1.clone();
+                    let mut vehicle_plan = vehicle_plan1.clone();
                     self.crossover_vehicle_plan(
-                        &mut vehicle_plan1,
+                        &mut vehicle_plan,
                         day_idx1 as DayId,
                         solution2,
                         source_day,
                         customer_idx_range,
                     );
-
-                    let mut vehicle_plan2 = base_vehicle_plan2.clone();
-                    self.crossover_vehicle_plan(
-                        &mut vehicle_plan2,
-                        day_idx1 as DayId,
-                        solution1,
-                        source_day,
-                        customer_idx_range,
-                    );
-
-                    vec![vehicle_plan1, vehicle_plan2]
+                    vehicle_plan
                 })
-                .flatten()
                 .collect::<Vec<VehiclePlan>>();
 
             for vehicle_plan in vehicle_plans.iter() {
