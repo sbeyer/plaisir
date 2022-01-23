@@ -245,45 +245,28 @@ impl<'a> GeneticHeuristic<'a> {
             let solution1 = &solution_pool.solutions[sol_idx1];
             let solution2 = &solution_pool.solutions[sol_idx2];
 
-            let vehicle_plan = VehiclePlan(
-                self.problem
-                    .all_days()
-                    .map(|t| {
-                        let mut day_plan = vec![None; self.problem.num_customers];
+            let mut vehicle_plan = self.create_vehicle_plan_from_solution(solution1);
 
-                        for v in self.problem.all_vehicles() {
-                            let route = solution1.route(t, v);
-                            for delivery in route.iter().skip(1) {
-                                debug_assert_ne!(delivery.customer, 0);
+            // Prepare crossover for day_idx1
+            #[allow(clippy::needless_range_loop)]
+            for i in customer_idx1..=customer_idx2 {
+                vehicle_plan.0[day_idx1][i] = None;
+            }
 
-                                day_plan[delivery.customer as usize - 1] = Some(v);
-                            }
-                        }
+            // Apply crossover from solution2 with day_idx2
+            for v in self.problem.all_vehicles() {
+                let route = solution2.route(day_idx2 as SiteId, v);
+                for delivery in route.iter().skip(1) {
+                    debug_assert_ne!(delivery.customer, 0);
 
-                        if t as usize == day_idx1 {
-                            // Perform crossover for this day
-                            #[allow(clippy::needless_range_loop)]
-                            for i in customer_idx1..=customer_idx2 {
-                                day_plan[i] = None;
-                            }
-                            for v in self.problem.all_vehicles() {
-                                let route = solution2.route(day_idx2 as SiteId, v);
-                                for delivery in route.iter().skip(1) {
-                                    debug_assert_ne!(delivery.customer, 0);
+                    let i = delivery.customer as usize - 1;
+                    if i >= customer_idx1 && i <= customer_idx2 {
+                        vehicle_plan.0[day_idx1][i] = Some(v);
+                    }
+                }
+            }
 
-                                    let i = delivery.customer as usize - 1;
-                                    if i >= customer_idx1 && i <= customer_idx2 {
-                                        day_plan[delivery.customer as usize - 1] = Some(v);
-                                    }
-                                }
-                            }
-                        }
-
-                        day_plan
-                    })
-                    .collect(),
-            );
-
+            // Compute deliveries from vehicle plan
             delivery_solver.set_all_statuses(|t, v, i| {
                 if let Some(vehicle_choice) = vehicle_plan.0[t as usize][i as usize - 1] {
                     vehicle_choice == v
@@ -319,5 +302,27 @@ impl<'a> GeneticHeuristic<'a> {
 
         eprintln!("# GeneticHeuristic end after {count_iteration} iterations (#{count_infeasible} infeasible of #{count_no_improvement} no improvement)");
         Ok(())
+    }
+
+    fn create_vehicle_plan_from_solution(&self, solution: &Solution) -> VehiclePlan {
+        VehiclePlan(
+            self.problem
+                .all_days()
+                .map(|t| {
+                    let mut day_plan = vec![None; self.problem.num_customers];
+
+                    for v in self.problem.all_vehicles() {
+                        let route = solution.route(t, v);
+                        for delivery in route.iter().skip(1) {
+                            debug_assert_ne!(delivery.customer, 0);
+
+                            day_plan[delivery.customer as usize - 1] = Some(v);
+                        }
+                    }
+
+                    day_plan
+                })
+                .collect(),
+        )
     }
 }
