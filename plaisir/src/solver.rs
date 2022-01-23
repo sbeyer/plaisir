@@ -277,6 +277,7 @@ impl<'a> SolverData<'a> {
         env: &'a grb::Env,
         cpu: &'a str,
     ) -> grb::Result<Self> {
+        const SOLUTION_POOL_SIZE: usize = 16;
         let start_time = time::Instant::now();
         let vars = Variables::new(problem, lp)?;
         lp.update()?; // update to access variable names
@@ -288,7 +289,7 @@ impl<'a> SolverData<'a> {
 
         let deliveries = DeliverySolver::new(env, problem)?;
 
-        let solution_pool = SolutionPool::new(32, cpu);
+        let solution_pool = SolutionPool::new(SOLUTION_POOL_SIZE, cpu);
 
         let heuristic = GeneticHeuristic::new(problem);
 
