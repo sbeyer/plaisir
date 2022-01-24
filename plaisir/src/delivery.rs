@@ -57,6 +57,8 @@ impl Deliveries {
         self.set(t, to_v, i, quantity);
     }
 
+    /// Returns the ids of customers that are delivered on day `t` with vehicle `v`.
+    /// The result is sorted.
     pub fn get_all_delivered_customers(&self, t: DayId, v: VehicleId) -> Vec<SiteId> {
         self.0[t as usize][v as usize]
             .iter()

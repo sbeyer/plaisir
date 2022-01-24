@@ -2,6 +2,7 @@ use crate::delivery::Solver as DeliverySolver;
 use crate::delivery::{Deliveries, Delivery};
 use crate::heuristic::*;
 use crate::problem::*;
+use crate::route::Solver as RouteSolver;
 use crate::solution::*;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -262,6 +263,7 @@ struct SolverData<'a> {
     varnames: Vec<String>,
     start_time: time::Instant,
     ncalls: usize,
+    route_solver: RouteSolver,
     deliveries: DeliverySolver<'a>,
     solution_pool: SolutionPool<'a>,
     is_new_solution_just_set: bool,
@@ -287,10 +289,9 @@ impl<'a> SolverData<'a> {
             .map(|var| lp.get_obj_attr(grb::attr::VarName, var).unwrap())
             .collect();
 
+        let route_solver = RouteSolver::new();
         let deliveries = DeliverySolver::new(env, problem)?;
-
         let solution_pool = SolutionPool::new(SOLUTION_POOL_SIZE, cpu);
-
         let heuristic = GeneticHeuristic::new(problem);
 
         Ok(SolverData {
@@ -299,6 +300,7 @@ impl<'a> SolverData<'a> {
             varnames,
             start_time,
             ncalls: 0,
+            route_solver,
             deliveries,
             solution_pool,
             is_new_solution_just_set: false,
@@ -765,18 +767,21 @@ impl<'a> SolverData<'a> {
     }
 
     /// Runs LKH heuristic on visited sites to get a feasible route
-    fn get_schedule_heuristically(&self, deliveries: &Deliveries) -> Schedule {
+    fn get_schedule_heuristically(&mut self, deliveries: &Deliveries) -> Schedule {
         eprintln!(
             "# Get schedule heuristically, time {}",
             self.elapsed_seconds()
         );
 
-        Schedule::new_via_heuristic(self.problem, deliveries)
+        Schedule::new_via_heuristic(self.problem, deliveries, &mut self.route_solver)
     }
 
     fn run_heuristic(&mut self) -> grb::Result<()> {
-        self.heuristic
-            .solve(&mut self.deliveries, &mut self.solution_pool)?;
+        self.heuristic.solve(
+            &mut self.deliveries,
+            &mut self.route_solver,
+            &mut self.solution_pool,
+        )?;
 
         Ok(())
     }

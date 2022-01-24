@@ -10,7 +10,11 @@ pub type Route = Vec<Delivery>;
 pub struct Schedule(pub Vec<Vec<Route>>);
 
 impl Schedule {
-    pub fn new_via_heuristic(problem: &Problem, deliveries: &Deliveries) -> Self {
+    pub fn new_via_heuristic(
+        problem: &Problem,
+        deliveries: &Deliveries,
+        route_solver: &mut RouteSolver,
+    ) -> Self {
         Schedule(
             problem
                 .all_days()
@@ -18,7 +22,7 @@ impl Schedule {
                     problem
                         .all_vehicles()
                         .map(|v| {
-                            let tsp_tour = RouteSolver::solve(problem, deliveries, t, v);
+                            let tsp_tour = route_solver.solve(problem, deliveries, t, v);
 
                             tsp_tour
                                 .iter()

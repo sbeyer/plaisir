@@ -1,5 +1,6 @@
 use crate::delivery::Solver as DeliverySolver;
 use crate::problem::*;
+use crate::route::Solver as RouteSolver;
 use crate::solution::*;
 use rand::distributions::Uniform;
 use rand::Rng;
@@ -37,6 +38,7 @@ impl<'a> GeneticHeuristic<'a> {
     pub fn solve(
         &mut self,
         delivery_solver: &mut DeliverySolver,
+        route_solver: &mut RouteSolver,
         solution_pool: &mut SolutionPool,
     ) -> grb::Result<()> {
         if solution_pool.solutions.len() < 5 {
@@ -101,7 +103,8 @@ impl<'a> GeneticHeuristic<'a> {
                 let opt_deliveries = delivery_solver.solve()?;
 
                 if let Some(deliveries) = opt_deliveries {
-                    let schedule = Schedule::new_via_heuristic(self.problem, &deliveries);
+                    let schedule =
+                        Schedule::new_via_heuristic(self.problem, &deliveries, route_solver);
                     let (new_best, opt_solution) = solution_pool.add(self.problem, schedule);
                     if new_best {
                         let solution = opt_solution.unwrap();
