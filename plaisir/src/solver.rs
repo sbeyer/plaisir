@@ -811,10 +811,13 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
             grb::callback::Where::MIPSol(ctx) => {
                 self.ncalls += 1;
                 let assignment = ctx.get_solution(&self.vars.variables)?;
-                eprintln!("# Incumbent {}!", self.ncalls);
-                eprintln!("#    current obj: {}", ctx.obj()?);
-                eprintln!("#       best obj: {}", ctx.obj_best()?);
-                eprintln!("#           time: {}", self.elapsed_seconds());
+                eprintln!(
+                    "# MIP-INT #{}\tcur {}\tub {}\ttime {}",
+                    self.ncalls,
+                    ctx.obj()?,
+                    ctx.obj_best()?,
+                    self.elapsed_seconds()
+                );
 
                 if self.is_new_solution_just_set {
                     self.is_new_solution_just_set = false;
@@ -863,21 +866,20 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         self.run_heuristic()?;
                     }
 
-                    eprintln!("# Callback finish time: {}", self.elapsed_seconds());
+                    eprintln!("# MIP-INT end\ttime {}", self.elapsed_seconds());
                 }
             }
             grb::callback::Where::MIPNode(ctx) => {
                 let status = ctx.status()?;
                 if status == grb::Status::Optimal {
                     eprintln!(
-                        "# MIPNode #sols {} #nodes {} status {:?}",
+                        "# MIP-Frac start\t#solutions {}\t#nodes {}\tub {}\tlb {}\ttime {}",
                         ctx.sol_cnt()?,
                         ctx.node_cnt()?,
-                        status,
+                        ctx.obj_best()?,
+                        ctx.obj_bnd()?,
+                        self.elapsed_seconds()
                     );
-                    eprintln!("#       best objective: {}", ctx.obj_best()?);
-                    eprintln!("#       best obj bound: {}", ctx.obj_bnd()?);
-                    eprintln!("#                 time: {}", self.elapsed_seconds());
 
                     if true {
                         let mut has_new_solution = false;
@@ -909,7 +911,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
 
                     self.give_new_best_solution_to_solver(ctx)?;
 
-                    eprintln!("# MIPNode finish time: {}", self.elapsed_seconds());
+                    eprintln!("# MIP-Frac end\ttime {}", self.elapsed_seconds());
                 }
             }
             _ => (),
