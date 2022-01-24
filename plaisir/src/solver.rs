@@ -420,18 +420,17 @@ impl<'a> SolverData<'a> {
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
                 let route = &self.solution_pool.get_best().unwrap().route(t, v);
-                if route.len() > 1 {
+                if !route.is_empty() {
                     for delivery in route.iter() {
                         let i = delivery.customer;
                         let visit_index = self.vars.visit_index(t, v, i);
                         assignment[visit_index] = 1.0;
-                        if i > 0 {
-                            let deliver_index = self.vars.deliver_index(t, v, i);
-                            assignment[deliver_index] = delivery.quantity as f64;
 
-                            levels[0] -= delivery.quantity as isize;
-                            levels[i as usize] += delivery.quantity as isize;
-                        }
+                        let deliver_index = self.vars.deliver_index(t, v, i);
+                        assignment[deliver_index] = delivery.quantity as f64;
+
+                        levels[0] -= delivery.quantity as isize;
+                        levels[i as usize] += delivery.quantity as isize;
                     }
                     for deliveries in route.windows(2) {
                         let i = deliveries[0].customer;
@@ -439,8 +438,19 @@ impl<'a> SolverData<'a> {
                         let index = self.vars.route_index_undirected(t, v, i, j);
                         assignment[index] = 1.0;
                     }
-                    // Routes in our solutions do not end at the depot, but we want to
-                    // go back to the depot at the end in the MIP solution.
+                    // Routes in our solutions do not start nor end at the depot, but we
+                    // need this in the MIP solution:
+                    {
+                        let i = 0;
+                        let visit_index = self.vars.visit_index(t, v, i);
+                        assignment[visit_index] = 1.0;
+                    }
+                    {
+                        let i = 0;
+                        let j = route[0].customer;
+                        let index = self.vars.route_index_undirected(t, v, i, j);
+                        assignment[index] += 1.0;
+                    }
                     {
                         let i = route[route.len() - 1].customer;
                         let j = 0;
