@@ -43,10 +43,10 @@ impl RouteTrieNode {
     }
 
     fn set(&mut self, customer_set: &[SiteId], tour: Vec<usize>) {
-        // -> &Route {
+        // -> &Route { <- TODO, but Rust's borrow checker doesn't like it...
         if customer_set.is_empty() {
             self.route = Some(tour.into_iter().map(|x| x as SiteId).collect());
-            self.route.as_ref().unwrap();
+            //self.route.as_ref().unwrap() // TODO
         } else {
             let opt_next = self
                 .next
@@ -54,12 +54,12 @@ impl RouteTrieNode {
                 .find(|candidate| candidate.id == customer_set[0]);
 
             if let Some(next) = opt_next {
-                next.set(&customer_set[1..], tour);
+                next.set(&customer_set[1..], tour); // TODO without semicolon
             } else {
                 let next = Self::new(customer_set[0]);
                 self.next.push(next);
                 let last = self.next.len() - 1;
-                self.next[last].set(&customer_set[1..], tour);
+                self.next[last].set(&customer_set[1..], tour); // TODO without semicolon
             }
         }
     }
