@@ -1,5 +1,5 @@
 use crate::delivery::{Deliveries, Delivery};
-use crate::problem::{DayId, Problem, SiteId, VehicleId};
+use crate::problem::{DayId, Problem, VehicleId};
 use crate::route::Solver as RouteSolver;
 use std::fmt;
 use std::time;
@@ -21,17 +21,7 @@ impl Schedule {
                 .map(|t| {
                     problem
                         .all_vehicles()
-                        .map(|v| {
-                            let tsp_tour = route_solver.solve(problem, deliveries, t, v);
-
-                            tsp_tour
-                                .iter()
-                                .map(|site| Delivery {
-                                    quantity: deliveries.get(t, v, *site as SiteId),
-                                    customer: *site as SiteId,
-                                })
-                                .collect()
-                        })
+                        .map(|v| route_solver.solve(problem, deliveries, t, v))
                         .collect()
                 })
                 .collect(),

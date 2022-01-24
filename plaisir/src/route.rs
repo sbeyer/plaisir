@@ -1,4 +1,4 @@
-use crate::delivery::Deliveries;
+use crate::delivery::{Deliveries, Delivery};
 use crate::problem::*;
 
 type Route = Vec<SiteId>;
@@ -107,11 +107,11 @@ impl Solver {
         deliveries: &Deliveries,
         t: DayId,
         v: VehicleId,
-    ) -> Route {
+    ) -> Vec<Delivery> {
         let visited_customers = deliveries.get_all_delivered_customers(t, v);
 
         if visited_customers.len() < 3 {
-            visited_customers.clone()
+            &visited_customers
         } else {
             self.ncalls += 1;
 
@@ -120,7 +120,7 @@ impl Solver {
             }
 
             if let Some(saved_route) = self.saved.get(&visited_customers) {
-                saved_route.clone()
+                saved_route
             } else {
                 let mut tsp_instance = visited_customers
                     .iter()
@@ -143,9 +143,15 @@ impl Solver {
                 tsp_tour.pop();
 
                 self.saved.set(&visited_customers, tsp_tour);
-                self.saved.get(&visited_customers).unwrap().clone()
+                self.saved.get(&visited_customers).unwrap()
             }
         }
+            .iter()
+            .map(|site| Delivery {
+                quantity: deliveries.get(t, v, *site),
+                customer: *site,
+            })
+            .collect()
     }
 }
 

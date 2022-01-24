@@ -28,7 +28,8 @@ impl Ord for Delivery {
     }
 }
 
-/// Vector indexed by day, vehicle and customer containing the number of delivered items
+/// Lookup table indexed by day, vehicle and customer containing the number of delivered items;
+/// the order of deliveries is irrelevant (no route information contained!)
 #[derive(Debug)]
 pub struct Deliveries(Vec<Vec<Vec<Load>>>);
 
