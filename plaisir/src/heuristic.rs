@@ -41,14 +41,19 @@ impl<'a> GeneticHeuristic<'a> {
         route_solver: &mut RouteSolver,
         solution_pool: &mut SolutionPool,
     ) -> grb::Result<()> {
+        const SMALL_IMPROVEMENT: f64 = 0.995;
+
         if solution_pool.solutions.len() < 5 {
             return Ok(());
         }
+
+        let mut previous_best_value = solution_pool.get_best().unwrap().value();
 
         eprintln!("# GeneticHeuristic start");
         let mut count_iteration = 0;
         let mut count_infeasible = 0;
         let mut count_no_improvement = 0;
+        let mut count_small_improvement = 0;
         loop {
             let sol_idx1 = self.rng.gen_range(0..solution_pool.solutions.len());
             let mut sol_idx2 = self.rng.gen_range(0..solution_pool.solutions.len());
@@ -108,7 +113,17 @@ impl<'a> GeneticHeuristic<'a> {
                     let (new_best, opt_solution) = solution_pool.add(self.problem, schedule);
                     if new_best {
                         let solution = opt_solution.unwrap();
-                        eprintln!("# New best solution of value {}", solution.value(),);
+                        eprintln!(
+                            "# New best solution of value {} (old: {})",
+                            solution.value(),
+                            previous_best_value
+                        );
+                        if previous_best_value / solution.value() > SMALL_IMPROVEMENT {
+                            count_small_improvement += 1;
+                        } else {
+                            count_small_improvement = 0;
+                        }
+                        previous_best_value = solution.value();
                         count_no_improvement = 0;
                         count_infeasible = 0;
                     } else {
@@ -120,16 +135,21 @@ impl<'a> GeneticHeuristic<'a> {
                 }
 
                 if count_iteration % 100 == 50 {
-                    eprintln!("# GeneticHeuristic Iteration {count_iteration} (#{count_infeasible} infeasible of #{count_no_improvement} no improvement)");
+                    eprintln!("# GeneticHeuristic Iteration {count_iteration} ({count_infeasible} infeasible of {count_no_improvement} no improvement, and having {count_small_improvement} small improvements)");
                 }
             }
 
-            if count_infeasible >= 1000 || count_no_improvement >= 2000 {
+            if count_infeasible >= 1000 {
+                eprintln!("# GeneticHeuristic: Too many infeasibles");
+                break;
+            }
+
+            if count_no_improvement + 100 * count_small_improvement >= 2000 {
                 break;
             }
         }
 
-        eprintln!("# GeneticHeuristic end after {count_iteration} iterations (#{count_infeasible} infeasible of #{count_no_improvement} no improvement)");
+        eprintln!("# GeneticHeuristic end after {count_iteration} iterations ({count_infeasible} infeasible of {count_no_improvement} no improvement, and having {count_small_improvement} small improvements)");
         Ok(())
     }
 
