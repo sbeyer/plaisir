@@ -42,7 +42,15 @@ impl<'a> GeneticHeuristic<'a> {
         solution_pool: &mut SolutionPool,
     ) -> grb::Result<()> {
         const SMALL_IMPROVEMENT: f64 = 0.99;
-        const MAX_INFEASIBLE_RATIO: f64 = 0.667;
+
+        /// Stop the algorithm after this number of iterations that led to either no or only small
+        /// improvements... Note that the actual number of iterations can be smaller due to other
+        /// factors, e.g. the number of infeasible solutions found.
+        const MAX_NEGLECTABLE_IMPROVEMENT_ITERATIONS: usize = 3000;
+
+        /// Guarantee at least this number of iterations that led to either no or only small
+        /// improvements.
+        const MIN_NEGLECTABLE_IMPROVEMENT_ITERATIONS: usize = 100;
 
         if solution_pool.solutions.len() < 5 {
             return Ok(());
@@ -53,8 +61,7 @@ impl<'a> GeneticHeuristic<'a> {
         eprintln!("# GeneticHeuristic start");
         let mut count_iteration = 0;
         let mut count_infeasible = 0;
-        let mut count_no_improvement = 0;
-        let mut count_small_improvement = 0;
+        let mut count_neglectable_improvement = 0;
         loop {
             let sol_idx1 = self.rng.gen_range(0..solution_pool.solutions.len());
             let mut sol_idx2 = self.rng.gen_range(0..solution_pool.solutions.len());
@@ -120,39 +127,35 @@ impl<'a> GeneticHeuristic<'a> {
                             previous_best_value
                         );
                         if previous_best_value / solution.value() > SMALL_IMPROVEMENT {
-                            count_small_improvement += 1;
+                            count_neglectable_improvement += 1;
                         } else {
-                            count_small_improvement = 0;
+                            count_neglectable_improvement = 0;
+                            count_infeasible = 0;
                         }
                         previous_best_value = solution.value();
-                        count_no_improvement = 0;
-                        count_infeasible = 0;
                     } else {
-                        count_no_improvement += 1;
+                        count_neglectable_improvement += 1;
                     }
                 } else {
                     count_infeasible += 1;
-                    count_no_improvement += 1;
+                    count_neglectable_improvement += 1;
                 }
 
                 if count_iteration % 100 == 50 {
-                    eprintln!("# GeneticHeuristic Iteration {count_iteration} ({count_infeasible} infeasible of {count_no_improvement} no improvement, and having {count_small_improvement} small improvements)");
+                    eprintln!("# GeneticHeuristic Iteration {count_iteration} ({count_infeasible} infeasible of {count_neglectable_improvement} neglectable improvements)");
                 }
             }
 
-            if count_no_improvement > 100
-                && count_infeasible as f64 > MAX_INFEASIBLE_RATIO * count_no_improvement as f64
+            if count_neglectable_improvement >= MIN_NEGLECTABLE_IMPROVEMENT_ITERATIONS
+                && count_neglectable_improvement as f64
+                    >= MAX_NEGLECTABLE_IMPROVEMENT_ITERATIONS as f64
+                        * (1.0 - (count_infeasible as f64 / count_neglectable_improvement as f64))
             {
-                eprintln!("# GeneticHeuristic: Too many infeasibles");
-                break;
-            }
-
-            if count_no_improvement + 100 * count_small_improvement >= 2000 {
                 break;
             }
         }
 
-        eprintln!("# GeneticHeuristic end after {count_iteration} iterations ({count_infeasible} infeasible of {count_no_improvement} no improvement, and having {count_small_improvement} small improvements)");
+        eprintln!("# GeneticHeuristic end after {count_iteration} iterations ({count_infeasible} infeasible of {count_neglectable_improvement} neglectable improvements)");
         Ok(())
     }
 
