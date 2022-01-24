@@ -41,7 +41,8 @@ impl<'a> GeneticHeuristic<'a> {
         route_solver: &mut RouteSolver,
         solution_pool: &mut SolutionPool,
     ) -> grb::Result<()> {
-        const SMALL_IMPROVEMENT: f64 = 0.995;
+        const SMALL_IMPROVEMENT: f64 = 0.99;
+        const MAX_INFEASIBLE_RATIO: f64 = 0.667;
 
         if solution_pool.solutions.len() < 5 {
             return Ok(());
@@ -139,7 +140,9 @@ impl<'a> GeneticHeuristic<'a> {
                 }
             }
 
-            if count_infeasible >= 1000 {
+            if count_no_improvement > 100
+                && count_infeasible as f64 > MAX_INFEASIBLE_RATIO * count_no_improvement as f64
+            {
                 eprintln!("# GeneticHeuristic: Too many infeasibles");
                 break;
             }
