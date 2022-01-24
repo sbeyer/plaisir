@@ -41,7 +41,11 @@ impl<'a> GeneticHeuristic<'a> {
         route_solver: &mut RouteSolver,
         solution_pool: &mut SolutionPool,
     ) -> grb::Result<()> {
-        const SMALL_IMPROVEMENT: f64 = 0.99;
+        // This threshold should be understood as follows: consider the best and worst solution in
+        // the current solution pool, and a new best solution. Scale these values such that the new
+        // best solution is zero and the worst solution is one. The (previous) best solution lies
+        // in between. If that solution is below this threshold, we have a neglectable improvement.
+        const NEGLECTABLE_IMPROVEMENT_THRESHOLD: f64 = 0.1;
 
         /// Stop the algorithm after this number of iterations that led to either no or only small
         /// improvements... Note that the actual number of iterations can be smaller due to other
@@ -118,6 +122,7 @@ impl<'a> GeneticHeuristic<'a> {
                 if let Some(deliveries) = opt_deliveries {
                     let schedule =
                         Schedule::new_via_heuristic(self.problem, &deliveries, route_solver);
+                    let worst_value = solution_pool.get_worst_value();
                     let (new_best, opt_solution) = solution_pool.add(self.problem, schedule);
                     if new_best {
                         let solution = opt_solution.unwrap();
@@ -126,7 +131,20 @@ impl<'a> GeneticHeuristic<'a> {
                             solution.value(),
                             previous_best_value
                         );
-                        if previous_best_value / solution.value() > SMALL_IMPROVEMENT {
+                        let previous_scaled_for_threshold = (previous_best_value
+                            - solution.value())
+                            / (worst_value - solution.value());
+                        /*
+                        eprintln!(
+                            "# NEW BEST = {}, PREVIOUS BEST = {}, WORST = {}, SCALED = {}, NEGLECTABLE = {:?}",
+                            solution.value(),
+                            previous_best_value,
+                            worst_value,
+                            previous_scaled_for_threshold,
+                            previous_scaled_for_threshold < NEGLECTABLE_IMPROVEMENT_THRESHOLD
+                        );
+                        */
+                        if previous_scaled_for_threshold < NEGLECTABLE_IMPROVEMENT_THRESHOLD {
                             count_neglectable_improvement += 1;
                         } else {
                             count_neglectable_improvement = 0;

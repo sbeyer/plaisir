@@ -228,6 +228,14 @@ impl<'a> SolutionPool<'a> {
         }
     }
 
+    pub fn get_worst_value(&self) -> f64 {
+        if self.solutions.is_empty() {
+            f64::INFINITY
+        } else {
+            self.solutions[self.idx_worst].value()
+        }
+    }
+
     fn elapsed_seconds(&self) -> f64 {
         self.time_init.elapsed().as_millis() as f64 * 1e-3
     }
