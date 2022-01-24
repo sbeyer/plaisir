@@ -150,12 +150,16 @@ pub struct SolutionPool<'a> {
 impl<'a> SolutionPool<'a> {
     pub fn new(capacity: usize, cpu: &'a str) -> Self {
         SolutionPool {
-            solutions: Vec::with_capacity(capacity + 1),
+            solutions: Vec::with_capacity(capacity),
             idx_best: 0,
             idx_worst: 0,
             time_init: time::Instant::now(),
             cpu,
         }
+    }
+
+    pub fn capacity(&self) -> usize {
+        self.solutions.capacity()
     }
 
     /// Attempts to add a new solution to the pool and return a pair with a bool telling us whether
@@ -165,7 +169,7 @@ impl<'a> SolutionPool<'a> {
         let solution = Solution::new(problem, schedule, self.elapsed_seconds(), self.cpu);
 
         let len = self.solutions.len();
-        if len == self.solutions.capacity() - 1 {
+        if len == self.capacity() {
             if solution.value() < self.solutions[self.idx_worst].value() {
                 // overwrite worst
                 let idx_new = self.idx_worst;
