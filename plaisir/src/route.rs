@@ -110,43 +110,40 @@ impl Solver {
     ) -> Route {
         let visited_customers = deliveries.get_all_delivered_customers(t, v);
 
-        match visited_customers.len() {
-            0 => visited_customers.clone(),
-            1 => visited_customers.clone(),
-            2 => visited_customers.clone(),
-            _ => {
-                self.ncalls += 1;
+        if visited_customers.len() < 3 {
+            visited_customers.clone()
+        } else {
+            self.ncalls += 1;
 
-                if self.ncalls % 2500 == 0 {
-                    eprintln!("# Route solver called (with non-trivial routes) {} times and {} routes are saved", self.ncalls, self.saved.number)
-                }
+            if self.ncalls % 2500 == 0 {
+                eprintln!("# Route solver called (with non-trivial routes) {} times and {} routes are saved", self.ncalls, self.saved.number)
+            }
 
-                if let Some(saved_route) = self.saved.get(&visited_customers) {
-                    saved_route.clone()
-                } else {
-                    let mut tsp_instance = visited_customers
-                        .iter()
-                        .map(|site| {
-                            let site = problem.site(*site);
-                            let pos = &site.position();
-                            (site.id() as usize, pos.x, pos.y)
-                        })
-                        .collect::<Vec<_>>();
-                    let depot_pos = problem.site(0).position();
-                    tsp_instance.push((0, depot_pos.x, depot_pos.y));
+            if let Some(saved_route) = self.saved.get(&visited_customers) {
+                saved_route.clone()
+            } else {
+                let mut tsp_instance = visited_customers
+                    .iter()
+                    .map(|site| {
+                        let site = problem.site(*site);
+                        let pos = &site.position();
+                        (site.id() as usize, pos.x, pos.y)
+                    })
+                    .collect::<Vec<_>>();
+                let depot_pos = problem.site(0).position();
+                tsp_instance.push((0, depot_pos.x, depot_pos.y));
 
-                    let mut tsp_tour = lkh::run(&tsp_instance);
+                let mut tsp_tour = lkh::run(&tsp_instance);
 
-                    let depot_position = tsp_tour
-                        .iter()
-                        .position(|site| *site == 0)
-                        .expect("Depot is expected to be in TSP tour");
-                    tsp_tour.rotate_left(depot_position + 1);
-                    tsp_tour.pop();
+                let depot_position = tsp_tour
+                    .iter()
+                    .position(|site| *site == 0)
+                    .expect("Depot is expected to be in TSP tour");
+                tsp_tour.rotate_left(depot_position + 1);
+                tsp_tour.pop();
 
-                    self.saved.set(&visited_customers, tsp_tour);
-                    self.saved.get(&visited_customers).unwrap().clone()
-                }
+                self.saved.set(&visited_customers, tsp_tour);
+                self.saved.get(&visited_customers).unwrap().clone()
             }
         }
     }
