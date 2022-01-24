@@ -995,6 +995,17 @@ impl Solver {
             }
         }
 
+        // canonical visits (symmetry breaking):
+        // use the first available vehicles
+        for t in problem.all_days() {
+            for v in problem.all_vehicles().skip(1) {
+                let mut lhs = grb::expr::LinExpr::new();
+                lhs.add_term(1.0, data.vars.visit(t, v - 1, 0));
+                lhs.add_term(-1.0, data.vars.visit(t, v, 0));
+                lp.add_constr(&format!("VS1_{t}_{v}"), grb::c!(lhs >= 0.0))?;
+            }
+        }
+
         // glue: disable delivery if we do not visit
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
