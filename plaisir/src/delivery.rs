@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 const PRINT_VARIABLE_VALUES: bool = false;
 const MIP_EPSILON: f64 = 1e-7;
 
-#[derive(Eq)]
+#[derive(Debug, Eq)]
 pub struct Delivery {
     pub quantity: Load,
     pub customer: SiteId,
@@ -28,8 +28,10 @@ impl Ord for Delivery {
     }
 }
 
-/// Vector indexed by day, vehicle and customer containing the number of delivered items
-pub struct Deliveries(Vec<Vec<Vec<usize>>>);
+/// Lookup table indexed by day, vehicle and customer containing the number of delivered items;
+/// the order of deliveries is irrelevant (no route information contained!)
+#[derive(Debug)]
+pub struct Deliveries(Vec<Vec<Vec<Load>>>);
 
 impl Deliveries {
     pub fn new(problem: &Problem) -> Self {
@@ -56,6 +58,8 @@ impl Deliveries {
         self.set(t, to_v, i, quantity);
     }
 
+    /// Returns the ids of customers that are delivered on day `t` with vehicle `v`.
+    /// The result is sorted.
     pub fn get_all_delivered_customers(&self, t: DayId, v: VehicleId) -> Vec<SiteId> {
         self.0[t as usize][v as usize]
             .iter()

@@ -1,7 +1,10 @@
 use crate::delivery::Solver as DeliverySolver;
 use crate::delivery::{Deliveries, Delivery};
+use crate::heuristic::*;
 use crate::problem::*;
+use crate::route::Solver as RouteSolver;
 use crate::solution::*;
+use std::cmp::max;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::time;
@@ -260,11 +263,12 @@ struct SolverData<'a> {
     vars: Variables<'a>,
     varnames: Vec<String>,
     start_time: time::Instant,
-    cpu: &'a str,
     ncalls: usize,
+    route_solver: RouteSolver,
     deliveries: DeliverySolver<'a>,
-    best_solution: Solution,
+    solution_pool: SolutionPool<'a>,
     is_new_solution_just_set: bool,
+    heuristic: GeneticHeuristic<'a>,
 }
 
 impl<'a> SolverData<'a> {
@@ -276,6 +280,9 @@ impl<'a> SolverData<'a> {
         env: &'a grb::Env,
         cpu: &'a str,
     ) -> grb::Result<Self> {
+        const SOLUTION_POOL_SIZE_MIN: usize = 16;
+        const SOLUTION_POOL_SIZE_SCALE: usize = 20;
+
         let start_time = time::Instant::now();
         let vars = Variables::new(problem, lp)?;
         lp.update()?; // update to access variable names
@@ -285,20 +292,27 @@ impl<'a> SolverData<'a> {
             .map(|var| lp.get_obj_attr(grb::attr::VarName, var).unwrap())
             .collect();
 
+        let route_solver = RouteSolver::new();
         let deliveries = DeliverySolver::new(env, problem)?;
-
-        let best_solution = Solution::empty();
+        let pool_capacity = max(
+            SOLUTION_POOL_SIZE_MIN,
+            problem.num_days * problem.num_vehicles * problem.num_customers
+                / SOLUTION_POOL_SIZE_SCALE,
+        );
+        let solution_pool = SolutionPool::new(pool_capacity, cpu);
+        let heuristic = GeneticHeuristic::new(problem);
 
         Ok(SolverData {
             problem,
             vars,
             varnames,
             start_time,
-            cpu,
             ncalls: 0,
+            route_solver,
             deliveries,
-            best_solution,
+            solution_pool,
             is_new_solution_just_set: false,
+            heuristic,
         })
     }
 
@@ -401,6 +415,8 @@ impl<'a> SolverData<'a> {
     }
 
     fn get_best_solution_variable_assignment(&self) -> Vec<f64> {
+        debug_assert!(!self.solution_pool.solutions.is_empty());
+
         // Inventory levels, necessary for inventory variables
         let mut levels = self
             .problem
@@ -411,19 +427,18 @@ impl<'a> SolverData<'a> {
         let mut assignment = vec![0.0; self.vars.variables.len()];
         for t in self.problem.all_days() {
             for v in self.problem.all_vehicles() {
-                let route = &self.best_solution.route(t, v);
-                if route.len() > 1 {
+                let route = &self.solution_pool.get_best().unwrap().route(t, v);
+                if !route.is_empty() {
                     for delivery in route.iter() {
                         let i = delivery.customer;
                         let visit_index = self.vars.visit_index(t, v, i);
                         assignment[visit_index] = 1.0;
-                        if i > 0 {
-                            let deliver_index = self.vars.deliver_index(t, v, i);
-                            assignment[deliver_index] = delivery.quantity as f64;
 
-                            levels[0] -= delivery.quantity as isize;
-                            levels[i as usize] += delivery.quantity as isize;
-                        }
+                        let deliver_index = self.vars.deliver_index(t, v, i);
+                        assignment[deliver_index] = delivery.quantity as f64;
+
+                        levels[0] -= delivery.quantity as isize;
+                        levels[i as usize] += delivery.quantity as isize;
                     }
                     for deliveries in route.windows(2) {
                         let i = deliveries[0].customer;
@@ -431,8 +446,19 @@ impl<'a> SolverData<'a> {
                         let index = self.vars.route_index_undirected(t, v, i, j);
                         assignment[index] = 1.0;
                     }
-                    // Routes in our solutions do not end at the depot, but we want to
-                    // go back to the depot at the end in the MIP solution.
+                    // Routes in our solutions do not start nor end at the depot, but we
+                    // need this in the MIP solution:
+                    {
+                        let i = 0;
+                        let visit_index = self.vars.visit_index(t, v, i);
+                        assignment[visit_index] = 1.0;
+                    }
+                    {
+                        let i = 0;
+                        let j = route[0].customer;
+                        let index = self.vars.route_index_undirected(t, v, i, j);
+                        assignment[index] += 1.0;
+                    }
                     {
                         let i = route[route.len() - 1].customer;
                         let j = 0;
@@ -453,39 +479,29 @@ impl<'a> SolverData<'a> {
         assignment
     }
 
-    fn update_best_solution(&mut self, schedule: Schedule) {
-        let solution = Solution::new(self.problem, schedule, self.elapsed_seconds(), self.cpu);
-
-        if solution.value() < self.best_solution.value() {
-            eprintln!("{}", solution);
-            self.best_solution = solution;
-        } else {
-            eprintln!(
-                "# Found solution of objective value {} not better than {}",
-                solution.value(),
-                self.best_solution.value()
-            );
-        }
-    }
-
     fn give_new_best_solution_to_solver(
         &mut self,
         ctx: grb::callback::MIPNodeCtx,
     ) -> grb::Result<()> {
-        let best_objective = ctx.obj_best()?;
-        if self.best_solution.value() < best_objective {
-            let best_solution_assignment = self.get_best_solution_variable_assignment();
-            let set_result =
-                ctx.set_solution(self.vars.variables.iter().zip(best_solution_assignment))?;
-            if set_result.is_some() {
-                self.is_new_solution_just_set = true;
-                eprintln!(
-                    "# New best solution with objective value {} (old: {}) set successfully",
-                    self.best_solution.value(),
-                    best_objective
-                );
-            } else {
-                eprintln!("# No new solution set, keeping best objective value {best_objective}");
+        let opt_best_solution = self.solution_pool.get_best();
+        if let Some(best_solution) = opt_best_solution {
+            let best_objective = ctx.obj_best()?;
+            if best_solution.value() < best_objective {
+                let best_solution_assignment = self.get_best_solution_variable_assignment();
+                let set_result =
+                    ctx.set_solution(self.vars.variables.iter().zip(best_solution_assignment))?;
+                if set_result.is_some() {
+                    self.is_new_solution_just_set = true;
+                    eprintln!(
+                        "# New best solution with objective value {} (old: {}) set successfully",
+                        best_solution.value(),
+                        best_objective
+                    );
+                } else {
+                    eprintln!(
+                        "# No new solution set, keeping best objective value {best_objective}"
+                    );
+                }
             }
         }
 
@@ -526,63 +542,64 @@ impl<'a> SolverData<'a> {
     fn get_schedule(&self, assignment: &[f64]) -> Schedule {
         eprintln!("# Get schedule, time {}", self.elapsed_seconds());
 
-        self.problem
-            .all_days()
-            .map(|t| {
-                self.problem
-                    .all_vehicles()
-                    .map(|v| {
-                        let mut route = vec![Delivery {
-                            quantity: 0,
-                            customer: 0,
-                        }];
+        Schedule(
+            self.problem
+                .all_days()
+                .map(|t| {
+                    self.problem
+                        .all_vehicles()
+                        .map(|v| {
+                            let mut route = vec![];
 
-                        let mut adjacencies = vec![Vec::with_capacity(2); self.problem.num_sites];
-                        for i in self.problem.all_sites() {
-                            for j in self.problem.all_sites_after(i) {
-                                if self.is_edge_in_route(assignment, t, v, i, j) {
-                                    adjacencies[i as usize].push(j);
-                                    adjacencies[j as usize].push(i);
+                            let mut adjacencies =
+                                vec![Vec::with_capacity(2); self.problem.num_sites];
+                            for i in self.problem.all_sites() {
+                                for j in self.problem.all_sites_after(i) {
+                                    if self.is_edge_in_route(assignment, t, v, i, j) {
+                                        adjacencies[i as usize].push(j);
+                                        adjacencies[j as usize].push(i);
+                                    }
                                 }
                             }
-                        }
 
-                        let mut visited = vec![false; self.problem.num_sites];
-                        visited[0] = true;
+                            let mut visited = vec![false; self.problem.num_sites];
+                            visited[0] = true;
 
-                        let mut i = 0; // last visited site
-                        loop {
-                            let mut found = false;
+                            let mut i = 0; // last visited site
+                            loop {
+                                let mut found = false;
 
-                            for j in adjacencies[i].iter() {
-                                if !visited[*j as usize] {
-                                    let quantity = self.get_delivery_amount(assignment, t, v, *j);
+                                for j in adjacencies[i].iter() {
+                                    if !visited[*j as usize] {
+                                        let quantity =
+                                            self.get_delivery_amount(assignment, t, v, *j);
 
-                                    if quantity > 0 && *j != 0 {
-                                        route.push(Delivery {
-                                            quantity,
-                                            customer: *j,
-                                        });
+                                        if quantity > 0 && *j != 0 {
+                                            route.push(Delivery {
+                                                quantity,
+                                                customer: *j,
+                                            });
+                                        }
+
+                                        visited[*j as usize] = true;
+                                        found = true;
+                                        i = *j as usize;
+
+                                        break;
                                     }
+                                }
 
-                                    visited[*j as usize] = true;
-                                    found = true;
-                                    i = *j as usize;
-
+                                if !found || i == 0 {
                                     break;
                                 }
                             }
 
-                            if !found || i == 0 {
-                                break;
-                            }
-                        }
-
-                        route
-                    })
-                    .collect()
-            })
-            .collect()
+                            route
+                        })
+                        .collect()
+                })
+                .collect(),
+        )
     }
 
     /// Solve Minimum-Cost Flow LP to improve deliveries (based on currently visited customers)
@@ -768,51 +785,23 @@ impl<'a> SolverData<'a> {
     }
 
     /// Runs LKH heuristic on visited sites to get a feasible route
-    fn get_schedule_heuristically(&self, deliveries: &Deliveries) -> Schedule {
+    fn get_schedule_heuristically(&mut self, deliveries: &Deliveries) -> Schedule {
         eprintln!(
             "# Get schedule heuristically, time {}",
             self.elapsed_seconds()
         );
-        self.problem
-            .all_days()
-            .map(|t| {
-                self.problem
-                    .all_vehicles()
-                    .map(|v| {
-                        let mut visited_sites = deliveries.get_all_delivered_customers(t, v);
-                        visited_sites.push(0); // add depot
 
-                        let tsp_instance = visited_sites
-                            .iter()
-                            .map(|site| {
-                                let site = self.problem.site(*site);
-                                let pos = &site.position();
-                                (site.id() as usize, pos.x, pos.y)
-                            })
-                            .collect::<Vec<_>>();
-                        let mut tsp_tour = lkh::run(&tsp_instance);
+        Schedule::new_via_heuristic(self.problem, deliveries, &mut self.route_solver)
+    }
 
-                        let depot_position = tsp_tour
-                            .iter()
-                            .position(|site| *site == 0)
-                            .expect("Depot is expected to be in TSP tour");
-                        tsp_tour.rotate_left(depot_position);
+    fn run_heuristic(&mut self) -> grb::Result<()> {
+        self.heuristic.solve(
+            &mut self.deliveries,
+            &mut self.route_solver,
+            &mut self.solution_pool,
+        )?;
 
-                        tsp_tour
-                            .iter()
-                            .map(|site| Delivery {
-                                quantity: if *site == 0 {
-                                    0
-                                } else {
-                                    deliveries.get(t, v, *site as SiteId)
-                                },
-                                customer: *site as SiteId,
-                            })
-                            .collect()
-                    })
-                    .collect()
-            })
-            .collect()
+        Ok(())
     }
 }
 
@@ -830,6 +819,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                 if self.is_new_solution_just_set {
                     self.is_new_solution_just_set = false;
                 } else {
+                    let mut has_new_solution = false;
                     {
                         if PRINT_VARIABLE_VALUES {
                             self.varnames
@@ -842,7 +832,11 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         match self.adjust_deliveries(&assignment)? {
                             Some(deliveries) => {
                                 let schedule = self.get_schedule_heuristically(&deliveries);
-                                self.update_best_solution(schedule);
+                                let (_, added) = self.solution_pool.add(self.problem, schedule);
+
+                                if added.is_some() {
+                                    has_new_solution = true;
+                                }
                             }
                             None => {
                                 eprintln!(
@@ -858,7 +852,15 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
 
                     if !new_subtour_constraints {
                         let schedule = self.get_schedule(&assignment);
-                        self.update_best_solution(schedule);
+                        let (_, added) = self.solution_pool.add(self.problem, schedule);
+
+                        if added.is_some() {
+                            has_new_solution = true;
+                        }
+                    }
+
+                    if has_new_solution {
+                        self.run_heuristic()?;
                     }
 
                     eprintln!("# Callback finish time: {}", self.elapsed_seconds());
@@ -878,6 +880,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                     eprintln!("#                 time: {}", self.elapsed_seconds());
 
                     if true {
+                        let mut has_new_solution = false;
                         let assignment = ctx.get_solution(&self.vars.variables)?;
                         if PRINT_VARIABLE_VALUES {
                             self.varnames
@@ -888,11 +891,19 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         }
                         match self.fractional_delivery_heuristic(&assignment)? {
                             Some(schedule) => {
-                                self.update_best_solution(schedule);
+                                let (_, added) = self.solution_pool.add(self.problem, schedule);
+
+                                if added.is_some() {
+                                    has_new_solution = true;
+                                }
                             }
                             None => {
                                 eprintln!("# Failed to find a feasible solution.");
                             }
+                        }
+
+                        if has_new_solution {
+                            self.run_heuristic()?;
                         }
                     }
 
@@ -1056,9 +1067,19 @@ impl Solver {
         Self::print_raw_solution(&data, &lp)?;
         let assignment = lp.get_obj_attr_batch(grb::attr::X, data.vars.variables.clone())?;
         let schedule = data.get_schedule(&assignment);
-        let solution = Solution::new(problem, schedule, data.elapsed_seconds(), data.cpu);
-        eprintln!("# Final solution");
-        eprintln!("{solution}");
+        let opt_solution = data.solution_pool.add(problem, schedule).1;
+        if let Some(solution) = opt_solution {
+            eprintln!("# Final solution");
+            eprintln!("{solution}");
+        } else {
+            let opt_solution = data.solution_pool.get_best();
+            if let Some(solution) = opt_solution {
+                eprintln!("# Final solution not new, output best solution");
+                eprintln!("{}", solution);
+            } else {
+                eprintln!("# No final best solution exists");
+            }
+        }
 
         Ok(())
     }
