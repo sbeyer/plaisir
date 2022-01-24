@@ -23,11 +23,7 @@ impl Schedule {
                             tsp_tour
                                 .iter()
                                 .map(|site| Delivery {
-                                    quantity: if *site == 0 {
-                                        0
-                                    } else {
-                                        deliveries.get(t, v, *site as SiteId)
-                                    },
+                                    quantity: deliveries.get(t, v, *site as SiteId),
                                     customer: *site as SiteId,
                                 })
                                 .collect()
@@ -64,12 +60,14 @@ impl Solution {
         // transportation cost
         for day_schedule in sol.schedule.0.iter() {
             for route in day_schedule.iter() {
-                let mut tour: Vec<SiteId> = route.iter().map(|x| x.customer).collect();
-                if tour.len() > 1 {
-                    tour.push(0);
-                    for path in tour.windows(2) {
-                        sol.cost_transportation += problem.distance(path[0], path[1]) as f64
+                if !route.is_empty() {
+                    for path in route.windows(2) {
+                        sol.cost_transportation +=
+                            problem.distance(path[0].customer, path[1].customer) as f64;
                     }
+                    sol.cost_transportation += problem.distance(0, route[0].customer) as f64;
+                    sol.cost_transportation +=
+                        problem.distance(route[route.len() - 1].customer, 0) as f64;
                 }
             }
         }
@@ -125,15 +123,11 @@ impl fmt::Display for Solution {
         for (t, day_schedule) in self.schedule.0.iter().enumerate() {
             writeln!(f, "Day {}", t + 1)?;
             for (route_idx, route) in day_schedule.iter().enumerate() {
-                write!(f, "Route {}: ", route_idx + 1)?;
+                write!(f, "Route {}: 0 - ", route_idx + 1)?;
                 for route_stop in route.iter() {
-                    write!(f, "{} ", route_stop.customer)?;
-                    if route_stop.quantity != 0 {
-                        write!(f, "( {} ) ", route_stop.quantity)?;
-                    }
-                    write!(f, "- ")?;
+                    write!(f, "{} ( {} ) - ", route_stop.customer, route_stop.quantity)?;
                 }
-                writeln!(f, "{}", route[0].customer)?;
+                writeln!(f, "0")?;
             }
         }
 

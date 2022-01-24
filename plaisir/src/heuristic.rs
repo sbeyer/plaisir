@@ -139,7 +139,7 @@ impl<'a> GeneticHeuristic<'a> {
 
                     for v in self.problem.all_vehicles() {
                         let route = solution.route(t, v);
-                        for delivery in route.iter().skip(1) {
+                        for delivery in route.iter() {
                             debug_assert_ne!(delivery.customer, 0);
 
                             day_plan[delivery.customer as usize - 1] = Some(v);
@@ -169,7 +169,7 @@ impl<'a> GeneticHeuristic<'a> {
         // Apply crossover
         for v in self.problem.all_vehicles() {
             let route = crossover_solution.route(crossover_day, v);
-            for delivery in route.iter().skip(1) {
+            for delivery in route.iter() {
                 debug_assert_ne!(delivery.customer, 0);
 
                 let i = delivery.customer;

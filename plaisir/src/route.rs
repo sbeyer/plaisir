@@ -8,9 +8,9 @@ impl Solver {
         let mut visited_sites = deliveries.get_all_delivered_customers(t, v);
 
         match visited_sites.len() {
-            0 => vec![0usize],
-            1 => vec![0usize, visited_sites[0] as usize],
-            2 => vec![0usize, visited_sites[0] as usize, visited_sites[1] as usize],
+            0 => vec![],
+            1 => vec![visited_sites[0] as usize],
+            2 => vec![visited_sites[0] as usize, visited_sites[1] as usize],
             _ => {
                 visited_sites.push(0); // add depot
 
@@ -28,7 +28,8 @@ impl Solver {
                     .iter()
                     .position(|site| *site == 0)
                     .expect("Depot is expected to be in TSP tour");
-                tsp_tour.rotate_left(depot_position);
+                tsp_tour.rotate_left(depot_position + 1);
+                tsp_tour.pop();
 
                 tsp_tour
             }

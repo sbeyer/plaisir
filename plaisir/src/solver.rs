@@ -529,10 +529,7 @@ impl<'a> SolverData<'a> {
                     self.problem
                         .all_vehicles()
                         .map(|v| {
-                            let mut route = vec![Delivery {
-                                quantity: 0,
-                                customer: 0,
-                            }];
+                            let mut route = vec![];
 
                             let mut adjacencies =
                                 vec![Vec::with_capacity(2); self.problem.num_sites];
