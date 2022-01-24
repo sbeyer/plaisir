@@ -50,8 +50,6 @@ impl<'a> GeneticHeuristic<'a> {
         let mut count_infeasible = 0;
         let mut count_no_improvement = 0;
         loop {
-            count_iteration += 1;
-
             let sol_idx1 = self.rng.gen_range(0..solution_pool.solutions.len());
             let mut sol_idx2 = self.rng.gen_range(0..solution_pool.solutions.len());
             while sol_idx2 == sol_idx1 {
@@ -92,6 +90,8 @@ impl<'a> GeneticHeuristic<'a> {
                 .collect::<Vec<VehiclePlan>>();
 
             for vehicle_plan in vehicle_plans.iter() {
+                count_iteration += 1;
+
                 // Compute deliveries from vehicle plan
                 delivery_solver.set_all_statuses(|t, v, i| {
                     if let Some(vehicle_choice) = vehicle_plan.0[t as usize][i as usize - 1] {
