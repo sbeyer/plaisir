@@ -117,7 +117,7 @@ impl Solver {
             _ => {
                 self.ncalls += 1;
 
-                if self.ncalls % 100 == 0 {
+                if self.ncalls % 2500 == 0 {
                     eprintln!("# Route solver called (with non-trivial routes) {} times and {} routes are saved", self.ncalls, self.saved.number)
                 }
 
