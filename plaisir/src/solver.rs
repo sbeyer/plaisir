@@ -4,6 +4,7 @@ use crate::heuristic::*;
 use crate::problem::*;
 use crate::route::Solver as RouteSolver;
 use crate::solution::*;
+use std::cmp::max;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::time;
@@ -279,7 +280,9 @@ impl<'a> SolverData<'a> {
         env: &'a grb::Env,
         cpu: &'a str,
     ) -> grb::Result<Self> {
-        const SOLUTION_POOL_SIZE: usize = 16;
+        const SOLUTION_POOL_SIZE_MIN: usize = 16;
+        const SOLUTION_POOL_SIZE_SCALE: usize = 20;
+
         let start_time = time::Instant::now();
         let vars = Variables::new(problem, lp)?;
         lp.update()?; // update to access variable names
@@ -291,7 +294,12 @@ impl<'a> SolverData<'a> {
 
         let route_solver = RouteSolver::new();
         let deliveries = DeliverySolver::new(env, problem)?;
-        let solution_pool = SolutionPool::new(SOLUTION_POOL_SIZE, cpu);
+        let pool_capacity = max(
+            SOLUTION_POOL_SIZE_MIN,
+            problem.num_days * problem.num_vehicles * problem.num_customers
+                / SOLUTION_POOL_SIZE_SCALE,
+        );
+        let solution_pool = SolutionPool::new(pool_capacity, cpu);
         let heuristic = GeneticHeuristic::new(problem);
 
         Ok(SolverData {
