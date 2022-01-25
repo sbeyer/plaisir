@@ -77,16 +77,6 @@ impl VehicleDayPlan {
             }
         }
     }
-
-    fn is_canonical(&self) -> bool {
-        self.first_customer
-            .windows(2)
-            .all(|window| window[0] <= window[1])
-    }
-
-    fn canonicalize(&self) {
-        // TODO: wait... we don't even need that?!
-    }
 }
 
 impl VehiclePlan {
@@ -122,16 +112,6 @@ impl VehiclePlan {
 
     fn clear(&mut self, t: DayId, customer_range: (SiteId, SiteId)) {
         self.0[t as usize].clear(customer_range);
-    }
-
-    fn is_canonical(&self) -> bool {
-        self.0.iter().all(|day_plan| day_plan.is_canonical())
-    }
-
-    fn canonicalize(&self) {
-        for day_plan in self.0.iter() {
-            day_plan.canonicalize();
-        }
     }
 }
 
@@ -341,32 +321,27 @@ mod tests {
                 plan: vec![None, None, None, None],
                 first_customer: [SiteId::MAX; MAX_NUMBER_OF_VEHICLES],
             };
-            assert!(vp.is_canonical());
             println!("{:?}", vp);
 
             vp.set(3, 2);
             println!("{:?}", vp);
             assert_eq!(vp.get(3), Some(2));
             assert_eq!(vp.first_customer[2], 3);
-            assert!(!vp.is_canonical());
 
             vp.set(4, 2);
             println!("{:?}", vp);
             assert_eq!(vp.get(4), Some(2));
             assert_eq!(vp.first_customer[2], 3);
-            assert!(!vp.is_canonical());
 
             vp.set(2, 1);
             println!("{:?}", vp);
             assert_eq!(vp.get(2), Some(1));
             assert_eq!(vp.first_customer[1], 2);
-            assert!(!vp.is_canonical());
 
             vp.set(1, 0);
             println!("{:?}", vp);
             assert_eq!(vp.get(1), Some(0));
             assert_eq!(vp.first_customer[0], 1);
-            assert!(vp.is_canonical());
 
             vp.clear((3, 3));
             println!("{:?}", vp);
@@ -378,7 +353,6 @@ mod tests {
             assert_eq!(vp.first_customer[1], 2);
             assert_eq!(vp.first_customer[2], 4);
             assert_eq!(vp.first_customer[3], SiteId::MAX);
-            assert!(vp.is_canonical());
 
             vp.clear((2, 4));
             println!("{:?}", vp);
@@ -390,14 +364,12 @@ mod tests {
             assert_eq!(vp.first_customer[1], SiteId::MAX);
             assert_eq!(vp.first_customer[2], SiteId::MAX);
             assert_eq!(vp.first_customer[3], SiteId::MAX);
-            assert!(vp.is_canonical());
 
             vp.set(2, 0);
             vp.set(3, 0);
             vp.set(4, 0);
             println!("{:?}", vp);
             assert_eq!(vp.first_customer[0], 1);
-            assert!(vp.is_canonical());
 
             vp.clear((2, 3));
             println!("{:?}", vp);
@@ -406,7 +378,6 @@ mod tests {
             assert_eq!(vp.get(3), None);
             assert_eq!(vp.get(4), Some(0));
             assert_eq!(vp.first_customer[0], 1);
-            assert!(vp.is_canonical());
         }
     }
 }
