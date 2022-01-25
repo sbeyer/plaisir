@@ -275,18 +275,35 @@ impl<'a> Solver<'a> {
 
             if status == grb::Status::Optimal {
                 for t in self.problem.all_days() {
+                    // set deliveries from solution
                     for v in self.problem.all_vehicles() {
                         for i in self.problem.all_customers() {
                             let var = self.var(t, v, i);
                             let value = self.model.get_obj_attr(grb::attr::X, &var)?;
 
-                            deliveries.set(t, v, i, value.round() as usize);
+                            let quantity = value.round() as Load;
+                            deliveries.set(t, v, i, quantity);
                         }
                     }
-                }
-            }
 
-            Ok(Some(deliveries))
+                    // make canonical deliveries based on first customer
+                    deliveries.0[t as usize].sort_by_cached_key(|vehicle_deliveries| {
+                        // find first customer (i.e., minimum customer id) visited, because we want
+                        // to sort by it
+                        for i in self.problem.all_customers() {
+                            if vehicle_deliveries[i as usize - 1] > 0 {
+                                return i;
+                            }
+                        }
+
+                        SiteId::MAX
+                    });
+                }
+
+                Ok(Some(deliveries))
+            } else {
+                Ok(None)
+            }
         } else {
             Ok(None)
         }
