@@ -4,8 +4,8 @@ use crate::heuristic::*;
 use crate::problem::*;
 use crate::route::Solver as RouteSolver;
 use crate::solution::*;
-use std::cmp::max;
 use std::cmp::Reverse;
+use std::cmp::{max, min};
 use std::collections::BinaryHeap;
 use std::time;
 
@@ -13,6 +13,10 @@ extern crate partitions;
 
 const PRINT_VARIABLE_VALUES: bool = false;
 const PRINT_ELIMINATED_SUBTOURS: bool = false;
+
+// We slice the symmetry breaking constraints to prevent numerical issues.
+// This provides the size of the slices. Maximum coefficient will be 2^(size - 1).
+const SYMMETRY_BREAKING_SLICE_SIZE: usize = 25;
 
 struct Variables<'a> {
     problem: &'a Problem,
@@ -25,6 +29,9 @@ struct Variables<'a> {
 
     // Extra penalty variable
     penalty_var: grb::Var,
+
+    // Extra visit slicing variables
+    visit_slice_vars: Option<Vec<Vec<Vec<grb::Var>>>>,
 }
 
 #[allow(clippy::many_single_char_names)]
@@ -43,6 +50,20 @@ impl<'a> Variables<'a> {
 
         let penalty_var = grb::add_ctsvar!(lp, name: "p", obj: 1.0, bounds: 0..)?;
 
+        let visit_slice_vars = if problem.num_customers > SYMMETRY_BREAKING_SLICE_SIZE {
+            Some(vec![
+                vec![
+                    Vec::<grb::Var>::with_capacity(
+                        problem.num_customers / (SYMMETRY_BREAKING_SLICE_SIZE - 1) + 1
+                    );
+                    problem.num_vehicles
+                ];
+                problem.num_days
+            ])
+        } else {
+            None
+        };
+
         let mut vars = Variables {
             problem,
 
@@ -53,6 +74,8 @@ impl<'a> Variables<'a> {
             inventory_range: (0, num_variables),
 
             penalty_var,
+
+            visit_slice_vars,
         };
 
         // route variables
@@ -109,6 +132,21 @@ impl<'a> Variables<'a> {
         }
         vars.visit_range.1 = vars.variables.len();
         debug_assert_eq!(num_variables_visit, vars.visit_range.1 - vars.visit_range.0);
+
+        // intermezzo: visit slice variables
+        if let Some(slice_vars) = &mut vars.visit_slice_vars {
+            for t in problem.all_days() {
+                for v in problem.all_vehicles() {
+                    for slice_idx in
+                        0..=(problem.num_customers / (SYMMETRY_BREAKING_SLICE_SIZE - 1))
+                    {
+                        #[allow(clippy::unnecessary_cast)]
+                        let var = grb::add_ctsvar!(lp, name: &format!("v_{t}_{v}_s{slice_idx}"), bounds: 0..1)?;
+                        slice_vars[t as usize][v as usize].push(var);
+                    }
+                }
+            }
+        }
 
         // inventory variables
         vars.inventory_range.0 = vars.visit_range.1;
@@ -269,6 +307,16 @@ impl<'a> Variables<'a> {
 
     fn penalty(&self) -> grb::Var {
         self.penalty_var
+    }
+
+    fn visit_slice(&self, t: DayId, v: VehicleId, slice_idx: usize) -> grb::Var {
+        let t = t as usize;
+        let v = v as usize;
+
+        debug_assert!(t < self.problem.num_days);
+        debug_assert!(v < self.problem.num_vehicles);
+
+        self.visit_slice_vars.as_ref().unwrap()[t][v][slice_idx]
     }
 }
 
@@ -1006,23 +1054,136 @@ impl Solver {
 
         // canonical visits (symmetry breaking):
         // smallest customer id visited by a vehicle is increasing with the vehicles
-        //
-        // This leads to numerical issues, so we do not impose all of the possible constraints
-        const MAX_CUSTOMER_ID_FOR_SYMMETRY_BREAKING: usize = 27;
-        for t in problem.all_days() {
-            for v in problem.all_vehicles().skip(1) {
-                for j in problem
-                    .all_customers()
-                    .take(MAX_CUSTOMER_ID_FOR_SYMMETRY_BREAKING)
-                {
-                    let mut lhs = grb::expr::LinExpr::new();
-                    let mut coeff = 1.0;
-                    for i in (1..=j).rev() {
-                        lhs.add_term(coeff, data.vars.visit(t, v - 1, i));
-                        lhs.add_term(-coeff, data.vars.visit(t, v, i));
-                        coeff *= 2.0;
+        {
+            let customers = problem.all_customers().collect::<Vec<_>>();
+            let max_vars_per_slice = min(problem.num_customers, SYMMETRY_BREAKING_SLICE_SIZE);
+
+            for t in problem.all_days() {
+                for v in problem.all_vehicles() {
+                    // Symmetry constraint for the first slice (or when no slices are necessary)
+                    if v > 0 {
+                        let mut lhs = grb::expr::LinExpr::new();
+                        eprintln!("# FIRST CONSTRAINT {t} {v}");
+                        let mut coeff = 1.0;
+                        for i in customers[..max_vars_per_slice].iter().rev() {
+                            let i = *i;
+                            eprintln!(
+                                "#  + {coeff} v_{t}_{vp}_{i} - {coeff} v_{t}_{v}_{i}",
+                                vp = v - 1
+                            );
+                            lhs.add_term(coeff, data.vars.visit(t, v - 1, i));
+                            lhs.add_term(-coeff, data.vars.visit(t, v, i));
+                            coeff *= 2.0;
+                        }
+                        lp.add_constr(&format!("VS2_{t}_{v}_base"), grb::c!(lhs >= 0.0))?;
                     }
-                    lp.add_constr(&format!("VS2_{t}_{v}_{j}"), grb::c!(lhs >= 0.0))?;
+
+                    let mut slice_idx = 0;
+
+                    if data.vars.visit_slice_vars.is_some() {
+                        // Slice minimum constraints for the first slice
+                        eprintln!("# FIRST MIN-CONSTRAINTS {t} {v} s{slice_idx}");
+                        for i in customers[..max_vars_per_slice].iter().rev() {
+                            let mut lhs = grb::expr::LinExpr::new();
+                            let i = *i;
+                            eprintln!("#  * v_{t}_{v}_s{slice_idx} >= v_{t}_{v}_{i}",);
+                            lhs.add_term(1.0, data.vars.visit_slice(t, v, slice_idx));
+                            lhs.add_term(-1.0, data.vars.visit(t, v, i));
+                            lp.add_constr(&format!("VSM_{t}_{v}_base_{i}"), grb::c!(lhs >= 0.0))?;
+                        }
+
+                        // Slice maximum constraint for the first slice
+                        eprintln!("# FIRST MAX-CONSTRAINT {t} {v} s{slice_idx}");
+                        {
+                            let mut lhs = grb::expr::LinExpr::new();
+                            eprintln!("#  v_{t}_{v}_s{slice_idx} <=");
+                            lhs.add_term(-1.0, data.vars.visit_slice(t, v, slice_idx));
+                            for i in customers[..max_vars_per_slice].iter().rev() {
+                                let i = *i;
+                                eprintln!("#    + v_{t}_{v}_{i}",);
+                                lhs.add_term(1.0, data.vars.visit(t, v, i));
+                            }
+                            lp.add_constr(&format!("VSN_{t}_{v}_base"), grb::c!(lhs >= 0.0))?;
+                        }
+                    }
+
+                    for slice in customers[max_vars_per_slice..].chunks(max_vars_per_slice - 1) {
+                        debug_assert!(data.vars.visit_slice_vars.is_some());
+
+                        // Symmetry breaking constraint for the slice
+                        if v > 0 {
+                            let mut lhs = grb::expr::LinExpr::new();
+                            let mut coeff = 1.0;
+                            eprintln!("# SLICE CONSTRAINT {slice:?}");
+
+                            for i in slice.iter().rev() {
+                                let i = *i;
+                                eprintln!(
+                                    "#  + {coeff} v_{t}_{vp}_{i} - {coeff} v_{t}_{v}_{i}",
+                                    vp = v - 1
+                                );
+                                lhs.add_term(coeff, data.vars.visit(t, v - 1, i));
+                                lhs.add_term(-coeff, data.vars.visit(t, v, i));
+                                coeff *= 2.0;
+                            }
+
+                            eprintln!("#  + {coeff} v_{t}_{vp}_s{slice_idx}", vp = v - 1);
+                            lhs.add_term(coeff, data.vars.visit_slice(t, v - 1, slice_idx));
+
+                            lp.add_constr(
+                                &format!("VS2_{t}_{v}_s{slice_idx}"),
+                                grb::c!(lhs >= 0.0),
+                            )?;
+                        }
+
+                        slice_idx += 1;
+                        if slice.first() != customers.last() {
+                            // Slice minimum constraints for the first slice
+                            eprintln!("# SLICE MIN-CONSTRAINTS {t} {v} {slice:?} {slice_idx}");
+                            for i in slice.iter().rev() {
+                                let mut lhs = grb::expr::LinExpr::new();
+                                let i = *i;
+                                eprintln!("#  * v_{t}_{v}_s{slice_idx} >= v_{t}_{v}_{i}",);
+                                lhs.add_term(1.0, data.vars.visit_slice(t, v, slice_idx));
+                                lhs.add_term(-1.0, data.vars.visit(t, v, i));
+                                lp.add_constr(
+                                    &format!("VSM_{t}_{v}_s{slice_idx}_{i}"),
+                                    grb::c!(lhs >= 0.0),
+                                )?;
+                            }
+
+                            // Slice minimum constraint for the next slice variable
+                            {
+                                let mut lhs = grb::expr::LinExpr::new();
+                                eprintln!(
+                                    "#  * v_{t}_{v}_s{slice_idx} >= v_{t}_{v}_s{sp}",
+                                    sp = slice_idx - 1
+                                );
+                                lhs.add_term(1.0, data.vars.visit_slice(t, v, slice_idx));
+                                lhs.add_term(-1.0, data.vars.visit_slice(t, v, slice_idx - 1));
+                                lp.add_constr(
+                                    &format!("VSM_{t}_{v}_s{slice_idx}_prev"),
+                                    grb::c!(lhs >= 0.0),
+                                )?;
+                            }
+
+                            // Slice maximum constraint for the slice
+                            eprintln!("# SLICE MAX-CONSTRAINT {t} {v} {slice:?} s{slice_idx}");
+                            {
+                                let mut lhs = grb::expr::LinExpr::new();
+                                eprintln!("#  v_{t}_{v}_s{slice_idx} <=");
+                                lhs.add_term(-1.0, data.vars.visit_slice(t, v, slice_idx));
+                                eprintln!("#    + v_{t}_{v}_s{sp}", sp = slice_idx - 1);
+                                lhs.add_term(1.0, data.vars.visit_slice(t, v, slice_idx - 1));
+                                for i in slice.iter().rev() {
+                                    let i = *i;
+                                    eprintln!("#    + v_{t}_{v}_{i}",);
+                                    lhs.add_term(1.0, data.vars.visit(t, v, i));
+                                }
+                                lp.add_constr(&format!("VSN_{t}_{v}_base"), grb::c!(lhs >= 0.0))?;
+                            }
+                        }
+                    }
                 }
             }
         }
