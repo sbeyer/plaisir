@@ -6,9 +6,114 @@ use rand::distributions::Uniform;
 use rand::Rng;
 use rand_xoshiro::rand_core::SeedableRng;
 
+/// We use this constant for stupid micro-optimization purposes.
+const MAX_NUMBER_OF_VEHICLES: usize = 5;
+
 /// Assigns (day, customer) to vehicle
 #[derive(Clone, Debug)]
-struct VehiclePlan(Vec<Vec<Option<VehicleId>>>);
+struct VehiclePlan(Vec<VehicleDayPlan>);
+
+#[derive(Clone, Debug)]
+struct VehicleDayPlan {
+    plan: Vec<Option<VehicleId>>,
+    first_customer: [SiteId; MAX_NUMBER_OF_VEHICLES],
+}
+
+impl VehicleDayPlan {
+    fn new(problem: &Problem) -> Self {
+        Self {
+            plan: vec![None; problem.num_customers],
+            first_customer: [SiteId::MAX; MAX_NUMBER_OF_VEHICLES],
+        }
+    }
+
+    fn set(&mut self, customer: SiteId, vehicle: VehicleId) {
+        let v_idx = vehicle as usize;
+        let i_idx = customer as usize - 1;
+        debug_assert!(v_idx < MAX_NUMBER_OF_VEHICLES);
+        debug_assert!(self.plan[i_idx] == None);
+
+        self.plan[i_idx] = Some(vehicle);
+
+        if customer < self.first_customer[v_idx] {
+            self.first_customer[v_idx] = customer;
+        }
+    }
+
+    fn get(&self, i: SiteId) -> Option<VehicleId> {
+        self.plan[i as usize - 1]
+    }
+
+    fn clear(&mut self, (start, end): (SiteId, SiteId)) {
+        let mut is_cleared = [false; MAX_NUMBER_OF_VEHICLES];
+
+        for site in start..=end {
+            let idx = site as usize - 1;
+
+            if let Some(vehicle) = self.plan[idx] {
+                is_cleared[vehicle as usize] = true;
+            }
+
+            self.plan[idx] = None;
+        }
+
+        for (idx, cleared) in is_cleared.into_iter().enumerate() {
+            if cleared {
+                let vehicle = idx as VehicleId;
+                let end_idx = end as usize + 1;
+                if self.first_customer[idx] >= start {
+                    self.first_customer[idx] = if end_idx <= self.plan.len() {
+                        let found = (end_idx..=self.plan.len())
+                            .find(|i| self.get(*i as SiteId) == Some(vehicle));
+                        if let Some(new_first_customer) = found {
+                            new_first_customer as SiteId
+                        } else {
+                            SiteId::MAX
+                        }
+                    } else {
+                        SiteId::MAX
+                    };
+                }
+            }
+        }
+    }
+}
+
+impl VehiclePlan {
+    fn from_solution(problem: &Problem, solution: &Solution) -> Self {
+        Self(
+            problem
+                .all_days()
+                .map(|t| {
+                    let mut day_plan = VehicleDayPlan::new(problem);
+
+                    for v in problem.all_vehicles() {
+                        let route = solution.route(t, v);
+                        for delivery in route.iter() {
+                            debug_assert_ne!(delivery.customer, 0);
+
+                            day_plan.set(delivery.customer, v);
+                        }
+                    }
+
+                    day_plan
+                })
+                .collect(),
+        )
+    }
+
+    fn get_vehicle(&self, t: DayId, i: SiteId) -> Option<VehicleId> {
+        self.0[t as usize].get(i)
+    }
+
+    fn set(&mut self, t: DayId, i: SiteId, vehicle: VehicleId) {
+        self.0[t as usize].set(i, vehicle);
+    }
+
+    fn clear(&mut self, t: DayId, customer_range: (SiteId, SiteId)) {
+        self.0[t as usize].clear(customer_range);
+    }
+}
 
 /// Genetic algorithm for IRP
 pub struct GeneticHeuristic<'a> {
@@ -26,7 +131,7 @@ impl<'a> GeneticHeuristic<'a> {
         let rng = rand_xoshiro::Xoshiro128StarStar::from_seed(SEED);
 
         let dist_day = Uniform::from(0..problem.num_days as DayId);
-        let dist_customer = Uniform::from(0..problem.num_customers as SiteId);
+        let dist_customer = Uniform::from(1..problem.num_sites as SiteId);
         Self {
             problem,
             dist_day,
@@ -88,7 +193,7 @@ impl<'a> GeneticHeuristic<'a> {
             let solution1 = &solution_pool.solutions[sol_idx1];
             let solution2 = &solution_pool.solutions[sol_idx2];
 
-            let vehicle_plan1 = self.create_vehicle_plan_from_solution(solution1);
+            let vehicle_plan1 = VehiclePlan::from_solution(self.problem, solution1);
 
             let vehicle_plans = self
                 .problem
@@ -111,7 +216,7 @@ impl<'a> GeneticHeuristic<'a> {
 
                 // Compute deliveries from vehicle plan
                 delivery_solver.set_all_statuses(|t, v, i| {
-                    if let Some(vehicle_choice) = vehicle_plan.0[t as usize][i as usize - 1] {
+                    if let Some(vehicle_choice) = vehicle_plan.get_vehicle(t, i) {
                         vehicle_choice == v
                     } else {
                         false
@@ -177,28 +282,6 @@ impl<'a> GeneticHeuristic<'a> {
         Ok(())
     }
 
-    fn create_vehicle_plan_from_solution(&self, solution: &Solution) -> VehiclePlan {
-        VehiclePlan(
-            self.problem
-                .all_days()
-                .map(|t| {
-                    let mut day_plan = vec![None; self.problem.num_customers];
-
-                    for v in self.problem.all_vehicles() {
-                        let route = solution.route(t, v);
-                        for delivery in route.iter() {
-                            debug_assert_ne!(delivery.customer, 0);
-
-                            day_plan[delivery.customer as usize - 1] = Some(v);
-                        }
-                    }
-
-                    day_plan
-                })
-                .collect(),
-        )
-    }
-
     fn crossover_vehicle_plan(
         &self,
         vehicle_plan: &mut VehiclePlan,
@@ -208,10 +291,7 @@ impl<'a> GeneticHeuristic<'a> {
         customer_idx_range: (SiteId, SiteId),
     ) {
         // Prepare crossover by cleaning the range
-        #[allow(clippy::needless_range_loop)]
-        for i in customer_idx_range.0..=customer_idx_range.1 {
-            vehicle_plan.0[target_idx as usize][i as usize] = None;
-        }
+        vehicle_plan.clear(target_idx, customer_idx_range);
 
         // Apply crossover
         for v in self.problem.all_vehicles() {
@@ -221,9 +301,83 @@ impl<'a> GeneticHeuristic<'a> {
 
                 let i = delivery.customer;
                 if i >= customer_idx_range.0 && i <= customer_idx_range.1 {
-                    vehicle_plan.0[target_idx as usize][i as usize] = Some(v);
+                    vehicle_plan.set(target_idx, i, v);
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod vehicle_plan {
+        use super::*;
+
+        #[test]
+        fn first_customers_updates_correctly() {
+            let mut vp = VehicleDayPlan {
+                plan: vec![None, None, None, None],
+                first_customer: [SiteId::MAX; MAX_NUMBER_OF_VEHICLES],
+            };
+            println!("{:?}", vp);
+
+            vp.set(3, 2);
+            println!("{:?}", vp);
+            assert_eq!(vp.get(3), Some(2));
+            assert_eq!(vp.first_customer[2], 3);
+
+            vp.set(4, 2);
+            println!("{:?}", vp);
+            assert_eq!(vp.get(4), Some(2));
+            assert_eq!(vp.first_customer[2], 3);
+
+            vp.set(2, 1);
+            println!("{:?}", vp);
+            assert_eq!(vp.get(2), Some(1));
+            assert_eq!(vp.first_customer[1], 2);
+
+            vp.set(1, 0);
+            println!("{:?}", vp);
+            assert_eq!(vp.get(1), Some(0));
+            assert_eq!(vp.first_customer[0], 1);
+
+            vp.clear((3, 3));
+            println!("{:?}", vp);
+            assert_eq!(vp.get(1), Some(0));
+            assert_eq!(vp.get(2), Some(1));
+            assert_eq!(vp.get(3), None);
+            assert_eq!(vp.get(4), Some(2));
+            assert_eq!(vp.first_customer[0], 1);
+            assert_eq!(vp.first_customer[1], 2);
+            assert_eq!(vp.first_customer[2], 4);
+            assert_eq!(vp.first_customer[3], SiteId::MAX);
+
+            vp.clear((2, 4));
+            println!("{:?}", vp);
+            assert_eq!(vp.get(1), Some(0));
+            assert_eq!(vp.get(2), None);
+            assert_eq!(vp.get(3), None);
+            assert_eq!(vp.get(4), None);
+            assert_eq!(vp.first_customer[0], 1);
+            assert_eq!(vp.first_customer[1], SiteId::MAX);
+            assert_eq!(vp.first_customer[2], SiteId::MAX);
+            assert_eq!(vp.first_customer[3], SiteId::MAX);
+
+            vp.set(2, 0);
+            vp.set(3, 0);
+            vp.set(4, 0);
+            println!("{:?}", vp);
+            assert_eq!(vp.first_customer[0], 1);
+
+            vp.clear((2, 3));
+            println!("{:?}", vp);
+            assert_eq!(vp.get(1), Some(0));
+            assert_eq!(vp.get(2), None);
+            assert_eq!(vp.get(3), None);
+            assert_eq!(vp.get(4), Some(0));
+            assert_eq!(vp.first_customer[0], 1);
         }
     }
 }
