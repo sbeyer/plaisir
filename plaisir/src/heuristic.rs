@@ -6,75 +6,30 @@ use rand::distributions::Uniform;
 use rand::Rng;
 use rand_xoshiro::rand_core::SeedableRng;
 
-/// We use this constant for stupid micro-optimization purposes.
-const MAX_NUMBER_OF_VEHICLES: usize = 5;
-
 /// Assigns (day, customer) to vehicle
 #[derive(Clone, Debug)]
 struct VehiclePlan(Vec<VehicleDayPlan>);
 
 #[derive(Clone, Debug)]
-struct VehicleDayPlan {
-    plan: Vec<Option<VehicleId>>,
-    first_customer: [SiteId; MAX_NUMBER_OF_VEHICLES],
-}
+struct VehicleDayPlan(Vec<Option<VehicleId>>);
 
 impl VehicleDayPlan {
     fn new(problem: &Problem) -> Self {
-        Self {
-            plan: vec![None; problem.num_customers],
-            first_customer: [SiteId::MAX; MAX_NUMBER_OF_VEHICLES],
-        }
+        Self(vec![None; problem.num_customers])
     }
 
     fn set(&mut self, customer: SiteId, vehicle: VehicleId) {
-        let v_idx = vehicle as usize;
-        let i_idx = customer as usize - 1;
-        debug_assert!(v_idx < MAX_NUMBER_OF_VEHICLES);
-        debug_assert!(self.plan[i_idx] == None);
-
-        self.plan[i_idx] = Some(vehicle);
-
-        if customer < self.first_customer[v_idx] {
-            self.first_customer[v_idx] = customer;
-        }
+        self.0[customer as usize - 1] = Some(vehicle);
     }
 
     fn get(&self, i: SiteId) -> Option<VehicleId> {
-        self.plan[i as usize - 1]
+        self.0[i as usize - 1]
     }
 
     fn clear(&mut self, (start, end): (SiteId, SiteId)) {
-        let mut is_cleared = [false; MAX_NUMBER_OF_VEHICLES];
-
         for site in start..=end {
             let idx = site as usize - 1;
-
-            if let Some(vehicle) = self.plan[idx] {
-                is_cleared[vehicle as usize] = true;
-            }
-
-            self.plan[idx] = None;
-        }
-
-        for (idx, cleared) in is_cleared.into_iter().enumerate() {
-            if cleared {
-                let vehicle = idx as VehicleId;
-                let end_idx = end as usize + 1;
-                if self.first_customer[idx] >= start {
-                    self.first_customer[idx] = if end_idx <= self.plan.len() {
-                        let found = (end_idx..=self.plan.len())
-                            .find(|i| self.get(*i as SiteId) == Some(vehicle));
-                        if let Some(new_first_customer) = found {
-                            new_first_customer as SiteId
-                        } else {
-                            SiteId::MAX
-                        }
-                    } else {
-                        SiteId::MAX
-                    };
-                }
-            }
+            self.0[idx] = None;
         }
     }
 }
@@ -316,68 +271,42 @@ mod tests {
         use super::*;
 
         #[test]
-        fn first_customers_updates_correctly() {
-            let mut vp = VehicleDayPlan {
-                plan: vec![None, None, None, None],
-                first_customer: [SiteId::MAX; MAX_NUMBER_OF_VEHICLES],
-            };
-            println!("{:?}", vp);
+        fn set_and_get() {
+            let mut vp = VehicleDayPlan(vec![None, None, None, None]);
 
             vp.set(3, 2);
-            println!("{:?}", vp);
             assert_eq!(vp.get(3), Some(2));
-            assert_eq!(vp.first_customer[2], 3);
 
             vp.set(4, 2);
-            println!("{:?}", vp);
             assert_eq!(vp.get(4), Some(2));
-            assert_eq!(vp.first_customer[2], 3);
 
             vp.set(2, 1);
-            println!("{:?}", vp);
             assert_eq!(vp.get(2), Some(1));
-            assert_eq!(vp.first_customer[1], 2);
 
             vp.set(1, 0);
-            println!("{:?}", vp);
             assert_eq!(vp.get(1), Some(0));
-            assert_eq!(vp.first_customer[0], 1);
 
             vp.clear((3, 3));
-            println!("{:?}", vp);
             assert_eq!(vp.get(1), Some(0));
             assert_eq!(vp.get(2), Some(1));
             assert_eq!(vp.get(3), None);
             assert_eq!(vp.get(4), Some(2));
-            assert_eq!(vp.first_customer[0], 1);
-            assert_eq!(vp.first_customer[1], 2);
-            assert_eq!(vp.first_customer[2], 4);
-            assert_eq!(vp.first_customer[3], SiteId::MAX);
 
             vp.clear((2, 4));
-            println!("{:?}", vp);
             assert_eq!(vp.get(1), Some(0));
             assert_eq!(vp.get(2), None);
             assert_eq!(vp.get(3), None);
             assert_eq!(vp.get(4), None);
-            assert_eq!(vp.first_customer[0], 1);
-            assert_eq!(vp.first_customer[1], SiteId::MAX);
-            assert_eq!(vp.first_customer[2], SiteId::MAX);
-            assert_eq!(vp.first_customer[3], SiteId::MAX);
 
             vp.set(2, 0);
             vp.set(3, 0);
             vp.set(4, 0);
-            println!("{:?}", vp);
-            assert_eq!(vp.first_customer[0], 1);
 
             vp.clear((2, 3));
-            println!("{:?}", vp);
             assert_eq!(vp.get(1), Some(0));
             assert_eq!(vp.get(2), None);
             assert_eq!(vp.get(3), None);
             assert_eq!(vp.get(4), Some(0));
-            assert_eq!(vp.first_customer[0], 1);
         }
     }
 }
