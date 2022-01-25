@@ -677,23 +677,11 @@ impl<'a> SolverData<'a> {
 
     /// A really stupid heuristic that does not take anything into consideration that would be sane
     fn fix_deliveries_fallback(&mut self, deliveries: &mut Deliveries) -> grb::Result<bool> {
-        eprintln!("# Fix deliveries, time {}", self.elapsed_seconds());
+        eprintln!(
+            "# Fix deliveries (stupid fallback), time {}",
+            self.elapsed_seconds()
+        );
         for t in self.problem.all_days() {
-            eprintln!("# Fixing day {t}");
-
-            // Compute load for each vehicle
-            let load = self
-                .problem
-                .all_vehicles()
-                .map(|v| {
-                    self.problem
-                        .all_customers()
-                        .map(|i| deliveries.get(t, v, i))
-                        .sum()
-                })
-                .collect::<Vec<usize>>();
-            eprintln!("## Loads {t}: {load:?} capacity {}", self.problem.capacity);
-
             // Move delivieries to the same customer on different routes to the first route
             // with such a delivery. (Note that this does not change anything for customers
             // that are visited at most once.)
@@ -724,7 +712,6 @@ impl<'a> SolverData<'a> {
                         .sum()
                 })
                 .collect::<Vec<usize>>();
-            eprintln!("## Loads {t}: {load:?} capacity {}", self.problem.capacity);
 
             // Sort vehicles by descending load
             let mut sorted_vehicles = self.problem.all_vehicles().collect::<Vec<_>>();
@@ -774,7 +761,6 @@ impl<'a> SolverData<'a> {
                         .sum()
                 })
                 .collect::<Vec<usize>>();
-            eprintln!("## Loads {t}: {load:?} capacity {}", self.problem.capacity);
 
             if load[sorted_vehicles[sorted_vehicles.len() - 1] as usize] > self.problem.capacity {
                 return Ok(false);
