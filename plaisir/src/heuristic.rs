@@ -116,7 +116,7 @@ impl<'a> GeneticHeuristic<'a> {
         /// improvements.
         const MIN_NEGLECTABLE_IMPROVEMENT_ITERATIONS: usize = 100;
 
-        if solution_pool.solutions.len() < 5 {
+        if solution_pool.solutions.len() < 3 {
             return Ok(());
         }
 
