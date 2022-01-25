@@ -16,11 +16,15 @@ const PRINT_ELIMINATED_SUBTOURS: bool = false;
 
 struct Variables<'a> {
     problem: &'a Problem,
+
     variables: Vec<grb::Var>,
     route_range: (usize, usize),
     deliver_range: (usize, usize),
     visit_range: (usize, usize),
     inventory_range: (usize, usize),
+
+    // Extra penalty variable
+    penalty_var: grb::Var,
 }
 
 #[allow(clippy::many_single_char_names)]
@@ -36,13 +40,19 @@ impl<'a> Variables<'a> {
             + num_variables_visit
             + num_variables_inventory
             + num_variables_deliver;
+
+        let penalty_var = grb::add_ctsvar!(lp, name: "p", obj: 1.0, bounds: 0..)?;
+
         let mut vars = Variables {
             problem,
+
             variables: Vec::with_capacity(num_variables),
             route_range: (0, num_variables),
             deliver_range: (0, num_variables),
             visit_range: (0, num_variables),
             inventory_range: (0, num_variables),
+
+            penalty_var,
         };
 
         // route variables
@@ -106,7 +116,7 @@ impl<'a> Variables<'a> {
             for i in problem.all_sites() {
                 let site = problem.site(i);
                 let name = format!("i_{t}_{i}");
-                let coeff = site.cost();
+                let coeff = 0.0;
                 let bounds = site.level_bounds();
                 let var = lp.add_var(
                     &name,
@@ -255,6 +265,10 @@ impl<'a> Variables<'a> {
 
     fn deliver(&self, t: DayId, v: VehicleId, i: SiteId) -> grb::Var {
         self.variables[self.deliver_index(t, v, i)]
+    }
+
+    fn penalty(&self) -> grb::Var {
+        self.penalty_var
     }
 }
 
@@ -1081,6 +1095,19 @@ impl Solver {
 
                 lp.add_constr(&format!("Ifc_{t}_{i}"), grb::c!(lhs == value))?;
             }
+        }
+
+        // penalty is at least the inventory cost
+        {
+            let mut lhs = grb::expr::LinExpr::new();
+            for i in problem.all_sites() {
+                let cost = problem.site(i).cost();
+                for t in problem.all_days() {
+                    lhs.add_term(cost, data.vars.inventory(t, i));
+                }
+            }
+            lhs.add_term(-1.0, data.vars.penalty());
+            lp.add_constr("p0", grb::c!(lhs <= 0.0))?;
         }
 
         lp.optimize_with_callback(&mut data)?;
