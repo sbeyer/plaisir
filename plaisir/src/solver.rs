@@ -272,7 +272,7 @@ struct SolverData<'a> {
 }
 
 impl<'a> SolverData<'a> {
-    const EPSILON: f64 = 1e-7;
+    const EPSILON: f64 = 1e-4;
 
     fn new(
         problem: &'a Problem,
@@ -995,9 +995,15 @@ impl Solver {
 
         // canonical visits (symmetry breaking):
         // smallest customer id visited by a vehicle is increasing with the vehicles
+        //
+        // This leads to numerical issues, so we do not impose all of the possible constraints
+        const MAX_CUSTOMER_ID_FOR_SYMMETRY_BREAKING: usize = 27;
         for t in problem.all_days() {
             for v in problem.all_vehicles().skip(1) {
-                for j in problem.all_customers() {
+                for j in problem
+                    .all_customers()
+                    .take(MAX_CUSTOMER_ID_FOR_SYMMETRY_BREAKING)
+                {
                     let mut lhs = grb::expr::LinExpr::new();
                     let mut coeff = 1.0;
                     for i in (1..=j).rev() {

@@ -2,7 +2,7 @@ use crate::problem::*;
 use std::cmp::Ordering;
 
 const PRINT_VARIABLE_VALUES: bool = false;
-const MIP_EPSILON: f64 = 1e-7;
+const MIP_EPSILON: f64 = 1e-4;
 
 #[derive(Debug, Eq)]
 pub struct Delivery {

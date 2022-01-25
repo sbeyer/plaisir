@@ -4,6 +4,8 @@ use crate::route::Solver as RouteSolver;
 use std::fmt;
 use std::time;
 
+const SOL_EPSILON: f64 = 1e-4;
+
 pub type Route = Vec<Delivery>;
 
 #[derive(Debug)]
@@ -170,7 +172,7 @@ impl<'a> SolutionPool<'a> {
 
         let len = self.solutions.len();
         if len == self.capacity() {
-            if solution.value() < self.solutions[self.idx_worst].value() {
+            if solution.value() < self.solutions[self.idx_worst].value() - SOL_EPSILON {
                 // overwrite worst
                 let idx_new = self.idx_worst;
                 self.solutions[idx_new] = solution;
@@ -203,7 +205,7 @@ impl<'a> SolutionPool<'a> {
             self.solutions.push(solution);
             let new_best = self.update_best(len);
 
-            if self.solutions[len].value() > self.solutions[self.idx_worst].value() {
+            if self.solutions[len].value() > self.solutions[self.idx_worst].value() + SOL_EPSILON {
                 self.idx_worst = len;
             }
             (new_best, Some(&self.solutions[len]))
@@ -211,7 +213,8 @@ impl<'a> SolutionPool<'a> {
     }
 
     fn update_best(&mut self, idx: usize) -> bool {
-        let new_best = self.solutions[idx].value() < self.solutions[self.idx_best].value();
+        let new_best =
+            self.solutions[idx].value() < self.solutions[self.idx_best].value() - SOL_EPSILON;
         if new_best {
             eprintln!("{}", self.solutions[idx]);
             self.idx_best = idx;
