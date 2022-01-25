@@ -659,10 +659,8 @@ impl<'a> SolverData<'a> {
             Some(deliveries) => Some(deliveries),
             None => match self.adjust_deliveries(assignment)? {
                 Some(mut deliveries) => {
-                    eprintln!("# Attempting fallback heuristic...");
                     let fixed = self.fix_deliveries_fallback(&mut deliveries)?;
                     if fixed {
-                        deliveries.canonicalize();
                         Some(deliveries)
                     } else {
                         None
@@ -767,6 +765,7 @@ impl<'a> SolverData<'a> {
             }
         }
 
+        deliveries.canonicalize();
         Ok(true)
         // Ok(None)
     }
