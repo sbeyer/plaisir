@@ -68,6 +68,21 @@ impl Deliveries {
             .map(|(i, _)| i as SiteId + 1)
             .collect()
     }
+
+    pub fn canonicalize(&mut self) {
+        for day_deliveries in self.0.iter_mut() {
+            // sort by index of first customer
+            day_deliveries.sort_by_cached_key(|vehicle_deliveries| {
+                for (customer_idx, quantity) in vehicle_deliveries.iter().enumerate() {
+                    if *quantity > 0 {
+                        return customer_idx;
+                    }
+                }
+
+                usize::MAX
+            });
+        }
+    }
 }
 
 pub struct Solver<'a> {
@@ -275,18 +290,23 @@ impl<'a> Solver<'a> {
 
             if status == grb::Status::Optimal {
                 for t in self.problem.all_days() {
+                    // set deliveries from solution
                     for v in self.problem.all_vehicles() {
                         for i in self.problem.all_customers() {
                             let var = self.var(t, v, i);
                             let value = self.model.get_obj_attr(grb::attr::X, &var)?;
 
-                            deliveries.set(t, v, i, value.round() as usize);
+                            let quantity = value.round() as Load;
+                            deliveries.set(t, v, i, quantity);
                         }
                     }
                 }
-            }
 
-            Ok(Some(deliveries))
+                deliveries.canonicalize();
+                Ok(Some(deliveries))
+            } else {
+                Ok(None)
+            }
         } else {
             Ok(None)
         }

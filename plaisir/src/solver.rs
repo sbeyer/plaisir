@@ -662,6 +662,7 @@ impl<'a> SolverData<'a> {
                     eprintln!("# Attempting fallback heuristic...");
                     let fixed = self.fix_deliveries_fallback(&mut deliveries)?;
                     if fixed {
+                        deliveries.canonicalize();
                         Some(deliveries)
                     } else {
                         None
@@ -992,6 +993,34 @@ impl Solver {
                     lhs.add_term(1.0, data.vars.visit(t, v, i));
                 }
                 lp.add_constr(&format!("V1d_{t}_{i}"), grb::c!(lhs <= 1.0))?;
+            }
+        }
+
+        // canonical visits (symmetry breaking):
+        // use the first available vehicles
+        for t in problem.all_days() {
+            for v in problem.all_vehicles().skip(1) {
+                let mut lhs = grb::expr::LinExpr::new();
+                lhs.add_term(1.0, data.vars.visit(t, v - 1, 0));
+                lhs.add_term(-1.0, data.vars.visit(t, v, 0));
+                lp.add_constr(&format!("VS1_{t}_{v}"), grb::c!(lhs >= 0.0))?;
+            }
+        }
+
+        // canonical visits (symmetry breaking):
+        // smallest customer id visited by a vehicle is increasing with the vehicles
+        for t in problem.all_days() {
+            for v in problem.all_vehicles().skip(1) {
+                for j in problem.all_customers() {
+                    let mut lhs = grb::expr::LinExpr::new();
+                    let mut coeff = 1.0;
+                    for i in (1..=j).rev() {
+                        lhs.add_term(coeff, data.vars.visit(t, v - 1, i));
+                        lhs.add_term(-coeff, data.vars.visit(t, v, i));
+                        coeff *= 2.0;
+                    }
+                    lp.add_constr(&format!("VS2_{t}_{v}_{j}"), grb::c!(lhs >= 0.0))?;
+                }
             }
         }
 

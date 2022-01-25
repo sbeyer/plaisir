@@ -8,7 +8,67 @@ use rand_xoshiro::rand_core::SeedableRng;
 
 /// Assigns (day, customer) to vehicle
 #[derive(Clone, Debug)]
-struct VehiclePlan(Vec<Vec<Option<VehicleId>>>);
+struct VehiclePlan(Vec<VehicleDayPlan>);
+
+#[derive(Clone, Debug)]
+struct VehicleDayPlan(Vec<Option<VehicleId>>);
+
+impl VehicleDayPlan {
+    fn new(problem: &Problem) -> Self {
+        Self(vec![None; problem.num_customers])
+    }
+
+    fn set(&mut self, customer: SiteId, vehicle: VehicleId) {
+        self.0[customer as usize - 1] = Some(vehicle);
+    }
+
+    fn get(&self, i: SiteId) -> Option<VehicleId> {
+        self.0[i as usize - 1]
+    }
+
+    fn clear(&mut self, (start, end): (SiteId, SiteId)) {
+        for site in start..=end {
+            let idx = site as usize - 1;
+            self.0[idx] = None;
+        }
+    }
+}
+
+impl VehiclePlan {
+    fn from_solution(problem: &Problem, solution: &Solution) -> Self {
+        Self(
+            problem
+                .all_days()
+                .map(|t| {
+                    let mut day_plan = VehicleDayPlan::new(problem);
+
+                    for v in problem.all_vehicles() {
+                        let route = solution.route(t, v);
+                        for delivery in route.iter() {
+                            debug_assert_ne!(delivery.customer, 0);
+
+                            day_plan.set(delivery.customer, v);
+                        }
+                    }
+
+                    day_plan
+                })
+                .collect(),
+        )
+    }
+
+    fn get_vehicle(&self, t: DayId, i: SiteId) -> Option<VehicleId> {
+        self.0[t as usize].get(i)
+    }
+
+    fn set(&mut self, t: DayId, i: SiteId, vehicle: VehicleId) {
+        self.0[t as usize].set(i, vehicle);
+    }
+
+    fn clear(&mut self, t: DayId, customer_range: (SiteId, SiteId)) {
+        self.0[t as usize].clear(customer_range);
+    }
+}
 
 /// Genetic algorithm for IRP
 pub struct GeneticHeuristic<'a> {
@@ -26,7 +86,7 @@ impl<'a> GeneticHeuristic<'a> {
         let rng = rand_xoshiro::Xoshiro128StarStar::from_seed(SEED);
 
         let dist_day = Uniform::from(0..problem.num_days as DayId);
-        let dist_customer = Uniform::from(0..problem.num_customers as SiteId);
+        let dist_customer = Uniform::from(1..problem.num_sites as SiteId);
         Self {
             problem,
             dist_day,
@@ -88,7 +148,7 @@ impl<'a> GeneticHeuristic<'a> {
             let solution1 = &solution_pool.solutions[sol_idx1];
             let solution2 = &solution_pool.solutions[sol_idx2];
 
-            let vehicle_plan1 = self.create_vehicle_plan_from_solution(solution1);
+            let vehicle_plan1 = VehiclePlan::from_solution(self.problem, solution1);
 
             let vehicle_plans = self
                 .problem
@@ -111,7 +171,7 @@ impl<'a> GeneticHeuristic<'a> {
 
                 // Compute deliveries from vehicle plan
                 delivery_solver.set_all_statuses(|t, v, i| {
-                    if let Some(vehicle_choice) = vehicle_plan.0[t as usize][i as usize - 1] {
+                    if let Some(vehicle_choice) = vehicle_plan.get_vehicle(t, i) {
                         vehicle_choice == v
                     } else {
                         false
@@ -177,28 +237,6 @@ impl<'a> GeneticHeuristic<'a> {
         Ok(())
     }
 
-    fn create_vehicle_plan_from_solution(&self, solution: &Solution) -> VehiclePlan {
-        VehiclePlan(
-            self.problem
-                .all_days()
-                .map(|t| {
-                    let mut day_plan = vec![None; self.problem.num_customers];
-
-                    for v in self.problem.all_vehicles() {
-                        let route = solution.route(t, v);
-                        for delivery in route.iter() {
-                            debug_assert_ne!(delivery.customer, 0);
-
-                            day_plan[delivery.customer as usize - 1] = Some(v);
-                        }
-                    }
-
-                    day_plan
-                })
-                .collect(),
-        )
-    }
-
     fn crossover_vehicle_plan(
         &self,
         vehicle_plan: &mut VehiclePlan,
@@ -208,10 +246,7 @@ impl<'a> GeneticHeuristic<'a> {
         customer_idx_range: (SiteId, SiteId),
     ) {
         // Prepare crossover by cleaning the range
-        #[allow(clippy::needless_range_loop)]
-        for i in customer_idx_range.0..=customer_idx_range.1 {
-            vehicle_plan.0[target_idx as usize][i as usize] = None;
-        }
+        vehicle_plan.clear(target_idx, customer_idx_range);
 
         // Apply crossover
         for v in self.problem.all_vehicles() {
@@ -221,9 +256,57 @@ impl<'a> GeneticHeuristic<'a> {
 
                 let i = delivery.customer;
                 if i >= customer_idx_range.0 && i <= customer_idx_range.1 {
-                    vehicle_plan.0[target_idx as usize][i as usize] = Some(v);
+                    vehicle_plan.set(target_idx, i, v);
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod vehicle_plan {
+        use super::*;
+
+        #[test]
+        fn set_and_get() {
+            let mut vp = VehicleDayPlan(vec![None, None, None, None]);
+
+            vp.set(3, 2);
+            assert_eq!(vp.get(3), Some(2));
+
+            vp.set(4, 2);
+            assert_eq!(vp.get(4), Some(2));
+
+            vp.set(2, 1);
+            assert_eq!(vp.get(2), Some(1));
+
+            vp.set(1, 0);
+            assert_eq!(vp.get(1), Some(0));
+
+            vp.clear((3, 3));
+            assert_eq!(vp.get(1), Some(0));
+            assert_eq!(vp.get(2), Some(1));
+            assert_eq!(vp.get(3), None);
+            assert_eq!(vp.get(4), Some(2));
+
+            vp.clear((2, 4));
+            assert_eq!(vp.get(1), Some(0));
+            assert_eq!(vp.get(2), None);
+            assert_eq!(vp.get(3), None);
+            assert_eq!(vp.get(4), None);
+
+            vp.set(2, 0);
+            vp.set(3, 0);
+            vp.set(4, 0);
+
+            vp.clear((2, 3));
+            assert_eq!(vp.get(1), Some(0));
+            assert_eq!(vp.get(2), None);
+            assert_eq!(vp.get(3), None);
+            assert_eq!(vp.get(4), Some(0));
         }
     }
 }
