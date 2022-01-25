@@ -16,11 +16,15 @@ const PRINT_ELIMINATED_SUBTOURS: bool = false;
 
 struct Variables<'a> {
     problem: &'a Problem,
+
     variables: Vec<grb::Var>,
     route_range: (usize, usize),
     deliver_range: (usize, usize),
     visit_range: (usize, usize),
     inventory_range: (usize, usize),
+
+    // Extra penalty variable
+    penalty_var: grb::Var,
 }
 
 #[allow(clippy::many_single_char_names)]
@@ -35,25 +39,23 @@ impl<'a> Variables<'a> {
         let num_variables = num_variables_route
             + num_variables_visit
             + num_variables_inventory
-            + num_variables_deliver
-            + 1;
+            + num_variables_deliver;
+
+        let penalty_var = grb::add_ctsvar!(lp, name: "p", obj: 1.0, bounds: 0..)?;
+
         let mut vars = Variables {
             problem,
+
             variables: Vec::with_capacity(num_variables),
             route_range: (0, num_variables),
             deliver_range: (0, num_variables),
             visit_range: (0, num_variables),
             inventory_range: (0, num_variables),
+
+            penalty_var,
         };
 
-        // penalty variable
-        {
-            let var = grb::add_ctsvar!(lp, name: "p", obj: 1.0, bounds: 0..)?;
-            vars.variables.push(var)
-        }
-
         // route variables
-        vars.route_range.0 = 1;
         for t in problem.all_days() {
             for v in problem.all_vehicles() {
                 for i in problem.all_sites() {
@@ -265,12 +267,8 @@ impl<'a> Variables<'a> {
         self.variables[self.deliver_index(t, v, i)]
     }
 
-    fn penalty_index(&self) -> usize {
-        0
-    }
-
     fn penalty(&self) -> grb::Var {
-        self.variables[self.penalty_index()]
+        self.penalty_var
     }
 }
 
