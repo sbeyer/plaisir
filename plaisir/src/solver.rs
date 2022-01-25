@@ -662,6 +662,7 @@ impl<'a> SolverData<'a> {
                     eprintln!("# Attempting fallback heuristic...");
                     let fixed = self.fix_deliveries_fallback(&mut deliveries)?;
                     if fixed {
+                        deliveries.canonicalize();
                         Some(deliveries)
                     } else {
                         None

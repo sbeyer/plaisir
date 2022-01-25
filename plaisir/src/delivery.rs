@@ -68,6 +68,21 @@ impl Deliveries {
             .map(|(i, _)| i as SiteId + 1)
             .collect()
     }
+
+    pub fn canonicalize(&mut self) {
+        for day_deliveries in self.0.iter_mut() {
+            // sort by index of first customer
+            day_deliveries.sort_by_cached_key(|vehicle_deliveries| {
+                for (customer_idx, quantity) in vehicle_deliveries.iter().enumerate() {
+                    if *quantity > 0 {
+                        return customer_idx;
+                    }
+                }
+
+                usize::MAX
+            });
+        }
+    }
 }
 
 pub struct Solver<'a> {
@@ -285,21 +300,9 @@ impl<'a> Solver<'a> {
                             deliveries.set(t, v, i, quantity);
                         }
                     }
-
-                    // make canonical deliveries based on first customer
-                    deliveries.0[t as usize].sort_by_cached_key(|vehicle_deliveries| {
-                        // find first customer (i.e., minimum customer id) visited, because we want
-                        // to sort by it
-                        for i in self.problem.all_customers() {
-                            if vehicle_deliveries[i as usize - 1] > 0 {
-                                return i;
-                            }
-                        }
-
-                        SiteId::MAX
-                    });
                 }
 
+                deliveries.canonicalize();
                 Ok(Some(deliveries))
             } else {
                 Ok(None)
