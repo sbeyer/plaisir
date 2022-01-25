@@ -867,32 +867,30 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                         self.elapsed_seconds()
                     );
 
-                    if true {
-                        let mut has_new_solution = false;
-                        let assignment = ctx.get_solution(&self.vars.variables)?;
-                        if PRINT_VARIABLE_VALUES {
-                            self.varnames
-                                .iter()
-                                .zip(assignment.iter())
-                                .filter(|(_, &value)| value > Self::EPSILON)
-                                .for_each(|(var, value)| eprintln!("#   - {var}: {value}"));
-                        }
-                        match self.fractional_delivery_heuristic(&assignment)? {
-                            Some(schedule) => {
-                                let (_, added) = self.solution_pool.add(self.problem, schedule);
+                    let mut has_new_solution = false;
+                    let assignment = ctx.get_solution(&self.vars.variables)?;
+                    if PRINT_VARIABLE_VALUES {
+                        self.varnames
+                            .iter()
+                            .zip(assignment.iter())
+                            .filter(|(_, &value)| value > Self::EPSILON)
+                            .for_each(|(var, value)| eprintln!("#   - {var}: {value}"));
+                    }
+                    match self.fractional_delivery_heuristic(&assignment)? {
+                        Some(schedule) => {
+                            let (_, added) = self.solution_pool.add(self.problem, schedule);
 
-                                if added.is_some() {
-                                    has_new_solution = true;
-                                }
-                            }
-                            None => {
-                                eprintln!("# Failed to find a feasible solution.");
+                            if added.is_some() {
+                                has_new_solution = true;
                             }
                         }
-
-                        if has_new_solution {
-                            self.run_heuristic()?;
+                        None => {
+                            eprintln!("# Failed to find a feasible solution.");
                         }
+                    }
+
+                    if has_new_solution {
+                        self.run_heuristic()?;
                     }
 
                     self.give_new_best_solution_to_solver(ctx)?;
