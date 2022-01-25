@@ -75,6 +75,7 @@ pub struct GeneticHeuristic<'a> {
     problem: &'a Problem,
     dist_day: Uniform<DayId>,
     dist_customer: Uniform<SiteId>,
+    dist_01: Uniform<f64>,
     rng: rand_xoshiro::Xoshiro128StarStar,
 }
 
@@ -87,10 +88,12 @@ impl<'a> GeneticHeuristic<'a> {
 
         let dist_day = Uniform::from(0..problem.num_days as DayId);
         let dist_customer = Uniform::from(1..problem.num_sites as SiteId);
+        let dist_01 = Uniform::<f64>::from(0.0..1.0);
         Self {
             problem,
             dist_day,
             dist_customer,
+            dist_01,
             rng,
         }
     }
@@ -116,6 +119,9 @@ impl<'a> GeneticHeuristic<'a> {
         /// improvements.
         const MIN_NEGLECTABLE_IMPROVEMENT_ITERATIONS: usize = 100;
 
+        // The probability that the best solution is chosen for crossover.
+        const ALPHA_MALE_THRESHOLD: f64 = 0.666667;
+
         if solution_pool.solutions.len() < 3 {
             return Ok(());
         }
@@ -127,11 +133,26 @@ impl<'a> GeneticHeuristic<'a> {
         let mut count_infeasible = 0;
         let mut count_neglectable_improvement = 0;
         loop {
-            let sol_idx1 = self.rng.gen_range(0..solution_pool.solutions.len());
-            let mut sol_idx2 = self.rng.gen_range(0..solution_pool.solutions.len());
-            while sol_idx2 == sol_idx1 {
-                sol_idx2 = self.rng.gen_range(0..solution_pool.solutions.len());
-            }
+            let alpha_male_crossover = self.rng.sample(self.dist_01);
+            let (solution1, solution2) = if alpha_male_crossover < ALPHA_MALE_THRESHOLD {
+                let sol_idx = self.rng.gen_range(0..solution_pool.solutions.len());
+
+                (
+                    solution_pool.get_best().unwrap(),
+                    &solution_pool.solutions[sol_idx],
+                )
+            } else {
+                let sol_idx1 = self.rng.gen_range(0..solution_pool.solutions.len());
+                let mut sol_idx2 = self.rng.gen_range(0..solution_pool.solutions.len());
+                while sol_idx2 == sol_idx1 {
+                    sol_idx2 = self.rng.gen_range(0..solution_pool.solutions.len());
+                }
+
+                (
+                    &solution_pool.solutions[sol_idx1],
+                    &solution_pool.solutions[sol_idx2],
+                )
+            };
 
             let day_idx1 = self.rng.sample(self.dist_day);
 
@@ -144,9 +165,6 @@ impl<'a> GeneticHeuristic<'a> {
             } else {
                 (customer_idx_range.1, customer_idx_range.0)
             };
-
-            let solution1 = &solution_pool.solutions[sol_idx1];
-            let solution2 = &solution_pool.solutions[sol_idx2];
 
             let vehicle_plan1 = VehiclePlan::from_solution(self.problem, solution1);
 
