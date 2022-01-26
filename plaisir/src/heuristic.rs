@@ -6,6 +6,24 @@ use rand::distributions::Uniform;
 use rand::Rng;
 use rand_xoshiro::rand_core::SeedableRng;
 
+// This threshold should be understood as follows: consider the best and worst solution in
+// the current solution pool, and a new best solution. Scale these values such that the new
+// best solution is zero and the worst solution is one. The (previous) best solution lies
+// in between. If that solution is below this threshold, we have a neglectable improvement.
+const NEGLECTABLE_IMPROVEMENT_THRESHOLD: f64 = 0.1;
+
+/// Stop the algorithm after this number of iterations that led to either no or only small
+/// improvements... Note that the actual number of iterations can be smaller due to other
+/// factors, e.g. the number of infeasible solutions found.
+const MAX_NEGLECTABLE_IMPROVEMENT_ITERATIONS: usize = 3000;
+
+/// Guarantee at least this number of iterations that led to either no or only small
+/// improvements.
+const MIN_NEGLECTABLE_IMPROVEMENT_ITERATIONS: usize = 100;
+
+/// The probability that the best solution is chosen for crossover.
+const ALPHA_MALE_THRESHOLD: f64 = 0.666667;
+
 /// Assigns (day, customer) to vehicle
 #[derive(Clone, Debug)]
 struct VehiclePlan(Vec<VehicleDayPlan>);
@@ -104,24 +122,6 @@ impl<'a> GeneticHeuristic<'a> {
         route_solver: &mut RouteSolver,
         solution_pool: &mut SolutionPool,
     ) -> grb::Result<()> {
-        // This threshold should be understood as follows: consider the best and worst solution in
-        // the current solution pool, and a new best solution. Scale these values such that the new
-        // best solution is zero and the worst solution is one. The (previous) best solution lies
-        // in between. If that solution is below this threshold, we have a neglectable improvement.
-        const NEGLECTABLE_IMPROVEMENT_THRESHOLD: f64 = 0.1;
-
-        /// Stop the algorithm after this number of iterations that led to either no or only small
-        /// improvements... Note that the actual number of iterations can be smaller due to other
-        /// factors, e.g. the number of infeasible solutions found.
-        const MAX_NEGLECTABLE_IMPROVEMENT_ITERATIONS: usize = 3000;
-
-        /// Guarantee at least this number of iterations that led to either no or only small
-        /// improvements.
-        const MIN_NEGLECTABLE_IMPROVEMENT_ITERATIONS: usize = 100;
-
-        // The probability that the best solution is chosen for crossover.
-        const ALPHA_MALE_THRESHOLD: f64 = 0.666667;
-
         if solution_pool.solutions.len() < 3 {
             return Ok(());
         }
