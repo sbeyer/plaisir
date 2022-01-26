@@ -92,6 +92,7 @@ impl VehiclePlan {
 pub struct GeneticHeuristic<'a> {
     problem: &'a Problem,
     dist_day: Uniform<DayId>,
+    dist_vehicle: Uniform<VehicleId>,
     dist_customer: Uniform<SiteId>,
     dist_01: Uniform<f64>,
     rng: rand_xoshiro::Xoshiro128StarStar,
@@ -105,11 +106,13 @@ impl<'a> GeneticHeuristic<'a> {
         let rng = rand_xoshiro::Xoshiro128StarStar::from_seed(SEED);
 
         let dist_day = Uniform::from(0..problem.num_days as DayId);
+        let dist_vehicle = Uniform::from(0..problem.num_vehicles as VehicleId);
         let dist_customer = Uniform::from(1..problem.num_sites as SiteId);
         let dist_01 = Uniform::<f64>::from(0.0..1.0);
         Self {
             problem,
             dist_day,
+            dist_vehicle,
             dist_customer,
             dist_01,
             rng,
@@ -133,8 +136,8 @@ impl<'a> GeneticHeuristic<'a> {
         let mut count_infeasible = 0;
         let mut count_neglectable_improvement = 0;
         loop {
-            let alpha_male_crossover = self.rng.sample(self.dist_01);
-            let (solution1, solution2) = if alpha_male_crossover < ALPHA_MALE_THRESHOLD {
+            let alpha_male_crossover = self.rng.sample(self.dist_01) < ALPHA_MALE_THRESHOLD;
+            let (solution1, solution2) = if alpha_male_crossover {
                 let sol_idx = self.rng.gen_range(0..solution_pool.solutions.len());
 
                 (
@@ -195,6 +198,34 @@ impl<'a> GeneticHeuristic<'a> {
                     &mut count_neglectable_improvement,
                     &mut count_infeasible,
                 )?;
+            }
+
+            if alpha_male_crossover
+                && count_iteration == count_neglectable_improvement
+                && count_iteration >= MIN_NEGLECTABLE_IMPROVEMENT_ITERATIONS
+            {
+                eprintln!("# GeneticHeuristic Mutation Intermezzo");
+                for i in customer_idx_range.0..=customer_idx_range.1 {
+                    let mut vehicle_plan = vehicle_plan1.clone();
+                    let opt_vehicle = vehicle_plan.get_vehicle(day_idx1, i);
+                    if opt_vehicle.is_some() {
+                        vehicle_plan.clear(day_idx1, (i, i));
+                    } else {
+                        let new_vehicle = self.rng.sample(self.dist_vehicle);
+                        vehicle_plan.set(day_idx1, i, new_vehicle);
+                    }
+
+                    self.try_solution_from_vehicle_plan(
+                        &vehicle_plan,
+                        delivery_solver,
+                        route_solver,
+                        solution_pool,
+                        &mut previous_best_value,
+                        &mut count_iteration,
+                        &mut count_neglectable_improvement,
+                        &mut count_infeasible,
+                    )?;
+                }
             }
 
             if count_neglectable_improvement >= MIN_NEGLECTABLE_IMPROVEMENT_ITERATIONS
