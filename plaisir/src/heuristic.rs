@@ -185,61 +185,16 @@ impl<'a> GeneticHeuristic<'a> {
                 .collect::<Vec<VehiclePlan>>();
 
             for vehicle_plan in vehicle_plans.iter() {
-                count_iteration += 1;
-
-                // Compute deliveries from vehicle plan
-                delivery_solver.set_all_statuses(|t, v, i| {
-                    if let Some(vehicle_choice) = vehicle_plan.get_vehicle(t, i) {
-                        vehicle_choice == v
-                    } else {
-                        false
-                    }
-                })?;
-                let opt_deliveries = delivery_solver.solve()?;
-
-                if let Some(deliveries) = opt_deliveries {
-                    let schedule =
-                        Schedule::new_via_heuristic(self.problem, &deliveries, route_solver);
-                    let worst_value = solution_pool.get_worst_value();
-                    let (new_best, opt_solution) = solution_pool.add(self.problem, schedule);
-                    if new_best {
-                        let solution = opt_solution.unwrap();
-                        eprintln!(
-                            "# New best solution of value {} (old: {})",
-                            solution.value(),
-                            previous_best_value
-                        );
-                        let previous_scaled_for_threshold = (previous_best_value
-                            - solution.value())
-                            / (worst_value - solution.value());
-                        /*
-                        eprintln!(
-                            "# NEW BEST = {}, PREVIOUS BEST = {}, WORST = {}, SCALED = {}, NEGLECTABLE = {:?}",
-                            solution.value(),
-                            previous_best_value,
-                            worst_value,
-                            previous_scaled_for_threshold,
-                            previous_scaled_for_threshold < NEGLECTABLE_IMPROVEMENT_THRESHOLD
-                        );
-                        */
-                        if previous_scaled_for_threshold < NEGLECTABLE_IMPROVEMENT_THRESHOLD {
-                            count_neglectable_improvement += 1;
-                        } else {
-                            count_neglectable_improvement = 0;
-                            count_infeasible = 0;
-                        }
-                        previous_best_value = solution.value();
-                    } else {
-                        count_neglectable_improvement += 1;
-                    }
-                } else {
-                    count_infeasible += 1;
-                    count_neglectable_improvement += 1;
-                }
-
-                if count_iteration % 100 == 50 {
-                    eprintln!("# GeneticHeuristic Iteration {count_iteration} ({count_infeasible} infeasible of {count_neglectable_improvement} neglectable improvements)");
-                }
+                self.try_solution_from_vehicle_plan(
+                    vehicle_plan,
+                    delivery_solver,
+                    route_solver,
+                    solution_pool,
+                    &mut previous_best_value,
+                    &mut count_iteration,
+                    &mut count_neglectable_improvement,
+                    &mut count_infeasible,
+                )?;
             }
 
             if count_neglectable_improvement >= MIN_NEGLECTABLE_IMPROVEMENT_ITERATIONS
@@ -278,6 +233,65 @@ impl<'a> GeneticHeuristic<'a> {
                 }
             }
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn try_solution_from_vehicle_plan(
+        &mut self,
+        vehicle_plan: &VehiclePlan,
+        delivery_solver: &mut DeliverySolver,
+        route_solver: &mut RouteSolver,
+        solution_pool: &mut SolutionPool,
+        previous_best_value: &mut f64,
+        count_iteration: &mut usize,
+        count_neglectable_improvement: &mut usize,
+        count_infeasible: &mut usize,
+    ) -> grb::Result<()> {
+        *count_iteration += 1;
+
+        // Compute deliveries from vehicle plan
+        delivery_solver.set_all_statuses(|t, v, i| {
+            if let Some(vehicle_choice) = vehicle_plan.get_vehicle(t, i) {
+                vehicle_choice == v
+            } else {
+                false
+            }
+        })?;
+        let opt_deliveries = delivery_solver.solve()?;
+
+        if let Some(deliveries) = opt_deliveries {
+            let schedule = Schedule::new_via_heuristic(self.problem, &deliveries, route_solver);
+            let worst_value = solution_pool.get_worst_value();
+            let (new_best, opt_solution) = solution_pool.add(self.problem, schedule);
+            if new_best {
+                let solution = opt_solution.unwrap();
+                eprintln!(
+                    "# New best solution of value {} (old: {})",
+                    solution.value(),
+                    *previous_best_value
+                );
+                let previous_scaled_for_threshold =
+                    (*previous_best_value - solution.value()) / (worst_value - solution.value());
+                if previous_scaled_for_threshold < NEGLECTABLE_IMPROVEMENT_THRESHOLD {
+                    *count_neglectable_improvement += 1;
+                } else {
+                    *count_neglectable_improvement = 0;
+                    *count_infeasible = 0;
+                }
+                *previous_best_value = solution.value();
+            } else {
+                *count_neglectable_improvement += 1;
+            }
+        } else {
+            *count_infeasible += 1;
+            *count_neglectable_improvement += 1;
+        }
+
+        if *count_iteration % 100 == 50 {
+            eprintln!("# GeneticHeuristic Iteration {count_iteration} ({count_infeasible} infeasible of {count_neglectable_improvement} neglectable improvements)");
+        }
+
+        Ok(())
     }
 }
 
