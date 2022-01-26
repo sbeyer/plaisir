@@ -1063,14 +1063,9 @@ impl Solver {
                     // Symmetry constraint for the first slice (or when no slices are necessary)
                     if v > 0 {
                         let mut lhs = grb::expr::LinExpr::new();
-                        eprintln!("# FIRST CONSTRAINT {t} {v}");
                         let mut coeff = 1.0;
                         for i in customers[..max_vars_per_slice].iter().rev() {
                             let i = *i;
-                            eprintln!(
-                                "#  + {coeff} v_{t}_{vp}_{i} - {coeff} v_{t}_{v}_{i}",
-                                vp = v - 1
-                            );
                             lhs.add_term(coeff, data.vars.visit(t, v - 1, i));
                             lhs.add_term(-coeff, data.vars.visit(t, v, i));
                             coeff *= 2.0;
@@ -1082,25 +1077,20 @@ impl Solver {
 
                     if data.vars.visit_slice_vars.is_some() {
                         // Slice minimum constraints for the first slice
-                        eprintln!("# FIRST MIN-CONSTRAINTS {t} {v} s{slice_idx}");
                         for i in customers[..max_vars_per_slice].iter().rev() {
                             let mut lhs = grb::expr::LinExpr::new();
                             let i = *i;
-                            eprintln!("#  * v_{t}_{v}_s{slice_idx} >= v_{t}_{v}_{i}",);
                             lhs.add_term(1.0, data.vars.visit_slice(t, v, slice_idx));
                             lhs.add_term(-1.0, data.vars.visit(t, v, i));
                             lp.add_constr(&format!("VSM_{t}_{v}_base_{i}"), grb::c!(lhs >= 0.0))?;
                         }
 
                         // Slice maximum constraint for the first slice
-                        eprintln!("# FIRST MAX-CONSTRAINT {t} {v} s{slice_idx}");
                         {
                             let mut lhs = grb::expr::LinExpr::new();
-                            eprintln!("#  v_{t}_{v}_s{slice_idx} <=");
                             lhs.add_term(-1.0, data.vars.visit_slice(t, v, slice_idx));
                             for i in customers[..max_vars_per_slice].iter().rev() {
                                 let i = *i;
-                                eprintln!("#    + v_{t}_{v}_{i}",);
                                 lhs.add_term(1.0, data.vars.visit(t, v, i));
                             }
                             lp.add_constr(&format!("VSN_{t}_{v}_base"), grb::c!(lhs >= 0.0))?;
@@ -1114,20 +1104,14 @@ impl Solver {
                         if v > 0 {
                             let mut lhs = grb::expr::LinExpr::new();
                             let mut coeff = 1.0;
-                            eprintln!("# SLICE CONSTRAINT {slice:?}");
 
                             for i in slice.iter().rev() {
                                 let i = *i;
-                                eprintln!(
-                                    "#  + {coeff} v_{t}_{vp}_{i} - {coeff} v_{t}_{v}_{i}",
-                                    vp = v - 1
-                                );
                                 lhs.add_term(coeff, data.vars.visit(t, v - 1, i));
                                 lhs.add_term(-coeff, data.vars.visit(t, v, i));
                                 coeff *= 2.0;
                             }
 
-                            eprintln!("#  + {coeff} v_{t}_{vp}_s{slice_idx}", vp = v - 1);
                             lhs.add_term(coeff, data.vars.visit_slice(t, v - 1, slice_idx));
 
                             lp.add_constr(
@@ -1139,11 +1123,9 @@ impl Solver {
                         slice_idx += 1;
                         if slice.first() != customers.last() {
                             // Slice minimum constraints for the first slice
-                            eprintln!("# SLICE MIN-CONSTRAINTS {t} {v} {slice:?} {slice_idx}");
                             for i in slice.iter().rev() {
                                 let mut lhs = grb::expr::LinExpr::new();
                                 let i = *i;
-                                eprintln!("#  * v_{t}_{v}_s{slice_idx} >= v_{t}_{v}_{i}",);
                                 lhs.add_term(1.0, data.vars.visit_slice(t, v, slice_idx));
                                 lhs.add_term(-1.0, data.vars.visit(t, v, i));
                                 lp.add_constr(
@@ -1155,10 +1137,6 @@ impl Solver {
                             // Slice minimum constraint for the next slice variable
                             {
                                 let mut lhs = grb::expr::LinExpr::new();
-                                eprintln!(
-                                    "#  * v_{t}_{v}_s{slice_idx} >= v_{t}_{v}_s{sp}",
-                                    sp = slice_idx - 1
-                                );
                                 lhs.add_term(1.0, data.vars.visit_slice(t, v, slice_idx));
                                 lhs.add_term(-1.0, data.vars.visit_slice(t, v, slice_idx - 1));
                                 lp.add_constr(
@@ -1168,16 +1146,12 @@ impl Solver {
                             }
 
                             // Slice maximum constraint for the slice
-                            eprintln!("# SLICE MAX-CONSTRAINT {t} {v} {slice:?} s{slice_idx}");
                             {
                                 let mut lhs = grb::expr::LinExpr::new();
-                                eprintln!("#  v_{t}_{v}_s{slice_idx} <=");
                                 lhs.add_term(-1.0, data.vars.visit_slice(t, v, slice_idx));
-                                eprintln!("#    + v_{t}_{v}_s{sp}", sp = slice_idx - 1);
                                 lhs.add_term(1.0, data.vars.visit_slice(t, v, slice_idx - 1));
                                 for i in slice.iter().rev() {
                                     let i = *i;
-                                    eprintln!("#    + v_{t}_{v}_{i}",);
                                     lhs.add_term(1.0, data.vars.visit(t, v, i));
                                 }
                                 lp.add_constr(&format!("VSN_{t}_{v}_base"), grb::c!(lhs >= 0.0))?;
