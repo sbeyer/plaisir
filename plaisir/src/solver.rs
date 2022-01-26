@@ -18,6 +18,10 @@ const PRINT_ELIMINATED_SUBTOURS: bool = false;
 // This provides the size of the slices. Maximum coefficient will be 2^(size - 1).
 const SYMMETRY_BREAKING_SLICE_SIZE: usize = 25;
 
+// Symmetry breaking gets more and more expensive with an increasing number of customers...
+// for how many customers will we apply it?
+const SYMMETRY_BREAKING_CUSTOMER_LIMIT: usize = 100;
+
 struct Variables<'a> {
     problem: &'a Problem,
 
@@ -1055,7 +1059,10 @@ impl Solver {
         // canonical visits (symmetry breaking):
         // smallest customer id visited by a vehicle is increasing with the vehicles
         {
-            let customers = problem.all_customers().collect::<Vec<_>>();
+            let customers = problem
+                .all_customers()
+                .take(SYMMETRY_BREAKING_CUSTOMER_LIMIT)
+                .collect::<Vec<_>>();
             let max_vars_per_slice = min(problem.num_customers, SYMMETRY_BREAKING_SLICE_SIZE);
 
             for t in problem.all_days() {
