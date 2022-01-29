@@ -156,13 +156,14 @@ for filepath in args:
         if solution["bestsol"] <= row.bestsol:
             if solution["bestsol"] == row.bestsol and solution["time"] > row.time:
                 print(" `-> SOLUTION KEPT ALTHOUGH WORSE TIME!")
-            elif row.optimal and not solution["optimal"]:
+            else:
+                print(" `-> IMPROVED!")
+
+            if row.optimal and not solution["optimal"]:
                 print(
                     " `-> SOLUTION KEPT ALTHOUGH WE LOST PROOF OF OPTIMALITY! (We keep info of optimality)"
                 )
                 solution["optimal"] = True
-            else:
-                print(" `-> IMPROVED!")
 
             score = compute_score(instance, solution["bestsol"])
             results.loc[
