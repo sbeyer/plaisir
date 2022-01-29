@@ -684,6 +684,7 @@ impl<'a> SolverData<'a> {
     fn fractional_delivery_heuristic(
         &mut self,
         assignment: &[f64],
+        context: &grb::callback::MIPNodeCtx,
     ) -> grb::Result<Option<Schedule>> {
         let vehicle_choices = self
             .problem
@@ -713,27 +714,31 @@ impl<'a> SolverData<'a> {
             .collect::<Vec<_>>();
 
         eprintln!("# Compute new deliveries, time {}", self.elapsed_seconds());
-        self.deliveries.set_all_statuses(|t, v, i| {
+        let is_visited = |t: DayId, v: VehicleId, i: SiteId| {
             let customer_vehicle_choices = &vehicle_choices[t as usize][i as usize - 1];
             if customer_vehicle_choices.is_empty() {
                 false
             } else {
                 customer_vehicle_choices[0] == v
             }
-        })?;
+        };
+        self.deliveries.set_all_statuses(is_visited)?;
         let opt_deliveries = match self.deliveries.solve()? {
             Some(deliveries) => Some(deliveries),
-            None => match self.adjust_deliveries(assignment)? {
-                Some(mut deliveries) => {
-                    let fixed = self.fix_deliveries_fallback(&mut deliveries)?;
-                    if fixed {
-                        Some(deliveries)
-                    } else {
-                        None
+            None => {
+                self.infeasibility_to_hell(is_visited, context)?;
+                match self.adjust_deliveries(assignment)? {
+                    Some(mut deliveries) => {
+                        let fixed = self.fix_deliveries_fallback(&mut deliveries)?;
+                        if fixed {
+                            Some(deliveries)
+                        } else {
+                            None
+                        }
                     }
+                    None => None,
                 }
-                None => None,
-            },
+            }
         };
 
         Ok(opt_deliveries.map(|deliveries| self.get_schedule_heuristically(&deliveries)))
@@ -834,6 +839,45 @@ impl<'a> SolverData<'a> {
         deliveries.canonicalize();
         Ok(true)
         // Ok(None)
+    }
+
+    fn infeasibility_to_hell<F>(
+        &self,
+        is_visited: F,
+        context: &grb::callback::MIPNodeCtx,
+    ) -> grb::Result<()>
+    where
+        F: Fn(DayId, VehicleId, SiteId) -> bool,
+    {
+        eprintln!("# Adding lazy infeasibility-to-hell constraint");
+        const INFEASIBLE_PENALTY: f64 = 1000000.0;
+
+        // + true... + (1 - false)... <= #all
+        // + true... - false... - ( #all - #false ) <= 0
+        // + true... - false... - ( #all - #false ) + 1 <= 1
+        // INFEASIBLE_PENALTY ( + true... - false... - ( #all - #false ) + 1 ) <= p
+        // IP true... - IP false... - IP ( #all - #false - 1 ) <= p
+        // IP true... - IP false... - p <= IP ( #all - #false - 1 )
+        // IP true... - IP false... - p <= IP ( #true - 1 )
+        let mut lhs = grb::expr::LinExpr::new();
+        let mut num_true: usize = 0;
+        for t in self.problem.all_days() {
+            for i in self.problem.all_customers() {
+                for v in self.problem.all_vehicles() {
+                    if is_visited(t, v, i) {
+                        lhs.add_term(INFEASIBLE_PENALTY, self.vars.visit(t, v, i));
+                        num_true += 1;
+                    } else {
+                        lhs.add_term(-INFEASIBLE_PENALTY, self.vars.visit(t, v, i));
+                    }
+                }
+            }
+        }
+        lhs.add_term(-1.0, self.vars.penalty());
+        let rhs = INFEASIBLE_PENALTY * (num_true as f64 - 1.0);
+        context.add_lazy(grb::c!(lhs <= rhs))?;
+
+        Ok(())
     }
 
     /// Runs LKH heuristic on visited sites to get a feasible route
@@ -942,7 +986,7 @@ impl<'a> grb::callback::Callback for SolverData<'a> {
                             .filter(|(_, &value)| value > Self::EPSILON)
                             .for_each(|(var, value)| eprintln!("#   - {var}: {value}"));
                     }
-                    match self.fractional_delivery_heuristic(&assignment)? {
+                    match self.fractional_delivery_heuristic(&assignment, &ctx)? {
                         Some(schedule) => {
                             let (_, added) = self.solution_pool.add(self.problem, schedule);
 
