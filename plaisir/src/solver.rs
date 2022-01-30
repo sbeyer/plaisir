@@ -678,7 +678,11 @@ impl<'a> SolverData<'a> {
         })?;
         let result = self.deliveries.solve()?;
 
-        Ok(result)
+        Ok(if let Some((deliveries, _)) = result {
+            Some(deliveries)
+        } else {
+            None
+        })
     }
 
     fn fractional_delivery_heuristic(
@@ -724,7 +728,7 @@ impl<'a> SolverData<'a> {
         };
         self.deliveries.set_all_statuses(is_visited)?;
         let opt_deliveries = match self.deliveries.solve()? {
-            Some(deliveries) => Some(deliveries),
+            Some((deliveries, _)) => Some(deliveries),
             None => {
                 self.infeasibility_to_hell(is_visited, context)?;
                 match self.adjust_deliveries(assignment)? {

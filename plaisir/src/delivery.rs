@@ -262,18 +262,19 @@ impl<'a> Solver<'a> {
     }
 
     /// Solve Minimum-Cost Flow LP to improve deliveries
-    pub fn solve(&mut self) -> grb::Result<Option<Deliveries>> {
+    pub fn solve(&mut self) -> grb::Result<Option<(Deliveries, f64)>> {
         let mut deliveries = Deliveries::new(self.problem);
 
         self.model.optimize()?;
 
         let status = self.model.status()?;
         if status == grb::Status::Optimal {
+            let obj_value = self.model.get_attr(grb::attr::ObjVal)?;
+
             if PRINT_VARIABLE_VALUES {
                 eprintln!("#### MIP solution status: {status:?}");
 
-                let objective = self.model.get_attr(grb::attr::ObjVal)?;
-                eprintln!("#### MIP solution value: {objective}");
+                eprintln!("#### MIP solution value: {obj_value}");
 
                 for delivery_vars_per_day in self.vars.iter() {
                     for delivery_vars_per_customer in delivery_vars_per_day.iter() {
@@ -288,25 +289,21 @@ impl<'a> Solver<'a> {
                 }
             }
 
-            if status == grb::Status::Optimal {
-                for t in self.problem.all_days() {
-                    // set deliveries from solution
-                    for v in self.problem.all_vehicles() {
-                        for i in self.problem.all_customers() {
-                            let var = self.var(t, v, i);
-                            let value = self.model.get_obj_attr(grb::attr::X, &var)?;
+            for t in self.problem.all_days() {
+                // set deliveries from solution
+                for v in self.problem.all_vehicles() {
+                    for i in self.problem.all_customers() {
+                        let var = self.var(t, v, i);
+                        let value = self.model.get_obj_attr(grb::attr::X, &var)?;
 
-                            let quantity = value.round() as Load;
-                            deliveries.set(t, v, i, quantity);
-                        }
+                        let quantity = value.round() as Load;
+                        deliveries.set(t, v, i, quantity);
                     }
                 }
-
-                deliveries.canonicalize();
-                Ok(Some(deliveries))
-            } else {
-                Ok(None)
             }
+
+            deliveries.canonicalize();
+            Ok(Some((deliveries, obj_value)))
         } else {
             Ok(None)
         }

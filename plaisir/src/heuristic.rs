@@ -290,7 +290,7 @@ impl<'a> GeneticHeuristic<'a> {
         })?;
         let opt_deliveries = delivery_solver.solve()?;
 
-        if let Some(deliveries) = opt_deliveries {
+        if let Some((deliveries, _)) = opt_deliveries {
             let schedule = Schedule::new_via_heuristic(self.problem, &deliveries, route_solver);
             let worst_value = solution_pool.get_worst_value();
             let (new_best, opt_solution) = solution_pool.add(self.problem, schedule);
