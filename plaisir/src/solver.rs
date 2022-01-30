@@ -857,58 +857,37 @@ impl<'a> SolverData<'a> {
     where
         F: Fn(DayId, VehicleId, SiteId) -> bool,
     {
-        if let Some(inventory_cost) = optional_inventory_cost {
+        const INFEASIBLE_PENALTY: f64 = 1000000.0;
+        let penalty = if let Some(inventory_cost) = optional_inventory_cost {
             eprintln!(
-                "# Adding lazy constraint with inventory cost {}",
+                "# Adding lazy inventory-cost constraint with inventory cost {}",
                 inventory_cost
             );
-            // copy-and-paste because quick-n-dirty test
-            let mut lhs = grb::expr::LinExpr::new();
-            let mut num_true: usize = 0;
-            for t in self.problem.all_days() {
-                for i in self.problem.all_customers() {
-                    for v in self.problem.all_vehicles() {
-                        if is_visited(t, v, i) {
-                            lhs.add_term(inventory_cost, self.vars.visit(t, v, i));
-                            num_true += 1;
-                        } else {
-                            lhs.add_term(-inventory_cost, self.vars.visit(t, v, i));
-                        }
-                    }
-                }
-            }
-            lhs.add_term(-1.0, self.vars.penalty());
-            let rhs = inventory_cost * (num_true as f64 - 1.0);
-            context.add_lazy(grb::c!(lhs <= rhs))?;
+            inventory_cost
         } else {
             eprintln!("# Adding lazy infeasibility-to-hell constraint");
-            const INFEASIBLE_PENALTY: f64 = 1000000.0;
 
-            // + true... + (1 - false)... <= #all
-            // + true... - false... - ( #all - #false ) <= 0
-            // + true... - false... - ( #all - #false ) + 1 <= 1
-            // INFEASIBLE_PENALTY ( + true... - false... - ( #all - #false ) + 1 ) <= p
-            // IP true... - IP false... - IP ( #all - #false - 1 ) <= p
-            // IP true... - IP false... - p <= IP ( #all - #false - 1 )
-            // IP true... - IP false... - p <= IP ( #true - 1 )
-            let mut lhs = grb::expr::LinExpr::new();
-            let mut num_true: usize = 0;
-            for t in self.problem.all_days() {
-                for i in self.problem.all_customers() {
-                    for v in self.problem.all_vehicles() {
-                        if is_visited(t, v, i) {
-                            lhs.add_term(INFEASIBLE_PENALTY, self.vars.visit(t, v, i));
-                            num_true += 1;
-                        } else {
-                            lhs.add_term(-INFEASIBLE_PENALTY, self.vars.visit(t, v, i));
-                        }
+            INFEASIBLE_PENALTY
+        };
+
+        // copy-and-paste because quick-n-dirty test
+        let mut lhs = grb::expr::LinExpr::new();
+        let mut num_true: usize = 0;
+        for t in self.problem.all_days() {
+            for i in self.problem.all_customers() {
+                for v in self.problem.all_vehicles() {
+                    if is_visited(t, v, i) {
+                        lhs.add_term(penalty, self.vars.visit(t, v, i));
+                        num_true += 1;
+                    } else {
+                        lhs.add_term(-penalty, self.vars.visit(t, v, i));
                     }
                 }
             }
-            lhs.add_term(-1.0, self.vars.penalty());
-            let rhs = INFEASIBLE_PENALTY * (num_true as f64 - 1.0);
-            context.add_lazy(grb::c!(lhs <= rhs))?;
         }
+        lhs.add_term(-1.0, self.vars.penalty());
+        let rhs = penalty * (num_true as f64 - 1.0);
+        context.add_lazy(grb::c!(lhs <= rhs))?;
 
         Ok(())
     }
