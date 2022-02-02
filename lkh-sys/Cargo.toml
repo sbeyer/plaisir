@@ -1,0 +1,7 @@
+[package]
+name = "lkh-sys"
+version = "0.1.0"
+authors = ["Stephan Beyer <s-beyer@gmx.net>"]
+links = "LKH"
+rust-version = "1.58"
+edition = "2021"

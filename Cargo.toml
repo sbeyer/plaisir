@@ -1,0 +1,10 @@
+[workspace]
+
+members = [
+    "lkh-sys",
+    "lkh",
+    "plaisir",
+]
+
+[profile.release]
+lto = true
