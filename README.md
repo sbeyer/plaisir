@@ -6,6 +6,12 @@ This repository contains the source code of plaisir,
 a solver for the Inventory Routing Problem,
 used for the
 [IRP Track of the 12th DIMACS Implementation Challenge](http://dimacs.rutgers.edu/programs/challenge/vrp/irp/).
+If you want to reproduce,
+the code used to compute the results for the Challenge can be found on tag `v12`.
+
+Please note that the source code is considered a work-in-progress
+and was originally not meant to be public.
+It might contain a lot of dirt.
 
 ## Important license notice
 
