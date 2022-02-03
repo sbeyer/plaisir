@@ -38,7 +38,7 @@
     { Link((a)->Pred, (a)->Suc); Link(a, a); Link((b)->Pred, a); Link(a, b); }
 #define SLink(a, b) { (a)->Suc = (b); (b)->Pred = (a); }
 
-enum CandidateSetTypes { ALPHA, DELAUNAY, NN, POPMUSIC, QUADRANT };
+enum CandidateSetTypes { ALPHA, DELAUNAY, NN, QUADRANT };
 enum InitialTourAlgorithms { BORUVKA, GREEDY, MOORE, NEAREST_NEIGHBOR,
     QUICK_BORUVKA, SIERPINSKI, WALK
 };
@@ -226,13 +226,6 @@ extern int PatchingC;  /* Specifies the maximum number of disjoint cycles to be
 extern int Precision;  /* Internal precision in the representation of 
                           transformed distances */
 extern int PredSucCostAvailable;  /* PredCost and SucCost are available */
-extern int POPMUSIC_InitialTour;  /* Specifies whether the first POPMUSIC tour
-                                    is used as initial tour for LK */
-extern int POPMUSIC_MaxNeighbors; /* Maximum number of nearest neighbors used 
-                                     as candidates in iterated 3-opt */
-extern int POPMUSIC_SampleSize;   /* The sample size */
-extern int POPMUSIC_Solutions;    /* Number of solutions to generate */
-extern int POPMUSIC_Trials;       /* Maximum trials used for iterated 3-opt */
 extern unsigned *Rand; /* Table of random values */
 extern int Recombination; /* IPT or GPX2 */
 extern int RestrictedSearch;      /* Specifies whether the choice of the first 
@@ -321,7 +314,6 @@ void CreateCandidateSet(void);
 void CreateDelaunayCandidateSet(void);
 void CreateNearestNeighborCandidateSet(int K);
 void CreateNNCandidateSet(int K);
-void Create_POPMUSIC_CandidateSet(int K);
 void CreateQuadrantCandidateSet(int K);
 void eprintf(const char *fmt, ...);
 int Excludable(Node * ta, Node * tb);

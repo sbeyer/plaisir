@@ -29,9 +29,9 @@ static void ResetParameters()
     Backtracking = 0;
     /*
      * CANDIDATE_SET_TYPE = { ALPHA | DELAUNAY [ PURE ] | NEAREST-NEIGHBOR | 
-     *                        POPMUSIC | QUADRANT }
+     *                        QUADRANT }
      * Specifies the candidate set type.
-     * ALPHA is LKH's default type. ALPHA and POPMUSIC are applicable in general.
+     * ALPHA is LKH's default type. ALPHA is applicable in general.
      * The other types can only be used for instances given by coordinates.
      * The optional suffix PURE for the DELAUNAY type specifies that only
      * edges of the Delaunay graph are used as candidates.
@@ -201,40 +201,6 @@ static void ResetParameters()
      */
     Precision = 100;
     /*
-     * POPMUSIC_INITIAL_TOUR = { YES | NO }
-     * Specifies whether the best POPMUSIC tour is to be used as intial tour
-     * for Lin-Kernighan.
-     * Default: NO
-     */
-    POPMUSIC_InitialTour = 0;
-    /*
-     * POPMUSIC_MAX_NEIGHBORS = <integer of at least 1>
-     * Maximum number of nearest neighbors used as candidates in 3-opt for
-     * POPMUSIC.
-     * Default: 5
-     */
-    POPMUSIC_MaxNeighbors = 5;
-    /*
-     * POPMUSIC_SAMPLE_SIZE = <integer of at least 1>
-     * Sample size.
-     * Default: 10
-     */
-    POPMUSIC_SampleSize = 10;
-    /*
-     * POPMUSIC_SOLUTIONS = <integer of at least 1>
-     * Number of solutions to be generated.
-     * Default: 50
-     */
-    POPMUSIC_Solutions = 50;
-    /*
-     * POPMUSIC_TRIALS = <int>
-     * Number of trials used in iterated 3-opt for POPMUSIC.
-     * If the value is zero, the number of trials is the size of the subpath
-     * to be optimized.
-     * Default: 1
-     */
-    POPMUSIC_Trials = 1;
-    /*
      * RECOMBINATION = { IPT | GPX2 }
      * Default: IPT
      */
@@ -339,10 +305,6 @@ static void AdjustParameters()
     if (MaxTrials == -1)
         MaxTrials = Dimension;
     MakeHeap(Dimension);
-    if (POPMUSIC_MaxNeighbors > Dimension - 1)
-        POPMUSIC_MaxNeighbors = Dimension - 1;
-    if (POPMUSIC_SampleSize > Dimension)
-        POPMUSIC_SampleSize = Dimension;
     if (SubsequentMoveType == 0)
         SubsequentMoveType = MoveType;
     K = MoveType >= SubsequentMoveType

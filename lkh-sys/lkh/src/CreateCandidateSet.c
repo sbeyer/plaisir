@@ -52,7 +52,6 @@ void CreateCandidateSet()
     }
     MaxAlpha = (GainType) fabs(Excess * Cost);
     if (CandidateSetType == DELAUNAY ||
-            CandidateSetType == POPMUSIC ||
             MaxCandidates == 0)
         OrderCandidateSet(MaxCandidates, MaxAlpha, CandidateSetSymmetric);
     else

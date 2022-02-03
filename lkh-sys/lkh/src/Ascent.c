@@ -33,8 +33,6 @@ GainType Ascent()
     while ((t = t->Suc) != FirstNode);
     if (CandidateSetType == DELAUNAY && !FirstNode->CandidateSet)
         CreateDelaunayCandidateSet();
-    else if (CandidateSetType == POPMUSIC && !FirstNode->CandidateSet)
-        Create_POPMUSIC_CandidateSet(AscentCandidates);
     else if (MaxCandidates == 0) {
         AddTourCandidates();
         if (ExtraCandidates > 0)
@@ -44,7 +42,6 @@ GainType Ascent()
 
     /* Compute the cost of a minimum 1-tree */
     W = Minimum1TreeCost(CandidateSetType == DELAUNAY ||
-                         CandidateSetType == POPMUSIC ||
                          MaxCandidates == 0);
 
     /* Return this cost 
@@ -59,7 +56,7 @@ GainType Ascent()
     if (MaxCandidates > 0) {
         /* Generate symmetric candididate sets for all nodes */
         MaxAlpha = INT_MAX;
-        if (CandidateSetType != DELAUNAY && CandidateSetType != POPMUSIC)
+        if (CandidateSetType != DELAUNAY)
             GenerateCandidates(AscentCandidates, MaxAlpha, 1);
         else {
             OrderCandidateSet(AscentCandidates, MaxAlpha, 1);
@@ -118,7 +115,6 @@ GainType Ascent()
                 if (W - W0 > (W0 >= 0 ? W0 : -W0) && AscentCandidates > 0
                     && AscentCandidates < Dimension) {
                     W = Minimum1TreeCost(CandidateSetType == DELAUNAY ||
-                                         CandidateSetType == POPMUSIC ||
                                          MaxCandidates == 0);
                     if (W < W0) {
                         /* Double the number of candidate edges 
@@ -150,7 +146,6 @@ GainType Ascent()
                 /* If the improvement was found at the last iteration of the 
                    current period, then double the period */
                 if (CandidateSetType != DELAUNAY &&
-                    CandidateSetType != POPMUSIC &&
                     P == Period && (Period *= 2) > InitialPeriod)
                     Period = InitialPeriod;
             } else {
@@ -176,10 +171,9 @@ GainType Ascent()
 
     /* Compute a minimum 1-tree */
     W = BestW = Minimum1TreeCost(CandidateSetType == DELAUNAY ||
-                                 CandidateSetType == POPMUSIC ||
                                  MaxCandidates == 0);
 
-    if (MaxCandidates > 0 && CandidateSetType != POPMUSIC) {
+    if (MaxCandidates > 0) {
         FreeCandidateSets();
         if (CandidateSetType == DELAUNAY)
             CreateDelaunayCandidateSet();

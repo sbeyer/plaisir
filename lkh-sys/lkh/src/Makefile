@@ -20,7 +20,7 @@ _OBJ = Activate.o AddCandidate.o AddExtraCandidates.o                  \
        BridgeGain.o BuildKDTree.o C.o CandidateReport.o                \
        ChooseInitialTour.o Connect.o CreateCandidateSet.o              \
        CreateDelaunayCandidateSet.o CreateNNCandidateSet.o             \
-	   Create_POPMUSIC_CandidateSet.o CreateQuadrantCandidateSet.o     \
+	   CreateQuadrantCandidateSet.o     \
        Delaunay.o Distance.o eprintf.o ERXT.o       \
        Excludable.o Exclude.o FindTour.o FixedOrCommonCandidates.o     \
        Flip.o Flip_SL.o Flip_SSL.o FreeStructures.o        \
