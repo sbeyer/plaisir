@@ -1,10 +1,10 @@
 #include "GeoConversion.h"
 
-/* 
+/*
  * Functions for conversion between geographical longitude and altitude
  * coordinates and 3D Cartesian coordinates.
  * The coordinates may be given as degrees and minutes (GEO),
- * or as degrees in decimal form (GEOM). 
+ * or as degrees in decimal form (GEOM).
  */
 
 #define PI 3.141592

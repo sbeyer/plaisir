@@ -3,8 +3,8 @@
 #include "Heap.h"
 #include "Sequence.h"
 
-/*      
- * The AllocateStructures function allocates all necessary 
+/*
+ * The AllocateStructures function allocates all necessary
  * structures except nodes and candidates.
  */
 
@@ -62,7 +62,7 @@ void AllocateStructures()
         (SwapRecord *) malloc((MaxSwaps + 6 * K) * sizeof(SwapRecord));
 }
 
-/*      
+/*
  * The AllocateSegments function allocates the segments of the two-level tree.
  */
 

@@ -1,8 +1,8 @@
 #ifndef _HEAP_H
 #define _HEAP_H
 
-/* 
- * This header specifies the interface for the use of heaps. 
+/*
+ * This header specifies the interface for the use of heaps.
  */
 
 #include "LKH.h"

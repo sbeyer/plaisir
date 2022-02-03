@@ -7,7 +7,7 @@
 
 typedef void (*CrossoverFunction) ();
 
-extern int MaxPopulationSize; /* The maximum size of the population */ 
+extern int MaxPopulationSize; /* The maximum size of the population */
 extern int PopulationSize;    /* The current size of the population */
 extern CrossoverFunction Crossover;
 extern int **Population;      /* Array of individuals (solution tours) */

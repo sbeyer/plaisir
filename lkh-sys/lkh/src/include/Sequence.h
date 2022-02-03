@@ -1,11 +1,11 @@
 #ifndef SEQUENCE_H
 #define SEQUENCE_H
 
-/* 
+/*
  * This header specifies the interface for the use of node sequences.
- *   
- * The functions BestKOptMove and BacktrackKOptMove are implemented 
- * by means of such sequences. 
+ *
+ * The functions BestKOptMove and BacktrackKOptMove are implemented
+ * by means of such sequences.
  */
 
 #include "LKH.h"

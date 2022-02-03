@@ -3,7 +3,7 @@
 /*
  * The SFCTour function computes a tour using a space-filling curve.
  * See
- * 
+ *
  *    Loren K. Platzman and John J. Bartholdi III,
  *    Spacefilling curves and the planar travelling salesman problem,
  *    J. ACM, Vol. 36, 4, pp. 710-737 (1989).
@@ -15,7 +15,7 @@
  *     On Certain Crinkly Curves,
  *     Trans. Amer. Math Soc., 1, pp. 72-90 (1900).
  *
- * The function returns the cost of the resulting tour. 
+ * The function returns the cost of the resulting tour.
  */
 
 static int SierpinskiIndex(double x, double y);

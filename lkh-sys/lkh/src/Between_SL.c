@@ -1,10 +1,10 @@
 #include "LKH.h"
 
 /*
- * The Between_SL function is used to determine whether a node is 
- * between two other nodes with respect to the current orientation. 
- * The function is only used if the two-level tree representation 
- * is used for a tour; if the doubly linked list representation is 
+ * The Between_SL function is used to determine whether a node is
+ * between two other nodes with respect to the current orientation.
+ * The function is only used if the two-level tree representation
+ * is used for a tour; if the doubly linked list representation is
  * used, the function Between is used instead.
  * 	
  * Between_SL(a,b,c) returns 1 if node b is between node a and c.

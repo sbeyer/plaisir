@@ -2,33 +2,33 @@
 #include "LKH.h"
 
 /*
- * The Best3OptMove function makes sequential edge exchanges. If possible, it 
- * makes an  r-opt move (r <= 3) that improves the tour. Otherwise, it makes 
- * the most promising 3-opt move that fulfils the positive gain criterion. 
- * To prevent an infinity chain of moves the last edge in a 3-opt move must 
- * not previously have been included in the chain. 
+ * The Best3OptMove function makes sequential edge exchanges. If possible, it
+ * makes an  r-opt move (r <= 3) that improves the tour. Otherwise, it makes
+ * the most promising 3-opt move that fulfils the positive gain criterion.
+ * To prevent an infinity chain of moves the last edge in a 3-opt move must
+ * not previously have been included in the chain.
  *
- * The edge (t1,t2) is the first edge to be exchanged. G0 is a pointer to the 
+ * The edge (t1,t2) is the first edge to be exchanged. G0 is a pointer to the
  * accumulated gain.
  *
- * In case a r-opt move is found that improves the tour, the improvement of 
- * the cost is made available to the caller through the parameter Gain. 
+ * In case a r-opt move is found that improves the tour, the improvement of
+ * the cost is made available to the caller through the parameter Gain.
  * If *Gain > 0, an improvement of the current tour has been found. In this
  * case the function returns 0.
  *
- * Otherwise, the best 3-opt move is made, and a pointer to the node that was 
- * connected to t1 (in order to close the tour) is returned. The new 
- * accumulated gain is made available to the caller through the parameter G0. 
+ * Otherwise, the best 3-opt move is made, and a pointer to the node that was
+ * connected to t1 (in order to close the tour) is returned. The new
+ * accumulated gain is made available to the caller through the parameter G0.
  *
- * The function is called from the LinKernighan function. 
+ * The function is called from the LinKernighan function.
  */
 
-/* 
-   The algorithm splits the set of possible moves up into a number disjoint 
-   subsets (called "cases"). When t1, t2, ..., t6 has been chosen, Case6 is 
+/*
+   The algorithm splits the set of possible moves up into a number disjoint
+   subsets (called "cases"). When t1, t2, ..., t6 has been chosen, Case6 is
    used to discriminate between 8 cases.
- 
-   A description of the cases is given after the code.   
+
+   A description of the cases is given after the code.
 */
 
 Node *Best3OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
@@ -42,16 +42,16 @@ Node *Best3OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
     if (SUC(t1) != t2)
         Reversed ^= 1;
 
-    /* 
+    /*
      * Determine (T3,T4,T5,T6) = (t3,t4,t5,t6)
-     * such that 
+     * such that
      *
-     *     G4 = *G0 - C(t2,T3) + C(T3,T4) 
+     *     G4 = *G0 - C(t2,T3) + C(T3,T4)
      *              - C(T4,T5) + C(T5,T6)
      *
      * is maximum (= BestG4), and (T5,T6) has not previously been included.
      * If during this process a legal move with *Gain > 0 is found, then make
-     * the move and exit Best3OptMove immediately. 
+     * the move and exit Best3OptMove immediately.
      */
 
     /* Choose (t2,t3) as a candidate edge emanating from t2 */
@@ -154,30 +154,30 @@ Node *Best3OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
 }
 
 /*
-   Below is shown the use of the variables X4 and Case6 to discriminate between 
-   the 4 cases considered by the algorithm. 
+   Below is shown the use of the variables X4 and Case6 to discriminate between
+   the 4 cases considered by the algorithm.
 
    The notation
 
         ab-
 
-   is used for a subtour that starts with the edge (ta,tb). For example 
-   the tour 
+   is used for a subtour that starts with the edge (ta,tb). For example
+   the tour
 
         12-43-
 
-   contains the edges (t1,t2) and (t4,t3), in that order. 
+   contains the edges (t1,t2) and (t4,t3), in that order.
 
    X4 = 1:
        12-43-
-       Case6 = 1: 
+       Case6 = 1:
            12-56-43-
-       Case6 = 2:   
+       Case6 = 2:
            12-43-65-
    X4 = 2:
        12-34-
-       Case6 = 5: 
+       Case6 = 5:
            12-56-34-
-       Case6 = 6: 
+       Case6 = 6:
            12-65-34-
 */

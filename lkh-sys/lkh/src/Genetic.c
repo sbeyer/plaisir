@@ -2,7 +2,7 @@
 #include "Genetic.h"
 
 /*
- * The AddToPopulation function adds the current tour as an individual to 
+ * The AddToPopulation function adds the current tour as an individual to
  * the population. The fitness of the individual is set equal to the cost
  * of the tour. The population is kept sorted in increasing fitness order.
  */
@@ -36,7 +36,7 @@ void AddToPopulation(GainType Cost)
 }
 
 /*
- * The ApplyCrossover function applies a specified crossover operator to two 
+ * The ApplyCrossover function applies a specified crossover operator to two
  * individuals.
  */
 
@@ -59,7 +59,7 @@ void ApplyCrossover(int i, int j)
 #define Free(s) { free(s); s = 0; }
 
 /*
- * The FreePopulation function frees the memory space allocated to the 
+ * The FreePopulation function frees the memory space allocated to the
  * population.
  */
 
@@ -107,14 +107,14 @@ static double Random01()
 }
 
 /*
- * The LinearSelection function is used to select an individual with 
+ * The LinearSelection function is used to select an individual with
  * random linear bias towards the best members of the population.
  * The parameter Bias is a number between 1.0 and 2.0.
  *
  * See
  *     Darrell Whitley,
  *     The GENITOR algorithm and selection pressure:
- *     Why rank-based allocation of reproductive trials is best. 
+ *     Why rank-based allocation of reproductive trials is best.
  *     Proceedings of the Third International Conference on Genetic Algorithms,
  *     1989.
  */
@@ -160,7 +160,7 @@ void PrintPopulation()
 }
 
 /*
- * The ReplaceIndividualWithTour function replaces a given individual in 
+ * The ReplaceIndividualWithTour function replaces a given individual in
  * the population by an indidual that represents the current tour.
  * The population is kept sorted in increasing fitness order.
  */
@@ -195,9 +195,9 @@ void ReplaceIndividualWithTour(int i, GainType Cost)
     Population[i] = P;
 }
 
-/* 
- * The DistanceToIndividual returns the number of different edges between 
- * the tour (given by OldSuc) and individual i. 
+/*
+ * The DistanceToIndividual returns the number of different edges between
+ * the tour (given by OldSuc) and individual i.
  */
 
 static int DistanceToIndividual(int i)
@@ -218,8 +218,8 @@ static int DistanceToIndividual(int i)
 }
 
 /*
- * The ReplacementIndividual function returns the individual to be 
- * replaced with the current tour. The function implements the 
+ * The ReplacementIndividual function returns the individual to be
+ * replaced with the current tour. The function implements the
  * replacement strategy (CD/RW) proposed in
  *
  *      M. Lozano, F. Herrera, and J. R. Cano,

@@ -3,7 +3,7 @@
 /*
  * Each time a trial has resulted in a shorter tour the candidate set is
  * adjusted (by AdjustCandidateSet). The ResetCandidates function resets
- * the candidate set. The original order is re-established (using, and 
+ * the candidate set. The original order is re-established (using, and
  * edges with Alpha == INT_MAX are excluded.
  *
  * The function is called from FindTour and OrderCandidates.

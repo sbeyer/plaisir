@@ -2,16 +2,16 @@
 #include "LKH.h"
 
 /*
- * The Flip_SSL function performs a 2-opt move. Edges (t1,t2) and (t3,t4) 
- * are exchanged with edges (t2,t3) and (t4,t1). Node t4 is one of 
+ * The Flip_SSL function performs a 2-opt move. Edges (t1,t2) and (t3,t4)
+ * are exchanged with edges (t2,t3) and (t4,t1). Node t4 is one of
  * t3's two neighbors on the tour; which one is uniquely determined
  * by the orientation of (t1,t2).
  *
- * The function is only used if the three-level tree representation is used 
+ * The function is only used if the three-level tree representation is used
  * for a tour; if the doubly linked list representation is used, the Flip_SL
  * function is used instead.
  *
- * An average cost of O(n^(1/3)) per 2-opt move may be achieved using the 
+ * An average cost of O(n^(1/3)) per 2-opt move may be achieved using the
  * three-level tree representation.
  *
  * See also the documentation for the Flip_SL function.
@@ -83,7 +83,7 @@ void Flip_SSL(Node * t1, Node * t2, Node * t3)
     /* Check if it is possible to flip locally within a segment */
     b = 0;
     if (P1 == P3) {
-        /* Either the t1 --> t3 path or the t2 --> t4 path lies 
+        /* Either the t1 --> t3 path or the t2 --> t4 path lies
            within one segment */
         if (t1->Rank < t3->Rank) {
             if (P1 == P2 && P1 == P4 && t2->Rank > t1->Rank) {
@@ -309,9 +309,9 @@ void Flip_SSL(Node * t1, Node * t2, Node * t3)
 }
 
 /*
-   The SplitSegment function is called by the Flip_SSL function to split a 
-   segment. Calling SplitSegment(t1,t2), where t1 and t2 are neighbors in 
-   the same segment, causes the segment to be split between t1 and t2. 
+   The SplitSegment function is called by the Flip_SSL function to split a
+   segment. Calling SplitSegment(t1,t2), where t1 and t2 are neighbors in
+   the same segment, causes the segment to be split between t1 and t2.
    The smaller half is merged with its neighboring segment, thus keeping
    the number of segments fixed.
  */
@@ -404,10 +404,10 @@ static void SplitSegment(Node * t1, Node * t2)
 
 /*
    The SplitSSegment function is called by the Flip_SSL function to split a
-   super segment. Calling SplitSSegment(t1,t2), where t1 and t2 are 
-   neighbors in the same super segment, causes the super segment to be split 
+   super segment. Calling SplitSSegment(t1,t2), where t1 and t2 are
+   neighbors in the same super segment, causes the super segment to be split
    between t1 and t2.
-   The smaller half is merged with its neighboring super segment, thus 
+   The smaller half is merged with its neighboring super segment, thus
    keeping the number of super segments fixed.
  */
 

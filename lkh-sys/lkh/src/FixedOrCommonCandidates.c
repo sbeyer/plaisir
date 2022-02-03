@@ -1,6 +1,6 @@
 #include "LKH.h"
 
-/* 
+/*
  * The FixedOrCommonCandidates function returns the number of fixed or
  * common candidate edges emanating from a given node, N.
  */

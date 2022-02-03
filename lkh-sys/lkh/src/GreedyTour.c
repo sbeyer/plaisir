@@ -3,30 +3,30 @@
 
 /*
  * The GreedyTour function computes a tour using either
- * 
+ *
  *      (1) Nearest Neighbor (NEAREST-NEIGHBOR),
- *      (2) Bentley's multiple fragment heuristic (GREEDY), 
- *      (3) Boruvka (BORUVKA), or 
+ *      (2) Bentley's multiple fragment heuristic (GREEDY),
+ *      (3) Boruvka (BORUVKA), or
  *      (4) Applegate, Cook and Rohe's Quick-Boruvka heuristic
  *          (QUICK-BORUVKA).
  *
- *    J. L. Bentley, 
- *    Fast Algorithms for Geometric Traveling Salesman Problems, 
+ *    J. L. Bentley,
+ *    Fast Algorithms for Geometric Traveling Salesman Problems,
  *    ORSA Journal on Computing, Vol. 4, 4, pp. 387-411 (1992).
  *
  *    D. Applegate, W. Cook, and A. Rohe,
- *    Chained Lin-Kernighan for large traveling salesman problems. 
+ *    Chained Lin-Kernighan for large traveling salesman problems.
  *    Technical Report No. 99887, Forschungsinstitut
  *    fuer Diskrete Mathematik, University of Bonn, Germany (1999).
- *  
+ *
  * The function returns the cost of the resulting tour.
- *   
+ *
  * Nearest neighbor searching is performed by using the candidate graph.
  * To provide different tours a randomized nearest neighbor search is used.
- * The first found feasible neighbor is returned with probability 2/3.  
+ * The first found feasible neighbor is returned with probability 2/3.
  *
  * A heap contains the nearest neighbor edges when the multiple fragment
- * heuristic is used. 
+ * heuristic is used.
  */
 
 #define Degree V        /* Number of edges currently adjacent to a node */
@@ -238,17 +238,17 @@ GainType GreedyTour()
 }
 
 /*
- * The NearestNeighbor function returns for a given node, From, the "nearest" 
- * neighbor, To, for which the addition of the edge (From, To) will not make 
+ * The NearestNeighbor function returns for a given node, From, the "nearest"
+ * neighbor, To, for which the addition of the edge (From, To) will not make
  * it impossible to complete a tour.
  *
  * The neighbor is determined by searching the candidate graph breadth-first,
- * starting at the node From. If possible, the nearest node on level 1 is 
- * chosen. Otherwise, on level 2. And so on. A queue is used for this search. 
- *    
+ * starting at the node From. If possible, the nearest node on level 1 is
+ * chosen. Otherwise, on level 2. And so on. A queue is used for this search.
+ *
  * Note that this algorithm finds an approximation to the nearest neighbor.
- * However, by giving candidate edges precedence over non-candidate edges the 
- * algorithm will often produce better results than an algorithm that 
+ * However, by giving candidate edges precedence over non-candidate edges the
+ * algorithm will often produce better results than an algorithm that
  * determines the true nearest neighbors (for example, by using a KD-tree).
  */
 
@@ -310,10 +310,10 @@ static Node *NearestNeighbor(Node * From)
 }
 
 /*
- * The NearestInList function returns for a given node, From, the "nearest" 
+ * The NearestInList function returns for a given node, From, the "nearest"
  * neighbor, To, for which the addition of the edge (From, To) will not make
  * it impossible to complete a tour.
- * 
+ *
  * The neighbor is determined by searching the list of nodes that are not in
  * any fragment.
  */
@@ -336,9 +336,9 @@ static Node *NearestInList(Node * From, Node * First)
 }
 
 /*
- * The MayBeAddedToFragments is used to test if the addition of a given edge, 
+ * The MayBeAddedToFragments is used to test if the addition of a given edge,
  * (From, To), makes it impossible to complete a tur.
- * If the edge may be added, the function returns 1; otherwise 0. 
+ * If the edge may be added, the function returns 1; otherwise 0.
  */
 
 static int MayBeAddedToFragments(Node * From, Node * To)
@@ -348,7 +348,7 @@ static int MayBeAddedToFragments(Node * From, Node * To)
 }
 
 /*
- * The AddEdgeToFragments function adds a given edge, (From, To), to the 
+ * The AddEdgeToFragments function adds a given edge, (From, To), to the
  * current set of fragments.
  */
 
@@ -374,8 +374,8 @@ static void AddEdgeToFragments(Node * From, Node * To)
 }
 
 /*
- * The RemoveFromList function removes a given node, N, from the list of 
- * non-fragment nodes. The parameter FIrst is a reference to the first node 
+ * The RemoveFromList function removes a given node, N, from the list of
+ * non-fragment nodes. The parameter FIrst is a reference to the first node
  * of this list.
  */
 

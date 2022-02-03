@@ -6,7 +6,7 @@
  *
  * Time complexity is O(K*N*N).
  *
- * The function is called from the CreateCandidateSet and 
+ * The function is called from the CreateCandidateSet and
  * AddExtraCandidates functions. It is intended for use on non-geometric
  * and toroidal instances.
  */

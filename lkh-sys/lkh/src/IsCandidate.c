@@ -1,7 +1,7 @@
 #include "LKH.h"
 
-/* 
- * The IsCandidate function is used to test if an edge, (ta,tb), 
+/*
+ * The IsCandidate function is used to test if an edge, (ta,tb),
  * belongs to the set of candidate edges.
  *
  * If the edge is a candidate edge the function returns 1; otherwise 0.

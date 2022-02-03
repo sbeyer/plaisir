@@ -4,13 +4,13 @@
  * The CreateCandidateSet function determines for each node its set of incident
  * candidate edges.
  *
- * The Ascent function is called to determine a lower bound on the optimal tour 
+ * The Ascent function is called to determine a lower bound on the optimal tour
  * using subgradient optimization. But only if the penalties (the Pi-values) is
- * not available on file. In the latter case, the penalties is read from the 
- * file, and the lower bound is computed from a minimum 1-tree.      
+ * not available on file. In the latter case, the penalties is read from the
+ * file, and the lower bound is computed from a minimum 1-tree.
  *
- * The function GenerateCandidates is called to compute the Alpha-values and to 
- * associate to each node a set of incident candidate edges.  
+ * The function GenerateCandidates is called to compute the Alpha-values and to
+ * associate to each node a set of incident candidate edges.
  *
  * The CreateCandidateSet function itself is called from LKHmain.
  */

@@ -1,7 +1,7 @@
 #include "LKH.h"
 #include <stdarg.h>
 
-/* 
+/*
  * The eprintf function prints an error message and exits.
  */
 

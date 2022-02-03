@@ -252,7 +252,7 @@ int tableCode(int ghost_a, int ghost_b, int ghost_c, int a, int b, int c,
     return a;
 }
 
-// correcting the number of entries 
+// correcting the number of entries
 // (removing common paths and assigned components)
 // test if simplified graphs outside unfesible candidate component are equal
 // Observation: this is equivalent of testing if all entries for a component
@@ -372,7 +372,7 @@ void tourTable_fill(int **Tour_table, int *d2_vertices,
         Tour_table[sol1][1] = sol2;
         Tour_table[sol2][1] = sol1;
     }
-    // Inserting in the table the reverse red tours (col. 2)        
+    // Inserting in the table the reverse red tours (col. 2)
     a = solution_red[n_cities - 1];
     ghost_a = ghostPair(label_list, label_list_inv, a);
     if (ghost_a == -1)
@@ -523,15 +523,15 @@ void tourTable(int *solution_blue_p2, int *solution_red_p2,
 
     Tour_table = alloc_matrixi(n_new, 6);
     // Tours table
-    // lines: vertices; 
-    // columns: 
+    // lines: vertices;
+    // columns:
     //     0 - next single vertex in blue tour
     //     1 - next single vertex in direct red tour
     //     2 - next single vertex in reverse red tour
-    //     3 - next common vertex 
+    //     3 - next common vertex
     //     4 - candidate to connected component following the direct red tour
     //     5 - candidate to connected component following the reverse red tour
-    // Obs.: all vertices has degree 3 or 2                                                                         
+    // Obs.: all vertices has degree 3 or 2
     // identifying the vertices with degree 2
     d2_vertices_id(d2_vertices, solution_blue_p2, common_edges_blue_p2,
                    n_new);
@@ -554,14 +554,14 @@ void tourTable(int *solution_blue_p2, int *solution_red_p2,
             n_comp++;
         } else
             vector_comp[i] = -1; // indicates that vertex i was not
-                                 // assigned yet                      
+                                 // assigned yet
     }
 
     // finding the candidates to connected components (AB cycles) with any
     // number of cuts
     do {
         n_rounds++;
-        // assigning the components 
+        // assigning the components
         cand_mcuts_dir = 0;
         cand_mcuts_rev = 0;
         for (i = 0; i < n_new; i++) {
@@ -574,7 +574,7 @@ void tourTable(int *solution_blue_p2, int *solution_red_p2,
         }
         // folowing direct red tour
         // AB Cycles: direct red tour
-        // all assigned become visited                          
+        // all assigned become visited
         cand_dir = 0;
         for (i = 0; i < n_new; i++) {
             if (visited[i] == 0) {
@@ -595,7 +595,7 @@ void tourTable(int *solution_blue_p2, int *solution_red_p2,
                 cand_dir++;
             }
         }
-        // finding the number of entries and size       
+        // finding the number of entries and size
         n_entries_dir = alloc_vectori(cand_dir);
         assigned_dir = alloc_vectori(cand_dir);
         size_dir = alloc_vectori(cand_dir);
@@ -617,7 +617,7 @@ void tourTable(int *solution_blue_p2, int *solution_red_p2,
         simplifyPaths(solution_blue_p2, n_new, vector_comp,
                       vector_cand_dir, n_entries_dir, cand_dir);
         // following reverse red tour
-        // AB Cycles: reverse red tour          
+        // AB Cycles: reverse red tour
         // all assigned become visited
         cand_rev = 0;
         for (i = 0; i < n_new; i++) {
@@ -645,7 +645,7 @@ void tourTable(int *solution_blue_p2, int *solution_red_p2,
                         if (vector_comp_red[i] == 0
                             || vector_comp_red[ghost_pair] == 0)
                             entries_flag_rev[cand_rev] = 1;
-                        // 1 indicates that one of the entries for candidate 
+                        // 1 indicates that one of the entries for candidate
                         // cand_rev was alredy assigned for direct red tour
                     }
                     visited[i] = 1;
@@ -680,7 +680,7 @@ void tourTable(int *solution_blue_p2, int *solution_red_p2,
         // assigned components)
         simplifyPaths(solution_blue_p2, n_new, vector_comp,
                       vector_cand_rev, n_entries_rev, cand_rev);
-        // Assigning the true candidates 
+        // Assigning the true candidates
         // new labels for direct red tour
         min_size_dir = n_new; // minimum size for the candidates
         min_size_dir_index = -1;
@@ -713,7 +713,7 @@ void tourTable(int *solution_blue_p2, int *solution_red_p2,
         }
         cand_mcuts = cand_mcuts_dir + cand_mcuts_rev;
         if (cand_mcuts > 0 && n_rounds <= n_rounds_max) {
-            // assigning components 
+            // assigning components
             // choose all components in one tour (only one) that has size
             // equal or smaller than the minimum size of the other component
             // use the number of entries when there is a tie
@@ -729,12 +729,12 @@ void tourTable(int *solution_blue_p2, int *solution_red_p2,
                     if (min_size_rev_index == -1)
                         red_chosen = 0; // 0 for direct and 1 for reverse
                     else if (n_entries_dir[min_size_dir_index] == 2)
-                        red_chosen = 0; // 0 for direct and 1 for reverse                                 
+                        red_chosen = 0; // 0 for direct and 1 for reverse
                     else if (n_entries_rev[min_size_rev_index] == 2)
-                        red_chosen = 1; // 0 for direct and 1 for reverse                                 
+                        red_chosen = 1; // 0 for direct and 1 for reverse
                     else if (n_entries_rev[min_size_rev_index] <
                              n_entries_dir[min_size_dir_index])
-                        red_chosen = 1; // 0 for direct and 1 for reverse 
+                        red_chosen = 1; // 0 for direct and 1 for reverse
                     else
                         red_chosen = 0; // 0 for direct and 1 for reverse
                 }
@@ -767,7 +767,7 @@ void tourTable(int *solution_blue_p2, int *solution_red_p2,
                             vector_comp[i] =
                                 assigned_dir[Tour_table[i][4]];
                             // assigning component
-                            // recording dir. red tour                      
+                            // recording dir. red tour
                             if (vector_comp_red[i] == -1) {
                                 ghost_pair =
                                     ghostPair(label_list, label_list_inv,
@@ -798,8 +798,8 @@ void tourTable(int *solution_blue_p2, int *solution_red_p2,
                                    -1) {
                             vector_comp[i] =
                                 assigned_rev[Tour_table[i][5]];
-                            // assigning component                      
-                            // recording dir. red tour                      
+                            // assigning component
+                            // recording dir. red tour
                             if (vector_comp_red[i] == -1) {
                                 ghost_pair =
                                     ghostPair(label_list, label_list_inv,
@@ -836,7 +836,7 @@ void tourTable(int *solution_blue_p2, int *solution_red_p2,
                 assigned_dir[i] = n_comp;
                 n_comp++;
             }
-            // assigning new labels 
+            // assigning new labels
             for (i = 0; i < n_new; i++) {
                 if (vector_comp[i] == -1)
                     vector_comp[i] = assigned_dir[Tour_table[i][4]];
@@ -880,7 +880,7 @@ static int *size;      // vector
 static int *n_inputs;
 static int *n_outputs;
 static tour *blue, *red;
-static unsigned int n; // size of the tours 
+static unsigned int n; // size of the tours
 static int **M_neigh;  // neighbourhood matrix: first collumn indicates the
                        // number of neighbours, and the collumns 2 and 3
                        // indicate the index of the neighbours
@@ -985,7 +985,7 @@ void findInputs(int *sol_blue, int *sol_red)
         n_inputs[i] = 0;
         n_outputs[i] = 0;
         M_neigh[i][0] = 0; // the first column indicates the number
-                           // of neighbours       
+                           // of neighbours
     }
     for (i = 0; i < n_reduc; i++) {
         gate.num = sol_blue_reduc[i];
@@ -1080,13 +1080,13 @@ void findInputs(int *sol_blue, int *sol_red)
             n_inputs[aux] = n_inputs[aux] + 1;
             if (red[aux].first_entry.num == -1)
                 red[aux].first_entry = gate;
-            // records the first entry in the candidate for the red tour 
+            // records the first entry in the candidate for the red tour
         }
         if (aux != id[sol_red_reduc[i_h]]) {
             red[aux].outputs[n_outputs[aux]] = gate;
             n_outputs[aux] = n_outputs[aux] + 1;
             red[aux].last_exit = gate;
-            // records the last exit in the candidate for the red tour      
+            // records the last exit in the candidate for the red tour
         }
     }
 
@@ -1134,13 +1134,13 @@ void testComp(int cand)
             if (n_inputs[cand] == 1)
                 test[cand] = 1;
             else {
-                // Graphs for blue and red tours                        
+                // Graphs for blue and red tours
                 inp_out_blue_inv = new_int(n);
                 inp_out_red = new_int(2 * n_inputs[cand]);
                 // Two cases: Case 1 - first input before first output;
                 //            Case 2 - otherwise
                 // Obs.: remember that the inputs and outputs are
-                // inserted according to the flow                               
+                // inserted according to the flow
                 if (blue[cand].inputs[0].time < blue[cand].outputs[0].time) {
                     for (i = 0; i < n_inputs[cand]; i++) {
                         inp_out_blue_inv[blue[cand].inputs[i].num] = 2 * i;
@@ -1216,7 +1216,7 @@ void testComp(int cand)
                                                 [2 * n_inputs[cand] - 1]]);
                 }
 
-                // Comparing the two graphs                                     
+                // Comparing the two graphs
                 test[cand] = isequal(Gs_blue, Gs_red);
                 free(Gs_red);
                 free(Gs_blue);
@@ -1286,7 +1286,7 @@ void fusion(int *sol_blue, int *sol_red)
     // cond= -1 if cand is a true component or if it is between two
     // common edges;   = 0 stil does not chosen;
     //                 = 1 already chosen, and id will be changed;
-    //                 = 2 already chosen but id will not be changed 
+    //                 = 2 already chosen but id will not be changed
     neigh_vec_ind = new_int(n_cand); // neigh_vec_ind: indicates the neighbour
                                      // that will be fusioned with cand
     for (cand = 0; cand < n_cand; cand++)
@@ -1326,7 +1326,7 @@ void fusion(int *sol_blue, int *sol_red)
     }
 
     if (n_fusions > 0) {
-        // Reseting tour structures blue and red 
+        // Reseting tour structures blue and red
         for (cand = 0; cand < n_cand; cand++) {
             free(blue[cand].inputs);
             free(blue[cand].outputs);
@@ -1355,7 +1355,7 @@ void fusion(int *sol_blue, int *sol_red)
         // Repeating Step 6: testing the candidate components
         for (cand = 0; cand < n_cand; cand++)
             if (neigh_vec_cond[cand] == 2)
-                testComp(cand); // test component cand                  
+                testComp(cand); // test component cand
     }
 
     free(neigh_vec_cond);
@@ -1403,7 +1403,7 @@ void fusionB(int *sol_blue, int *sol_red)
                           red[cand].last_exit.num ||
                           blue[cand].last_exit.num ==
                           red[cand].first_entry.num))
-                    cand_seq_cut[n_cand_seq] = 1; // it is a last common exit       
+                    cand_seq_cut[n_cand_seq] = 1; // it is a last common exit
                 else
                     cand_seq_cut[n_cand_seq] = 0;
                 n_cand_seq++;
@@ -1419,7 +1419,7 @@ void fusionB(int *sol_blue, int *sol_red)
                 cand_seq_cut[i] == 0 && cand_seq_cut[i + 1] == 0) {
                 // insert edge between candidates
                 insertEdge(G_cand, cand_seq[i], cand_seq[i + 1]);
-                // insert edge between candidates                               
+                // insert edge between candidates
                 insertEdge(G_cand, cand_seq[i + 1], cand_seq[i]);
             }
         }
@@ -1427,7 +1427,7 @@ void fusionB(int *sol_blue, int *sol_red)
             cand_seq_cut[n_cand_seq - 1] == 0 && cand_seq_cut[0] == 0) {
             // insert edge between candidates
             insertEdge(G_cand, cand_seq[n_cand_seq - 1], cand_seq[0]);
-            // insert edge between candidates                           
+            // insert edge between candidates
             insertEdge(G_cand, cand_seq[0], cand_seq[n_cand_seq - 1]);
         }
     }
@@ -1456,7 +1456,7 @@ void fusionB(int *sol_blue, int *sol_red)
                           blue[cand].last_exit.num ||
                           red[cand].last_exit.num ==
                           blue[cand].first_entry.num))
-                    cand_seq_cut[n_cand_seq] = 1; // it is a last common exit       
+                    cand_seq_cut[n_cand_seq] = 1; // it is a last common exit
                 else
                     cand_seq_cut[n_cand_seq] = 0;
                 n_cand_seq++;
@@ -1472,7 +1472,7 @@ void fusionB(int *sol_blue, int *sol_red)
                 cand_seq_cut[i] == 0 && cand_seq_cut[i + 1] == 0) {
                 // insert edge between candidates
                 insertEdge(G_cand, cand_seq[i], cand_seq[i + 1]);
-                // insert edge between candidates                               
+                // insert edge between candidates
                 insertEdge(G_cand, cand_seq[i + 1], cand_seq[i]);
             }
         }
@@ -1489,7 +1489,7 @@ void fusionB(int *sol_blue, int *sol_red)
         new_label[cand] = cand;
 
     if (n_cand_seq > 0) {
-        vector_new_cand = alloc_vectori(n_cand); // fusion of candidates        
+        vector_new_cand = alloc_vectori(n_cand); // fusion of candidates
         compCon(G_cand, vector_new_cand); // find the connected components of
                                           // the graph
         // new label
@@ -1516,7 +1516,7 @@ void fusionB(int *sol_blue, int *sol_red)
             }
             free(assigned_cand);
 
-            // Reseting tour structures blue and red 
+            // Reseting tour structures blue and red
             for (cand = 0; cand < n_cand; cand++) {
                 free(blue[cand].inputs);
                 free(blue[cand].outputs);
@@ -1549,7 +1549,7 @@ void fusionB(int *sol_blue, int *sol_red)
                 if (new_component[cand] == 1)
                     testComp(cand);
 
-            // Testing unfeasible partitions 
+            // Testing unfeasible partitions
             do {
                 n_rounds++;
                 n_newpart = testUnfeasibleComp(sol_blue);
@@ -1627,7 +1627,7 @@ GainType off_gen(int *sol_blue, int *sol_red, int *offspring,
         }
     }
 
-    // Generating the offspring     
+    // Generating the offspring
     // index for the solutions
     sol_blue_index = new_int(n);
     sol_red_index = new_int(n);
@@ -1670,8 +1670,8 @@ GainType off_gen(int *sol_blue, int *sol_red, int *offspring,
     i = 0;
     offspring_p2[i] = 0;
     v_aux = 0;
-    Adj *a = G_offspring->firstAdj[v_aux]; // first edge of the vertex 
-    Adj *b = a->nextAdj; // next edge of the vertex 
+    Adj *a = G_offspring->firstAdj[v_aux]; // first edge of the vertex
+    Adj *b = a->nextAdj; // next edge of the vertex
     v_aux = a->vertex;
     i++;
     offspring_p2[i] = v_aux;

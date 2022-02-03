@@ -5,15 +5,15 @@
  * This file contains the functions FindPermutation and FeasibleKOptMove.
  */
 
-/*  
- * The FindPermutation function finds the permutation p[1:2k] corresponding 
+/*
+ * The FindPermutation function finds the permutation p[1:2k] corresponding
  * to the sequence in which the nodes t[1:2k] occur on the tour.
- *   
- * The nodes are sorted using qsort. The BETWEEN function is used 
+ *
+ * The nodes are sorted using qsort. The BETWEEN function is used
  * as comparator.
- *   
+ *
  * Postcondition:
- *   
+ *
  *     BETWEEN(t[p[i-1]], t[p[i]], t[p[i+1]]) for i = 2, ..., 2k-1
  */
 
@@ -40,12 +40,12 @@ void FindPermutation(int k)
         q[p[i]] = i;
 }
 
-/*  
+/*
  * The FeasibleKOptMove function tests whether the move given by
  * t[1..2k] and incl[1..2k] represents a feasible k-opt move,
  * i.e., making the move on the current tour will result in a tour.
- *   
- * In that case, 1 is returned. Otherwise, 0 is returned. 
+ *
+ * In that case, 1 is returned. Otherwise, 0 is returned.
  */
 
 int FeasibleKOptMove(int k)
@@ -58,9 +58,9 @@ int FeasibleKOptMove(int k)
 }
 
 /*
- * The Cycles function returns the number of cycles that would appear if 
- * the move given by t[1..2k] and incl[1..2k] was made. 
- * In addition, cycle[i] is assigned the number of the cycle that node t[i] 
+ * The Cycles function returns the number of cycles that would appear if
+ * the move given by t[1..2k] and incl[1..2k] was made.
+ * In addition, cycle[i] is assigned the number of the cycle that node t[i]
  * is a part of (an integer from 1 to Cycles).
  */
 
@@ -97,8 +97,8 @@ int Added(const Node * ta, const Node * tb)
     return ta->Added1 == tb || ta->Added2 == tb;
 }
 
-/* 
- * The Deleted function is used to test if an edge, (ta,tb), 
+/*
+ * The Deleted function is used to test if an edge, (ta,tb),
  * of the tour has been deleted in the submove under construction.
  */
 

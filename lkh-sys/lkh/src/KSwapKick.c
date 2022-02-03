@@ -1,10 +1,10 @@
 #include "LKH.h"
 
 /*
- * The KSwapKick function makes a random K-swap kick, K>=4 
+ * The KSwapKick function makes a random K-swap kick, K>=4
  * (a generalization of the double-bridge kick).
  *
- * The algorithm is inspired by the thesis 
+ * The algorithm is inspired by the thesis
  *
  *    D. Richter,
  *    Toleranzen in Helsgauns Lin-Kernighan-Heuristik fur das TSP,
@@ -51,7 +51,7 @@ void KSwapKick(int K)
 /*
  * The RandomNode function returns a random node N, for
  * which the edge (N, N->Suc) is neither a fixed edge nor
- * a common edge of tours to be merged, and N has not 
+ * a common edge of tours to be merged, and N has not
  * previously been chosen.
  */
 

@@ -20,12 +20,12 @@ static int Candidates, Radius;
 static int Level = 0;
 
 /*
- * The CreateQuadrantCandidateSet function creates for each node 
+ * The CreateQuadrantCandidateSet function creates for each node
  * a candidate set consisting of the K/L least costly neighbor edges
- * in each of the L geometric quadrants around the node, where L 
- * is 4 for 2-D instances, and 8 for 3-D instances. 
- * If these totals less than K nodes, the candidate set is 
- * augmented by the nearest remaining nodes overall to bring 
+ * in each of the L geometric quadrants around the node, where L
+ * is 4 for 2-D instances, and 8 for 3-D instances.
+ * If these totals less than K nodes, the candidate set is
+ * augmented by the nearest remaining nodes overall to bring
  * the total up to K.
  *
  * The function is called from the CreateCandidateSet and
@@ -93,7 +93,7 @@ void CreateQuadrantCandidateSet(int K)
  * The CreateNearestNeighborCandidateSet function creates for each node
  * a candidate set consisting of the K least costly neighbor edges.
  *
- * The function is called from the CreateCandidateSet and 
+ * The function is called from the CreateCandidateSet and
  * AddExtraCandidates functions.
  */
 
@@ -197,7 +197,7 @@ static int Contains(Node * T, int Q, Node * N)
 }
 
 /*
- * The BoxOverlaps2D function returns 1 if T's bounding box 
+ * The BoxOverlaps2D function returns 1 if T's bounding box
  * overlaps the 2-D quadrant Q relative to N; otherwise 0.
  */
 
@@ -219,16 +219,16 @@ static int BoxOverlaps(Node * T, int Q, Node * N)
 
 
 /*
- * The Overlaps function returns 1 if High is zero and the half 
- * plane to the left of a point T overlaps quadrant Q relative 
+ * The Overlaps function returns 1 if High is zero and the half
+ * plane to the left of a point T overlaps quadrant Q relative
  * to a point N.
- * If High is not zero the Overlaps function returns 1 if the 
+ * If High is not zero the Overlaps function returns 1 if the
  * half plane to the right of T overlaps quadrant Q relative to N.
  * Otherwise the function returns 0.
  *
  * The directions are relative to the given coordinate axis.
- * The parameter diff is <= 0 if T is to the left of N, 
- * and >= 0 if T is to the right of N.   
+ * The parameter diff is <= 0 if T is to the left of N,
+ * and >= 0 if T is to the right of N.
  */
 
 static int Overlaps(int Q, double diff, int High, int axis)
@@ -266,9 +266,9 @@ static int InCandidateSet(Node * N, Node * T)
 
 /*
  * The NQN function searches KDTree[start:end] in an attempt to
- * find the K quad-nearest neighbors in quadrant Q relative to N. 
+ * find the K quad-nearest neighbors in quadrant Q relative to N.
  *
- * The function is called from the NearestQuadrantNeighbors 
+ * The function is called from the NearestQuadrantNeighbors
  * and the CreateNearestNeighborCandidateSet function.
  */
 
@@ -320,8 +320,8 @@ static void NQN(Node * N, int Q, int start, int end, int K)
 }
 
 /*
- * The NearestQuadrantNeighbors function searches the K-d tree 
- * in an attempt to find the K quad-nearest neighbors in 
+ * The NearestQuadrantNeighbors function searches the K-d tree
+ * in an attempt to find the K quad-nearest neighbors in
  * quadrant Q relative to N.
  * If Q = 0, the funtion computes the K nearest neighbors to N.
  */

@@ -1,22 +1,22 @@
 #include "LKH.h"
 
-/* 
- * The Ascent function computes a lower bound on the optimal tour length 
- * using subgradient optimization. The function also transforms the original 
- * problem into a problem in which the Alpha-values reflect the likelihood 
+/*
+ * The Ascent function computes a lower bound on the optimal tour length
+ * using subgradient optimization. The function also transforms the original
+ * problem into a problem in which the Alpha-values reflect the likelihood
  * of edges being optimal.
  *
- * The function attempts to find penalties (Pi-values) that maximizes the 
- * lower bound L(T(Pi)) - 2*PiSum, where L(T(Pi)) denotes the length of the 
- * minimum spanning 1-tree computed from the transformed distances, and PiSum 
- * denotes the sum of Pi-values. If C(i,j) denotes the length of an edge 
- * (i,j), then the transformed distance D(i,j) of an edge is 
+ * The function attempts to find penalties (Pi-values) that maximizes the
+ * lower bound L(T(Pi)) - 2*PiSum, where L(T(Pi)) denotes the length of the
+ * minimum spanning 1-tree computed from the transformed distances, and PiSum
+ * denotes the sum of Pi-values. If C(i,j) denotes the length of an edge
+ * (i,j), then the transformed distance D(i,j) of an edge is
  * C(i,j) + Pi(i) + Pi(j).
  *
- * The Minimum1TreeCost function is used to compute the cost of a minimum 
- * 1-tree.The Generatecandidates function is called in order to generate 
- * candidate sets. Minimum 1-trees are then computed in the corresponding 
- * sparse graph.         
+ * The Minimum1TreeCost function is used to compute the cost of a minimum
+ * 1-tree.The Generatecandidates function is called in order to generate
+ * candidate sets. Minimum 1-trees are then computed in the corresponding
+ * sparse graph.
  */
 
 GainType Ascent()
@@ -44,7 +44,7 @@ GainType Ascent()
     W = Minimum1TreeCost(CandidateSetType == DELAUNAY ||
                          MaxCandidates == 0);
 
-    /* Return this cost 
+    /* Return this cost
        if either
        (1) subgradient optimization is not wanted, or
        (2) the norm of the tree (its deviation from a tour) is zero
@@ -82,7 +82,7 @@ GainType Ascent()
     BestW = W0 = W;
     BestNorm = Norm;
     InitialPhase = 1;
-    /* Perform subradient optimization with decreasing period length 
+    /* Perform subradient optimization with decreasing period length
        and decreasing step size */
     for (Period = InitialPeriod, T = InitialStepSize * Precision;
          Period > 0 && T > 0 && Norm != 0; Period /= 2, T /= 2) {
@@ -117,7 +117,7 @@ GainType Ascent()
                     W = Minimum1TreeCost(CandidateSetType == DELAUNAY ||
                                          MaxCandidates == 0);
                     if (W < W0) {
-                        /* Double the number of candidate edges 
+                        /* Double the number of candidate edges
                            and start all over again */
                         if (TraceLevel >= 2)
                             printff("Warning: AscentCandidates doubled\n");
@@ -143,7 +143,7 @@ GainType Ascent()
                 /* If in the initial phase, the step size is doubled */
                 if (InitialPhase && T * sqrt((double) Norm) > 0)
                     T *= 2;
-                /* If the improvement was found at the last iteration of the 
+                /* If the improvement was found at the last iteration of the
                    current period, then double the period */
                 if (CandidateSetType != DELAUNAY &&
                     P == Period && (Period *= 2) > InitialPeriod)

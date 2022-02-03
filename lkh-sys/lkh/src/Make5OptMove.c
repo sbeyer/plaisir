@@ -2,7 +2,7 @@
 #include "LKH.h"
 
 /*
- * The Make5OptMove function makes a 5-opt move by calling the macro Swap4 
+ * The Make5OptMove function makes a 5-opt move by calling the macro Swap4
  * or Swap5.
  */
 

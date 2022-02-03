@@ -1,9 +1,9 @@
 #include "LKH.h"
 
 /*
-   The Between_SSL function is used to determine whether a segment is 
-   between two other segments with respect to the current orientation. 
-   The function is only used if the three-level tree representation 
+   The Between_SSL function is used to determine whether a segment is
+   between two other segments with respect to the current orientation.
+   The function is only used if the three-level tree representation
    is used for a tour.
    	
    Between_SSL(a,b,c) returns 1 if segment b is between segment a and c.

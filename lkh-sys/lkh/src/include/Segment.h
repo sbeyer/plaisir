@@ -11,27 +11,27 @@
 
 /*
  * This header specifies the interface for accessing and manipulating a
- * tour. 
+ * tour.
  *
  * If THREE_LEVEL_TREE is defined the three-level tree representation is used
- * for a tour. If TWO_LEVEL_TREE is defined the three-level tree 
- * representation is used. Otherwise the linked list representation is used. 
+ * for a tour. If TWO_LEVEL_TREE is defined the three-level tree
+ * representation is used. Otherwise the linked list representation is used.
  *
  * All representations support the following primitive operations:
  *
- *     (1) find the predecessor of a node in the tour with respect 
+ *     (1) find the predecessor of a node in the tour with respect
  *         to a chosen orientation (PRED);
  *
- *     (2) find the successor of a node in the tour with respect to 
- *         a chosen orientation (SUC); 
+ *     (2) find the successor of a node in the tour with respect to
+ *         a chosen orientation (SUC);
  *
- *     (3) determine whether a given node is between two other nodes 
+ *     (3) determine whether a given node is between two other nodes
  *         in the tour with respect to a chosen orientation (BETWEEN);
  *
  *     (4) make a 2-opt move (FLIP).
  *	
- * The default representation is the two-level tree representation. 
- * In order to use the linked list representation, uncomment the 
+ * The default representation is the two-level tree representation.
+ * In order to use the linked list representation, uncomment the
  * following preprocessor command line.	
  */
 

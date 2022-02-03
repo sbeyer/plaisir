@@ -3,9 +3,9 @@
 /*
  * Let T be a minimum spanning tree on the graph, and let N1 be a node of
  * degree one in T. The Connect function determines a shortest edge emanating
- * from N1, but not in T. At return, the Next field of N1 points to the end 
- * node of the edge, and its NextCost field contains the cost of the edge. 
- * However, the search for the shortest edge is stopped if an edge shorter 
+ * from N1, but not in T. At return, the Next field of N1 points to the end
+ * node of the edge, and its NextCost field contains the cost of the edge.
+ * However, the search for the shortest edge is stopped if an edge shorter
  * than a specified threshold (Max) is found.
 */
 

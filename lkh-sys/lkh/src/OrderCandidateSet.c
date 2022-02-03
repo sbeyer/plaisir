@@ -1,19 +1,19 @@
 #include "LKH.h"
 
 /*
- * The OrderCandidateSet function augments the candidate set by using 
- * transitive relatations in the following way. If the edges (i,j) and (j,k) 
- * are contained the candidate set, then the edge (i,k) is added to the 
- * candidate set. The alpha-value of each candidate edge is computed, and 
- * the candidate edges associated with each node are ordered according to 
+ * The OrderCandidateSet function augments the candidate set by using
+ * transitive relatations in the following way. If the edges (i,j) and (j,k)
+ * are contained the candidate set, then the edge (i,k) is added to the
+ * candidate set. The alpha-value of each candidate edge is computed, and
+ * the candidate edges associated with each node are ordered according to
  * their Alpha-values.
- *   
- * The parameter MaxCandidates specifies the maximum number of candidate 
- * edges allowed for each node, and MaxAlpha puts an upper limit on their 
+ *
+ * The parameter MaxCandidates specifies the maximum number of candidate
+ * edges allowed for each node, and MaxAlpha puts an upper limit on their
  * Alpha-values.
  *
  * A non-zero value of Symmetric specifies that the candidate set is to be
- * complemented such that every candidate edge is associated with both its 
+ * complemented such that every candidate edge is associated with both its
  * two end nodes (in this way MaxCandidates may be exceeded).
  */
 
@@ -165,8 +165,8 @@ void OrderCandidateSet(int MaxCandidates, GainType MaxAlpha, int Symmetric)
 }
 
 /*
- * The BetaValue function computes the largest edge cost on the path 
- * between two given nodes in the minimum spanning tree.    
+ * The BetaValue function computes the largest edge cost on the path
+ * between two given nodes in the minimum spanning tree.
  */
 
 static int BetaValue(Node * From, Node * To)
@@ -215,7 +215,7 @@ static int BetaValue(Node * From, Node * To)
 /*
  * The FindCandidate function returns the Candidate structure that is
  * associated with the node From and is pointing to the node To. The
- * function returns 0 if the search fails.     
+ * function returns 0 if the search fails.
  */
 
 static Candidate *FindCandidate(Node * From, Node * To)

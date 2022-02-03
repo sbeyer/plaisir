@@ -22,7 +22,7 @@ typedef struct Graph
     Adj **firstAdj, **lastAdj;
 } Graph;
 
-Graph *new_Graph(int n); 
+Graph *new_Graph(int n);
 void insertEdge(Graph *g, int v1, int v2);
 void freeGraph(Graph *g);
 void compCon(Graph *g, int *vector_comp);

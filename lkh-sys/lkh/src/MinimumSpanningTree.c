@@ -2,22 +2,22 @@
 #include "Heap.h"
 
 /*
- * The MinimumSpanningTree function determines a minimum spanning tree using 
+ * The MinimumSpanningTree function determines a minimum spanning tree using
  * Prim's algorithm.
  *
- * At return the Dad field of each node contains the father of the node, and 
- * the Cost field contains cost of the corresponding edge. The nodes are 
- * placed in a topological ordered list, i.e., for any node its father precedes 
- * the node in the list. The fields Pred and Suc of a node are pointers to the 
+ * At return the Dad field of each node contains the father of the node, and
+ * the Cost field contains cost of the corresponding edge. The nodes are
+ * placed in a topological ordered list, i.e., for any node its father precedes
+ * the node in the list. The fields Pred and Suc of a node are pointers to the
  * predecessor and successor node in this list.
  *
- * The function can be used to determine a minimum spanning tree in a dense 
+ * The function can be used to determine a minimum spanning tree in a dense
  * graph, or in a sparse graph (a graph determined by a candidate set).
  *
- * When the graph is sparse a priority queue, implemented as a binary heap, 
- * is used  to speed up the determination of which edge to include next into 
- * the tree. The Rank field of a node is used to contain its priority (usually 
- * equal to the shortest distance (Cost) to nodes of the tree).        
+ * When the graph is sparse a priority queue, implemented as a binary heap,
+ * is used  to speed up the determination of which edge to include next into
+ * the tree. The Rank field of a node is used to contain its priority (usually
+ * equal to the shortest distance (Cost) to nodes of the tree).
  */
 
 void MinimumSpanningTree(int Sparse)

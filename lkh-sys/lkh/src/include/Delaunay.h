@@ -1,10 +1,10 @@
 #ifndef _DELAUNAY_H
 #define _DELAUNAY_H
 
-/* 
- * This header specifies the interface for the use of Delaunay graphs. 
+/*
+ * This header specifies the interface for the use of Delaunay graphs.
  */
- 
+
 #define Org(e)   ((e)->org)
 #define Dest(e)  ((e)->dest)
 #define Onext(e) ((e)->onext)

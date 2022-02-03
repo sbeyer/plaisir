@@ -2,11 +2,11 @@
 #include "LKH.h"
 
 /*
- * The NormalizeNodeList function is used to swap the Suc and Pred fields 
- * of nodes in such a way that the list of nodes constitutes a cyclic 
- * two-way list. 
+ * The NormalizeNodeList function is used to swap the Suc and Pred fields
+ * of nodes in such a way that the list of nodes constitutes a cyclic
+ * two-way list.
  *
- * A call of the function corrupts the segment list representation.   
+ * A call of the function corrupts the segment list representation.
  */
 
 void NormalizeNodeList()

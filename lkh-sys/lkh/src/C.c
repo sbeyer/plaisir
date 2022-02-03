@@ -9,18 +9,18 @@
  * function (e.g. the Euclidean distance function). In order to speed
  * up the computations the following algorithm used:
  *
- *  (1) If (Na,Nb) is an edge on the current tour, then its distance 
+ *  (1) If (Na,Nb) is an edge on the current tour, then its distance
  *      is available in either the field PredCost or SucCost.
  *
  *  (2) If the edge (Na,Nb) is a candidate edge incident to Na, then
  *      its distance is available in the field Cost of the corresponding
  *      Candidate structure.
- *     
+ *
  *  (3) A hash table (CacheVal) is consulted to see if the distance has
- *      been stored. 
- *      
+ *      been stored.
+ *
  *  (4) Otherwise the distance function is called and the distance computed
- *      is stored in the hash table.                  
+ *      is stored in the hash table.
  */
 
 int C(Node * Na, Node * Nb)

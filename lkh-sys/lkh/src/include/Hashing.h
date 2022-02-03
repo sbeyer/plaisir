@@ -2,7 +2,7 @@
 #define _HASHING_H
 
 /*
- * This header specifies the interface for hashing.   
+ * This header specifies the interface for hashing.
  */
 
 #include "GainType.h"

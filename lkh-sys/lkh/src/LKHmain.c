@@ -24,11 +24,11 @@ static void ResetParameters()
     /*
      * BACKTRACKING = { YES | NO }
      * Specifies whether a backtracking k-opt move is to be used as the first
-     * move in a sequence of moves (where k = MOVE_TYPE). 
+     * move in a sequence of moves (where k = MOVE_TYPE).
      */
     Backtracking = 0;
     /*
-     * CANDIDATE_SET_TYPE = { ALPHA | DELAUNAY [ PURE ] | NEAREST-NEIGHBOR | 
+     * CANDIDATE_SET_TYPE = { ALPHA | DELAUNAY [ PURE ] | NEAREST-NEIGHBOR |
      *                        QUADRANT }
      * Specifies the candidate set type.
      * ALPHA is LKH's default type. ALPHA is applicable in general.
@@ -86,7 +86,7 @@ static void ResetParameters()
      */
     InitialStepSize = 1;
     /*
-     * INITIAL_TOUR_ALGORITHM = { BORUVKA | GREEDY | MOORE | NEAREST-NEIGHBOR | 
+     * INITIAL_TOUR_ALGORITHM = { BORUVKA | GREEDY | MOORE | NEAREST-NEIGHBOR |
      *                            QUICK-BORUVKA | SIERPINSKI | WALK }
      * Specifies the algorithm for obtaining an initial tour.
      */

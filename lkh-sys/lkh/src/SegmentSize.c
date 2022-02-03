@@ -2,11 +2,11 @@
 #include "LKH.h"
 
 /*
- * The SegmentSize function returns the number of nodes in the 
- * tour segment between two given nodes in the current direction. 
+ * The SegmentSize function returns the number of nodes in the
+ * tour segment between two given nodes in the current direction.
  * Note, however, that if the two-level or three-level tree is used,
  * the number of nodes is only approximate (for efficiency reasons).
- * 
+ *
  * Time complexity: O(1).
  */
 

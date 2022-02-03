@@ -1,13 +1,13 @@
 #include "LKH.h"
 
 /*
- * The NormalizeSegmentList function is used to swap the Suc and Pred fields 
- * of segments in such a way that the list of segments constitutes a cyclic 
- * two-way list. 
+ * The NormalizeSegmentList function is used to swap the Suc and Pred fields
+ * of segments in such a way that the list of segments constitutes a cyclic
+ * two-way list.
  *
- * A call of the function corrupts the tree representation of the tour.   
+ * A call of the function corrupts the tree representation of the tour.
  *
- * The function is called from LinKernighan.   
+ * The function is called from LinKernighan.
  */
 
 void NormalizeSegmentList()

@@ -4,12 +4,12 @@
  * The AddExtraCandidates function extends the candidate set with the
  * K extra neighbors from a given canddate set type (QUADRANT or NN).
  *
- * A non-zero value of of the parameter Symmetric specifies that the 
- * candidate set is to be complemented such that every candidate edge 
- * is associated with both its 
+ * A non-zero value of of the parameter Symmetric specifies that the
+ * candidate set is to be complemented such that every candidate edge
+ * is associated with both its
  * two end nodes.
- *   
- * The function is called from CreateCandidateSet.  
+ *
+ * The function is called from CreateCandidateSet.
  */
 
 void AddExtraCandidates(int K, int CandidateSetType, int Symmetric)

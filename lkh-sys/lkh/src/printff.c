@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-/* 
+/*
  * The printff function prints a message and flushes stdout.
  */
 

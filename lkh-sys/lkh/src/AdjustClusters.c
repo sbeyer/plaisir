@@ -1,7 +1,7 @@
 #include "LKH.h"
 #include "Heap.h"
 
-/* 
+/*
  * The AdjustClusters function adjusts K clusters with centers Center
  * so that they all have a size less than SubproblemSize.
  *

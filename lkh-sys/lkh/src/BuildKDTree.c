@@ -14,7 +14,7 @@ static int cutoff;
  * The BuildKDTree function builds a balanced K-d tree of all nodes.
  *
  * See
- *    Jon Louis Bentley: K-d Trees for Semidynamic Point Sets. 
+ *    Jon Louis Bentley: K-d Trees for Semidynamic Point Sets.
  *    Symposium on Computational Geometry 1990: 187-197
  */
 
@@ -33,7 +33,7 @@ Node **BuildKDTree(int Cutoff)
 
 /*
  * The BuildSubKDTree function arranges the nodes KDTree[start:end]
- * to leave a balanced K-d tree in KDTree[start:end]. 
+ * to leave a balanced K-d tree in KDTree[start:end].
  */
 
 static void BuildSubKDTree(int start, int end)
@@ -49,9 +49,9 @@ static void BuildSubKDTree(int start, int end)
 }
 
 /*
- * The Partition function partitions the K-d tree about the (k-1)th 
- * smallest element (the one in KDTree[k]): It arranges 
- * KDtree[start:end] to leave Coord(KDTree[start:k-1], axis) less 
+ * The Partition function partitions the K-d tree about the (k-1)th
+ * smallest element (the one in KDTree[k]): It arranges
+ * KDtree[start:end] to leave Coord(KDTree[start:k-1], axis) less
  * than or equal to Coord(KDTree[k+1:end], axis).
  *
  * For example, we could call Partition(a, 0, N - 1, N/2, axis) to

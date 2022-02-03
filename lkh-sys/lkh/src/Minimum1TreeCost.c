@@ -3,14 +3,14 @@
 /*
  * The Minimum1TreeCost function returns the cost of a minimum 1-tree.
  *
- * The minimum 1-tre is found by determining the minimum spanning tree and 
- * then adding an edge corresponding to the second nearest neighbor of one 
+ * The minimum 1-tre is found by determining the minimum spanning tree and
+ * then adding an edge corresponding to the second nearest neighbor of one
  * of the leaves of the tree (any node which has degree 1). The leaf chosen
  * is the one that has the longest second nearest neighbor distance.
  *
- * The V-value of a node is its degree minus 2. Therefore, Norm being the 
- * sum of squares of all V-values, is a measure of a minimum 1-tree/s 
- * discrepancy from a tour. If Norm is zero, then the 1-tree constitutes a 
+ * The V-value of a node is its degree minus 2. Therefore, Norm being the
+ * sum of squares of all V-values, is a measure of a minimum 1-tree/s
+ * discrepancy from a tour. If Norm is zero, then the 1-tree constitutes a
  * tour, and an optimal tour has been found.
  */
 

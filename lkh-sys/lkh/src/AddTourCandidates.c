@@ -3,8 +3,8 @@
 /*
  * The AddTourCandidates function extends the candidate set with tour
  * edges given in the tour files.
- *   
- * The function is called from GenerateCandidateSet and OrderCandidateSet.  
+ *
+ * The function is called from GenerateCandidateSet and OrderCandidateSet.
 */
 
 void AddTourCandidates()

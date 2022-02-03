@@ -2,34 +2,34 @@
 #include "LKH.h"
 
 /*
- * The Best4OptMove function makes sequential edge exchanges. If possible, it 
- * makes an r-opt move (r <= 4) that improves the tour. Otherwise, it makes 
- * the most promising 4-opt move that fulfils the positive gain criterion. 
- * To prevent an infinity chain of moves the last edge in a 4-opt move must 
- * not previously have been included in the chain. 
+ * The Best4OptMove function makes sequential edge exchanges. If possible, it
+ * makes an r-opt move (r <= 4) that improves the tour. Otherwise, it makes
+ * the most promising 4-opt move that fulfils the positive gain criterion.
+ * To prevent an infinity chain of moves the last edge in a 4-opt move must
+ * not previously have been included in the chain.
  *
- * The edge (t1,t2) is the first edge to be exchanged. G0 is a pointer to the 
+ * The edge (t1,t2) is the first edge to be exchanged. G0 is a pointer to the
  * accumulated gain.
  *
- * In case a r-opt move is found that improves the tour, the improvement of 
- * the cost is made available to the caller through the parameter Gain. 
+ * In case a r-opt move is found that improves the tour, the improvement of
+ * the cost is made available to the caller through the parameter Gain.
  * If *Gain > 0, an improvement of the current tour has been found. In this
  * case the function returns 0.
  *
- * Otherwise, the best 4-opt move is made, and a pointer to the node that was 
- * connected to t1 (in order to close the tour) is returned. The new 
- * accumulated gain is made available to the caller through the parameter G0. 
+ * Otherwise, the best 4-opt move is made, and a pointer to the node that was
+ * connected to t1 (in order to close the tour) is returned. The new
+ * accumulated gain is made available to the caller through the parameter G0.
  *
- * The function is called from the LinKernighan function. 
+ * The function is called from the LinKernighan function.
  */
 
-/* 
-   The algorithm splits the set of possible moves up into a number disjoint 
-   subsets (called "cases"). When t1, t2, ..., t6 has been chosen, Case6 is 
-   used to discriminate between 8 cases. When t1, t2, ..., t8 has been chosen, 
-   Case8 is used to discriminate between 16 cases. 
+/*
+   The algorithm splits the set of possible moves up into a number disjoint
+   subsets (called "cases"). When t1, t2, ..., t6 has been chosen, Case6 is
+   used to discriminate between 8 cases. When t1, t2, ..., t8 has been chosen,
+   Case8 is used to discriminate between 16 cases.
 
-   A description of the cases is given after the code.   
+   A description of the cases is given after the code.
 */
 
 Node *Best4OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
@@ -44,17 +44,17 @@ Node *Best4OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
     if (SUC(t1) != t2)
         Reversed ^= 1;
 
-    /* 
+    /*
      * Determine (T3,T4,T5,T6,T7,T8) = (t3,t4,t5,t6,t7,t8)
      * such that
      *
-     *     G8 = *G0 - C(t2,T3) + C(T3,T4) 
+     *     G8 = *G0 - C(t2,T3) + C(T3,T4)
      *              - C(T4,T5) + C(T5,T6)
      *              - C(T6,T7) + C(T7,T8)
      *
      * is maximum (= BestG6), and (T7,T8) has not previously been included.
      * If during this process a legal move with *Gain > 0 is found, then make
-     * the move and exit Best4OptMove immediately. 
+     * the move and exit Best4OptMove immediately.
      */
 
     /* Choose (t2,t3) as a candidate edge emanating from t2 */
@@ -202,7 +202,7 @@ Node *Best4OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                                     Swaps < MaxSwaps &&
                                     Excludable(t7, t8) &&
                                     !InInputTour(t7, t8)) {
-                                    /* Ignore the move if the gain does 
+                                    /* Ignore the move if the gain does
                                        not vary */
                                     if (RestrictedSearch &&
                                         G2 - t4->Pi == G4 - t6->Pi &&
@@ -256,59 +256,59 @@ Node *Best4OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
 }
 
 /*
-   Below is shown the use of the variables X4, Case6, Case8 and Case10 to 
-   discriminate between the 20 cases considered by the algorithm. 
+   Below is shown the use of the variables X4, Case6, Case8 and Case10 to
+   discriminate between the 20 cases considered by the algorithm.
 
    The notation
 
         ab-
 
-   is used for a subtour that starts with the edge (ta,tb). For example 
-   the tour 
+   is used for a subtour that starts with the edge (ta,tb). For example
+   the tour
 
         12-43-
 
-   contains the edges (t1,t2) and (t4,t3), in that order. 
+   contains the edges (t1,t2) and (t4,t3), in that order.
 
    X4 = 1:
        12-43-
-       Case6 = 1: 
+       Case6 = 1:
            12-56-43-
-           Case8 = 1: 
+           Case8 = 1:
                12-78-56-43-, 12-56-87-43-, 12-56-43-87-
-       Case6 = 2:   
+       Case6 = 2:
            12-43-65-
-           Case8 = 2: 
+           Case8 = 2:
                12-87-43-65-, 12-43-78-65-, 12-43-65-87-
-       Case6 = 3: 
+       Case6 = 3:
            12-65-43-
            Case8 = 3:
                12-65-78-43-
            Case8 = 11:
                12-65-87-43-
-       Case6 = 4: 
+       Case6 = 4:
            12-43-56-
-           Case8 = 4: 
+           Case8 = 4:
                12-78-43-56, 12-43-87-56
            Case8 = 12:
                12-87-43-56-
    X4 = 2:
        12-34-
-       Case6 = 5: 
+       Case6 = 5:
            12-56-34-
-           Case8 = 5: 
+           Case8 = 5:
                12-87-56-34-, 12-56-87-34-, 12-56-34-87-
            Case8 = 13:
                12-56-87-34-
-        Case6 = 6: 
+        Case6 = 6:
            12-65-34-
-           Case8 = 6: 
+           Case8 = 6:
                12-78-65-34-, 12-65-34-87-
            Case8 = 14:
-               12-65-87-34-        
-       Case6 = 7: 
+               12-65-87-34-
+       Case6 = 7:
            12-34-65-
-           Case8 = 7: 
+           Case8 = 7:
                12-78-34-65-
            Case8 = 15:
                12-87-34-65-

@@ -2,8 +2,8 @@
 #include "Delaunay.h"
 
 /*
- * The CreateDelaunayCandidateSet function determines for each node its set 
- * of incident candidate edges. The edges are found by Delaunay triangulation. 
+ * The CreateDelaunayCandidateSet function determines for each node its set
+ * of incident candidate edges. The edges are found by Delaunay triangulation.
  *
  * The function is called from CreateCandidateSet.
  */

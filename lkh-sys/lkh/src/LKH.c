@@ -9,103 +9,103 @@
 int AscentCandidates;   /* Number of candidate edges to be associated
                            with each node during the ascent */
 int BackboneTrials;     /* Number of backbone trials in each run */
-int Backtracking;       /* Specifies whether backtracking is used for 
+int Backtracking;       /* Specifies whether backtracking is used for
                            the first move in a sequence of moves */
 GainType BestCost;      /* Cost of the tour in BestTour */
 int *BestTour;  /* Table containing best tour found */
 GainType BetterCost;    /* Cost of the tour stored in BetterTour */
-int *BetterTour;        /* Table containing the currently best tour 
+int *BetterTour;        /* Table containing the currently best tour
                            in a run */
 int CacheMask;  /* Mask for indexing the cache */
 int *CacheVal;  /* Table of cached distances */
-int *CacheSig;  /* Table of the signatures of cached 
+int *CacheSig;  /* Table of the signatures of cached
                    distances */
 int CandidateFiles;     /* Number of CANDIDATE_FILEs */
 int Dimension;  /* Number of nodes in the problem */
 int EdgeFiles;          /* Number of EDGE_FILEs */
-double Excess;  /* Maximum alpha-value allowed for any 
-                   candidate edge is set to Excess times the 
-                   absolute value of the lower bound of a 
+double Excess;  /* Maximum alpha-value allowed for any
+                   candidate edge is set to Excess times the
+                   absolute value of the lower bound of a
                    solution tour */
-int ExtraCandidates;    /* Number of extra neighbors to be added to 
+int ExtraCandidates;    /* Number of extra neighbors to be added to
                            the candidate set of each node */
-Node *FirstActive, *LastActive; /* First and last node in the list 
+Node *FirstActive, *LastActive; /* First and last node in the list
                                    of "active" nodes */
 Node *FirstNode;        /* First node in the list of nodes */
-Segment *FirstSegment;  /* A pointer to the first segment in the cyclic 
+Segment *FirstSegment;  /* A pointer to the first segment in the cyclic
                            list of segments */
 SSegment *FirstSSegment;        /* A pointer to the first super segment in
                                    the cyclic list of segments */
 int Gain23Used; /* Specifies whether Gain23 is used */
-int GainCriterionUsed;  /* Specifies whether L&K's gain criterion is 
+int GainCriterionUsed;  /* Specifies whether L&K's gain criterion is
                            used */
 int GroupSize;  /* Desired initial size of each segment */
 int SGroupSize; /* Desired initial size of each super segment */
 int Groups;     /* Current number of segments */
 int SGroups;    /* Current number of super segments */
 unsigned Hash;  /* Hash value corresponding to the current tour */
-Node **Heap;    /* Heap used for computing minimum spanning 
+Node **Heap;    /* Heap used for computing minimum spanning
                    trees */
 HashTable *HTable;      /* Hash table used for storing tours */
 int InitialPeriod;      /* Length of the first period in the ascent */
 int InitialStepSize;    /* Initial step size used in the ascent */
-double InitialTourFraction;     /* Fraction of the initial tour to be 
+double InitialTourFraction;     /* Fraction of the initial tour to be
                                    constructed by INITIAL_TOUR_FILE edges */
 char *LastLine; /* Last input line */
 double LowerBound;      /* Lower bound found by the ascent */
 int Kicks;      /* Specifies the number of K-swap-kicks */
 int KickType;   /* Specifies K for a K-swap-kick */
-int MaxBreadth; /* The maximum number of candidate edges 
+int MaxBreadth; /* The maximum number of candidate edges
                    considered at each level of the search for
                    a move */
-int MaxCandidates;      /* Maximum number of candidate edges to be 
+int MaxCandidates;      /* Maximum number of candidate edges to be
                            associated with each node */
 int MaxMatrixDimension; /* Maximum dimension for an explicit cost matrix */
-int MaxSwaps;   /* Maximum number of swaps made during the 
+int MaxSwaps;   /* Maximum number of swaps made during the
                    search for a move */
 int MaxTrials;  /* Maximum number of trials in each run */
 int MergeTourFiles;     /* Number of MERGE_TOUR_FILEs */
-int MoveType;   /* Specifies the sequantial move type to be used 
-                   in local search. A value K >= 2 signifies 
+int MoveType;   /* Specifies the sequantial move type to be used
+                   in local search. A value K >= 2 signifies
                    that a k-opt moves are tried for k <= K */
 Node *NodeSet;  /* Array of all nodes */
 int Norm;       /* Measure of a 1-tree's discrepancy from a tour */
 int NonsequentialMoveType;      /* Specifies the nonsequential move type to
-                                   be used in local search. A value 
+                                   be used in local search. A value
                                    L >= 4 signifies that nonsequential
                                    l-opt moves are tried for l <= L */
 int PatchingA;  /* Specifies the maximum number of alternating
                    cycles to be used for patching disjunct cycles */
-int PatchingC;  /* Specifies the maximum number of disjoint cycles to be 
+int PatchingC;  /* Specifies the maximum number of disjoint cycles to be
                    patched (by one or more alternating cycles) */
-int Precision;  /* Internal precision in the representation of 
+int Precision;  /* Internal precision in the representation of
                    transformed distances */
 int PredSucCostAvailable;  /* PredCost and SucCost are available */
 unsigned *Rand; /* Table of random values */
 int Recombination; /* IPT or GPX2 */
-int RestrictedSearch;      /* Specifies whether the choice of the first 
+int RestrictedSearch;      /* Specifies whether the choice of the first
                               edge to be broken is restricted */
-short Reversed; /* Boolean used to indicate whether a tour has 
+short Reversed; /* Boolean used to indicate whether a tour has
                    been reversed */
 int Run;        /* Current run number */
 int Runs;       /* Total number of runs */
 unsigned Seed;  /* Initial seed for random number generation */
 double StartTime;       /* Time when execution starts */
-int Subgradient;        /* Specifies whether the Pi-values should be 
+int Subgradient;        /* Specifies whether the Pi-values should be
                            determined by subgradient optimization */
-int SubsequentMoveType; /* Specifies the move type to be used for all 
-                           moves following the first move in a sequence 
-                           of moves. The value K >= 2 signifies that a 
+int SubsequentMoveType; /* Specifies the move type to be used for all
+                           moves following the first move in a sequence
+                           of moves. The value K >= 2 signifies that a
                            K-opt move is to be used */
-int SubsequentPatching; /* Species whether patching is used for 
+int SubsequentPatching; /* Species whether patching is used for
                            subsequent moves */
 SwapRecord *SwapStack;  /* Stack of SwapRecords */
 int Swaps;      /* Number of swaps made during a tentative move */
 double TimeLimit;       /* The time limit in seconds */
-int TraceLevel; /* Specifies the level of detail of the output 
-                   given during the solution process. 
-                   The value 0 signifies a minimum amount of 
-                   output. The higher the value is the more 
+int TraceLevel; /* Specifies the level of detail of the output
+                   given during the solution process.
+                   The value 0 signifies a minimum amount of
+                   output. The higher the value is the more
                    information is given */
 int Trial;      /* Ordinal number of the current trial */
 
@@ -130,7 +130,7 @@ int MaxPopulationSize; /* The maximum size of the population */
 int PopulationSize;    /* The current size of the population */
 CrossoverFunction Crossover;
 int **Population;      /* Array of individuals (solution tours) */
-GainType *PenaltyFitness;  /* The fitnessl (tour penalty) of 
+GainType *PenaltyFitness;  /* The fitnessl (tour penalty) of
                               each individual */
 GainType *Fitness;     /* The fitness (tour cost) of each individual */
 

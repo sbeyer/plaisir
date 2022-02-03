@@ -1,17 +1,17 @@
 #include "LKH.h"
 
 /*
- * The GenerateCandidates function associates to each node a set of incident 
+ * The GenerateCandidates function associates to each node a set of incident
  * candidate edges. The candidate edges of each node are sorted in increasing
  * order of their Alpha-values.
  *
- * The parameter MaxCandidates specifies the maximum number of candidate edges 
- * allowed for each node, and MaxAlpha puts an upper limit on their 
+ * The parameter MaxCandidates specifies the maximum number of candidate edges
+ * allowed for each node, and MaxAlpha puts an upper limit on their
  * Alpha-values.
  *
  * A non-zero value of Symmetric specifies that the candidate set is to be
- * complemented such that every candidate edge is associated with both its 
- * two end nodes (in this way MaxCandidates may be exceeded). 
+ * complemented such that every candidate edge is associated with both its
+ * two end nodes (in this way MaxCandidates may be exceeded).
  *
  * The candidate edges of each node is kept in an array (CandidatSet) of
  * structures. Each structure (Candidate) holds the following information:
@@ -20,13 +20,13 @@
  *      int Cost    : the cost (length) of the edge
  *      int Alpha   : the alpha-value of the edge
  *
- * The algorithm for computing Alpha-values in time O(n^2) and space O(n) 
+ * The algorithm for computing Alpha-values in time O(n^2) and space O(n)
  * follows the description in
  *
  *      Keld Helsgaun,
- *      An Effective Implementation of the Lin-Kernighan Traveling 
+ *      An Effective Implementation of the Lin-Kernighan Traveling
  *      Salesman Heuristic,
- *      Report, RUC, 1998. 
+ *      Report, RUC, 1998.
  */
 
 static int Max(const int a, const int b)

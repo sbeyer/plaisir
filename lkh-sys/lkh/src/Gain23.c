@@ -30,7 +30,7 @@
  subsets (called "cases"). When sl_Gain23_s1, s2, ..., s6 has been chosen, Case6 is
  used to discriminate between 7 cases. When sl_Gain23_s1, s2, ..., s8 has been
  chosen, Case8 is used to discriminate between 11 cases.
- 
+
  A detailed description of the different cases can be found after the code.
  */
 
@@ -41,7 +41,7 @@ GainType Gain23()
     GainType G0, G1, G2, G3, G4, G5, G6, Gain, Gain6;
     int X2, X4, X6, X8, Case6 = 0, Case8 = 0;
     int Breadth2, Breadth4, Breadth6;
-    
+
     if (!sl_Gain23_s1 || sl_Gain23_s1->Subproblem != FirstNode->Subproblem)
         sl_Gain23_s1 = FirstNode;
     s1Stop = sl_Gain23_s1;
@@ -246,20 +246,20 @@ GainType Gain23()
 /*
  Below is shown the use of the variables X4, Case6 and Case8 to
  discriminate between cases considered by the algorithm.
- 
+
  The notation
- 
+
  ab-
- 
+
  is used for a subtour that starts with the edge (sa,sb).
  For example, the tour
- 
+
  12-43-
- 
+
  contains the edges (sl_Gain23_s1,s2) and (s4,s3), in that order. A (*) signifies
  an infeasible solution. BridgeGain is called if the accumulated gain
  is possitive.
- 
+
  X4 = 1:
  12-34-
  Case6 = 5:

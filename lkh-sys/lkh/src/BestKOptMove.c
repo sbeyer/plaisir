@@ -3,25 +3,25 @@
 #include "Sequence.h"
 
 /*
- * The BestKOptMove function makes edge exchanges. If possible, it makes a 
- * r-opt move (r >= 2) that improves the tour. Otherwise, it makes the most 
- * promising sequential K-opt move that fulfils the positive gain criterion. 
+ * The BestKOptMove function makes edge exchanges. If possible, it makes a
+ * r-opt move (r >= 2) that improves the tour. Otherwise, it makes the most
+ * promising sequential K-opt move that fulfils the positive gain criterion.
  * To prevent an infinity chain of moves the last edge in a K-opt move must
- * not previously have been included in the chain. 
+ * not previously have been included in the chain.
  *
- * The edge (t[1],t[2]) is the first edge to be exchanged. G0 is a pointer to 
+ * The edge (t[1],t[2]) is the first edge to be exchanged. G0 is a pointer to
  * the accumulated gain.
  *
- * In case a K-opt move is found that improves the tour, the improvement of 
- * the cost is made available to the caller through the parameter Gain. 
+ * In case a K-opt move is found that improves the tour, the improvement of
+ * the cost is made available to the caller through the parameter Gain.
  * If *Gain > 0, an improvement of the current tour has been found. In this
  * case the function returns 0.
  *
- * Otherwise, the best K-opt move is made, and a pointer to the node that was 
- * connected to t[1] (in order to close the tour) is returned. The new 
- * accumulated gain is made available to the caller through the parameter G0. 
+ * Otherwise, the best K-opt move is made, and a pointer to the node that was
+ * connected to t[1] (in order to close the tour) is returned. The new
+ * accumulated gain is made available to the caller through the parameter G0.
  *
- * The function is called from the LinKernighan function. 
+ * The function is called from the LinKernighan function.
  */
 
 static GainType BestG2;
@@ -37,7 +37,7 @@ Node *BestKOptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
     T[2 * K] = 0;
     BestG2 = MINUS_INFINITY;
 
-    /* 
+    /*
      * Determine (T[3],T[4], ..., T[2K]) = (t[3],t[4], ..., t[2K])
      * such that
      *
@@ -47,7 +47,7 @@ Node *BestKOptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
      *                    - C(T[2K-3],T[2K-2]) + C(T[2K-1],T[2K])
      *
      * is maximum, and (T[2K-1],T[2K]) has not previously been included.
-     * If during this process a legal move with *Gain > 0 is found, then 
+     * If during this process a legal move with *Gain > 0 is found, then
      * make the move and exit BestKOptMove immediately.
      */
 

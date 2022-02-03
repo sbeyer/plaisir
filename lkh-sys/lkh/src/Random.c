@@ -3,16 +3,16 @@
  * identical sequences of random integers for any platform with
  * at least 32-bit integers.
  *
- * A version of this generator is described in J. Bentley's column, 
- * "The Software Exploratorium", Unix Review 1991. It is based on 
- * Algorithm A in D. E. Knuth, The Art of Computer Programming, 
- * Vol 2, Section 3.2.2, pp. 172.  
- *  
+ * A version of this generator is described in J. Bentley's column,
+ * "The Software Exploratorium", Unix Review 1991. It is based on
+ * Algorithm A in D. E. Knuth, The Art of Computer Programming,
+ * Vol 2, Section 3.2.2, pp. 172.
+ *
  * The Random function returns a pseudo-random integer in the range
  * 0...INT_MAX-1.
- *   
+ *
  * The SRandom function uses the given seed for a new sequence of
- * pseudo-random numbers.  
+ * pseudo-random numbers.
  */
 
 unsigned Random(void);

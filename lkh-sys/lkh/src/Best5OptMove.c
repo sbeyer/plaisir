@@ -23,7 +23,7 @@
  * The function is called from the LinKernighan function.
  */
 
-/* 
+/*
    The algorithm splits the set of possible moves up into a number disjoint
    subsets (called "cases"). When t1, t2, ..., t6 has been chosen, Case6 is
    used to discriminate between 8 cases. When t1, t2, ..., t8 has been chosen,
@@ -223,7 +223,7 @@ Node *Best5OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                             if (Backtracking && !Excludable(t7, t8))
                                 continue;
                             Breadth8 = 0;
-                            /* Choose (t8,t9) as a candidate edge emanating 
+                            /* Choose (t8,t9) as a candidate edge emanating
                                from t8 */
                             for (Nt8 = t8->CandidateSet; (t9 = Nt8->To);
                                  Nt8++) {
@@ -668,7 +668,7 @@ Node *Best5OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
        12-34-
        Case6 = 5:
            12-56-34-
-           Case8 = 5: 
+           Case8 = 5:
                12-87-56-34-, 12-56-87-34-, 12-56-34-87-
                Case10 = 26:
                    12-910-87-56-34-, 12-87-109-56-34-, 12-87-56-910-34-, 12-87-56-34-109-
@@ -690,7 +690,7 @@ Node *Best5OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                    12-109-78-56-34-, 12-78-56-109-34-
        Case6 = 6:
            12-65-34-
-           Case8 = 6: 
+           Case8 = 6:
                12-87-65-34-, 12-65-78-34-, 12-65-34-87-
                Case10 = 27:
                    12-910-87-65-34-, 12-87-109-65-34-, 12-87-65-910-34-, 12-87-65-34-109-
@@ -730,7 +730,7 @@ Node *Best5OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                     12-109-34-87-65-
        Case6 = 8:
            12-34-56-
-           Case8 = 8: 
+           Case8 = 8:
                12-78-34-56-, 12-34-78-56-
                Case10 = 4:
                    12-78-34-910-56-

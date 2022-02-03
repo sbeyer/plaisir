@@ -2,29 +2,29 @@
 #include "LKH.h"
 
 /*
- * The BridgeGain function attempts to improve the tour by making a 
- * non-sequential move. 
- * 
- * The function is called by the Gain23 function. 
+ * The BridgeGain function attempts to improve the tour by making a
+ * non-sequential move.
+ *
+ * The function is called by the Gain23 function.
  *	
- * For any nonfeasible 2-opt move that would cause the current tour to be 
- * split into two separate tours, BridgGain may be called in order to find 
- * a (nonfeasible) 2- or 3-opt move that reconnects the two separate tours 
- * into a tour which is shorter than the original one. In some cases, the 
+ * For any nonfeasible 2-opt move that would cause the current tour to be
+ * split into two separate tours, BridgGain may be called in order to find
+ * a (nonfeasible) 2- or 3-opt move that reconnects the two separate tours
+ * into a tour which is shorter than the original one. In some cases, the
  * second move may even be 4-opt.
- * 
- * For any nonfeasible 3-opt move that would cause the current tour to be 
- * split into two separate tours, BridgGain may be called in order to find 
- * a (nonfeasible) 2-opt move that reconnects the two separate tours into 
+ *
+ * For any nonfeasible 3-opt move that would cause the current tour to be
+ * split into two separate tours, BridgGain may be called in order to find
+ * a (nonfeasible) 2-opt move that reconnects the two separate tours into
  * a tour which is shorter than the original one.
  *	
- * The parameters s1, s2, ..., s8 denote the end nodes of edges that are 
- * part of the nonfeasible move suggested by Gain23. The parameter Case6 
- * is used to specify the move type (Case6 = 0 when 2-opt, Case6 = 3, 4 
- * or 7 when 3- or 4-opt). The parameter G  contains the gain achieved by 
+ * The parameters s1, s2, ..., s8 denote the end nodes of edges that are
+ * part of the nonfeasible move suggested by Gain23. The parameter Case6
+ * is used to specify the move type (Case6 = 0 when 2-opt, Case6 = 3, 4
+ * or 7 when 3- or 4-opt). The parameter G  contains the gain achieved by
  * making the move.
  *	
- * If the composite move results in a shorter tour, then the move is made, 
+ * If the composite move results in a shorter tour, then the move is made,
  * and the function returns the gain achieved.	
  */
 
@@ -39,7 +39,7 @@ BridgeGain(Node * s1, Node * s2, Node * s3, Node * s4,
     int X4;
     int Breadth2, Breadth4, Breadth6;
 
-    /* From the original tour select a segment (u2 --> u3) which contains 
+    /* From the original tour select a segment (u2 --> u3) which contains
        as few nodes as possible */
     switch (Case6) {
     case 3:
@@ -85,7 +85,7 @@ BridgeGain(Node * s1, Node * s2, Node * s3, Node * s4,
             (t1 == s8 && t2 == s7) || FixedOrCommon(t1, t2))
             continue;
         G0 = G + C(t1, t2);
-        /* Choose (t2,t3) as a candidate edge emanating from t2. 
+        /* Choose (t2,t3) as a candidate edge emanating from t2.
            t3 must not be between u2 and u3 */
         Breadth2 = 0;
         for (Nt2 = t2->CandidateSet; (t3 = Nt2->To); Nt2++) {
@@ -151,7 +151,7 @@ BridgeGain(Node * s1, Node * s2, Node * s3, Node * s4,
                     }
                 }
                 /* If BridgeGain has been called with a nonfeasible 2-opt move,
-                   then try to find a 3-opt or 4-opt move which, when composed 
+                   then try to find a 3-opt or 4-opt move which, when composed
                    with the 2-opt move, results in an improvement of the tour */
                 if (Case6 != 0)
                     continue;

@@ -4,7 +4,7 @@
 /*
  * The fscanint function reads the next int integer from the stream f,
  * and assigns the value through the second argmument, v, which must be
- * a pointer. It returns 0 if end of file or an error occurs; otherwise 
+ * a pointer. It returns 0 if end of file or an error occurs; otherwise
  * it returns 1.
  *
  * It is faster than fscanf.

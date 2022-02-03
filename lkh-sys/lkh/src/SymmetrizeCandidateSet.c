@@ -1,8 +1,8 @@
 #include "LKH.h"
 
-/* 
- * The SymmetrizeCandidateSet function complements the candidate set such 
- * that every candidate edge is associated with both its two end nodes. 
+/*
+ * The SymmetrizeCandidateSet function complements the candidate set such
+ * that every candidate edge is associated with both its two end nodes.
 */
 
 void SymmetrizeCandidateSet()

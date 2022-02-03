@@ -1,6 +1,6 @@
 #include "LKH.h"
 
-/* 
+/*
  * The Between function is used to determine whether a node
  * is between two other nodes with respect to the current
  * orientation. The function is only used if the doubly linked

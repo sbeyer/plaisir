@@ -9,12 +9,12 @@
  *   (2) Precedence is given to those edges that are common to the two
  *       currently best tours.
  *
- * The AdjustCandidateSet function adjusts for each node its table of 
- * candidate edges. A new candidate edge is added by extending the table 
- * and inserting the edge as its last ordinary element (disregarding the 
- * dummy edge). The Alpha field of the new candidate edge is set to 
- * INT_MAX. Edges that belong to the best tour as well as the next best 
- * tour are moved to the start of the table.                         
+ * The AdjustCandidateSet function adjusts for each node its table of
+ * candidate edges. A new candidate edge is added by extending the table
+ * and inserting the edge as its last ordinary element (disregarding the
+ * dummy edge). The Alpha field of the new candidate edge is set to
+ * INT_MAX. Edges that belong to the best tour as well as the next best
+ * tour are moved to the start of the table.
  */
 
 void AdjustCandidateSet()

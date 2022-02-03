@@ -1,12 +1,12 @@
 #include "LKH.h"
 #include "Delaunay.h"
 
-/* 
- * Delaunay triangulation by straightline divide-and-conquer 
+/*
+ * Delaunay triangulation by straightline divide-and-conquer
  * as descibed in:
  *
  *   L. Guibas and J. Stolfi,
- *   "Primitives for the Manipulation of General Subdivisions    
+ *   "Primitives for the Manipulation of General Subdivisions
  *    and the Computation of Voronoi Diagrams".
  *   ACM Transactions on Graphics, April 1985.
  *
@@ -15,7 +15,7 @@
  *   G. Leach,
  *   "Improving Worst-Case Optimal Delaunay Triangulation Algorithms".
  *   4th Canadian Conference on Computational Geometry, 1992.
- * 
+ *
  * See the copyright notice at the end of this file.
  */
 
@@ -151,7 +151,7 @@ static void divide(point * p_sorted[], int l, int r,
         merge(r_cw_l, p_sorted[split], l_ccw_r, p_sorted[split + 1],
               &l_tangent);
 
-        /* The lower tangent added by merge may have invalidated 
+        /* The lower tangent added by merge may have invalidated
            l_ccw_l or r_cw_r. Update them if necessary. */
         if (Org(l_tangent) == p_sorted[l])
             l_ccw_l = l_tangent;
@@ -165,7 +165,7 @@ static void divide(point * p_sorted[], int l, int r,
 }
 
 /*
- * Determines the lower tangent of two triangulations. 
+ * Determines the lower tangent of two triangulations.
  */
 static void lower_tangent(edge * r_cw_l, point * s, edge * l_ccw_r,
                           point * u, edge ** l_lower, point ** org_l_lower,
@@ -201,7 +201,7 @@ static void lower_tangent(edge * r_cw_l, point * s, edge * l_ccw_r,
     *org_r_lower = o_r;
 }
 
-/* 
+/*
  * The merge function is where most of the work actually gets done. It is
  * written as one (longish) function for speed.
  */
@@ -254,7 +254,7 @@ static void merge(edge * r_cw_l, point * s, edge * l_ccw_r, point * u,
         if (!above_l_cand && !above_r_cand)
             break;      /* Finished. */
 
-        /* Advance l_cand ccw, deleting the old l_cand edge, until the 
+        /* Advance l_cand ccw, deleting the old l_cand edge, until the
            "in_circle" test fails. */
         if (above_l_cand) {
             real u_n_o_b, v_n_o_b, u_n_d_b, v_n_d_b;
@@ -330,8 +330,8 @@ static void merge(edge * r_cw_l, point * s, edge * l_ccw_r, point * u,
         }
 
         /*
-         * Now add a cross edge from base to either l_cand or r_cand. 
-         * If both are valid choose on the basis of the in_circle test. 
+         * Now add a cross edge from base to either l_cand or r_cand.
+         * If both are valid choose on the basis of the in_circle test.
          * Advance base and whichever candidate was chosen.
          */
         dest_l_cand = Other_point(l_cand, org_base);
@@ -350,7 +350,7 @@ static void merge(edge * r_cw_l, point * s, edge * l_ccw_r, point * u,
     } while (TRUE);
 }
 
-/* 
+/*
  * Creates a new edge and adds it to two rings of edges.
  */
 static edge *join(edge * a, point * u, edge * b, point * v, side s)
@@ -379,7 +379,7 @@ static edge *join(edge * a, point * u, edge * b, point * v, side s)
     return e;
 }
 
-/* 
+/*
  * Remove an edge.
  */
 static void delete_edge(edge * e)
@@ -416,14 +416,14 @@ static void delete_edge(edge * e)
     free_edge(e);
 }
 
-/* 
- * Add an edge to a ring of edges. 
+/*
+ * Add an edge to a ring of edges.
  */
 static void splice(edge * a, edge * b, point * v)
 {
     edge *next;
 
-    /* b must be the unattached edge and a must be the previous 
+    /* b must be the unattached edge and a must be the previous
        ccw edge to b. */
 
     if (Org(a) == v) {
@@ -516,18 +516,18 @@ static int compare(const void *p1, const void *p2)
  *   Date: 6/10/93
  *
  *   Version 1.0
- *   
+ *
  *   Copyright (c) RMIT 1993. All rights reserved.
  *
- *   License to copy and use this software purposes is granted provided 
+ *   License to copy and use this software purposes is granted provided
  *   that appropriate credit is given to both RMIT and the author.
  *
  *   License is also granted to make and use derivative works provided
  *   that appropriate credit is given to both RMIT and the author.
  *
- *   RMIT makes no representations concerning either the merchantability 
- *   of this software or the suitability of this software for any particular 
- *   purpose.  It is provided "as is" without express or implied warranty 
+ *   RMIT makes no representations concerning either the merchantability
+ *   of this software or the suitability of this software for any particular
+ *   purpose.  It is provided "as is" without express or implied warranty
  *   of any kind.
  *
  *   These notices must be retained in any copies of any part of this software.

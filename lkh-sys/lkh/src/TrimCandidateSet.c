@@ -1,8 +1,8 @@
 #include "LKH.h"
 
 /*
- * The TrimCandidateSet function takes care that each node has 
- * associated at most MaxCandidates candidate edges.                         
+ * The TrimCandidateSet function takes care that each node has
+ * associated at most MaxCandidates candidate edges.
  */
 
 void TrimCandidateSet(int MaxCandidates)

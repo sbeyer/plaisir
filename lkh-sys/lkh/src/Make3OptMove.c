@@ -2,7 +2,7 @@
 #include "LKH.h"
 
 /*
- * The Make3OptMove function makes a 3-opt move by calling the macro Swap2 
+ * The Make3OptMove function makes a 3-opt move by calling the macro Swap2
  * or Swap3.
  */
 

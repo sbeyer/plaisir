@@ -2,7 +2,7 @@
 #define _LKH_H
 
 /*
- * This header is used by almost all functions of the program. It defines 
+ * This header is used by almost all functions of the program. It defines
  * macros and specifies data structures and function prototypes.
  */
 
@@ -57,10 +57,10 @@ typedef GainType (*MergeTourFunction) (void);
 
 struct Node {
     int Id;     /* Number of the node (1...Dimension) */
-    int Loc;    /* Location of the node in the heap 
+    int Loc;    /* Location of the node in the heap
                    (zero, if the node is not in the heap) */
     int Rank;   /* During the ascent, the priority of the node.
-                   Otherwise, the ordinal number of the node in 
+                   Otherwise, the ordinal number of the node in
                    the tour */
     int V;      /* During the ascent the degree of the node minus 2.
                    Otherwise, the variable is used to mark nodes */
@@ -68,15 +68,15 @@ struct Node {
     int Cost;   /* "Best" cost of an edge emanating from the node */
     int NextCost; /* During the ascent, the next best cost of an edge
                      emanating from the node */
-    int PredCost, /* The costs of the neighbor edges on the current tour */ 
-        SucCost; 
+    int PredCost, /* The costs of the neighbor edges on the current tour */
+        SucCost;
     int SavedCost;
     int Pi;     /* Pi-value of the node */
     int BestPi; /* Currently best pi-value found during the ascent */
     int Beta;   /* Beta-value (used for computing alpha-values) */
     int Subproblem;  /* Number of the subproblem the node is part of */
     int Sons;   /* Number of sons in the minimum spanning tree */
-    Node *Pred, *Suc;  /* Predecessor and successor node in 
+    Node *Pred, *Suc;  /* Predecessor and successor node in
                           the two-way list of nodes */
     Node *OldPred, *OldSuc; /* Previous values of Pred and Suc */
     Node *BestSuc,     /* Best and next best successor node in the */
@@ -85,7 +85,7 @@ struct Node {
     Node *Nearest;     /* Nearest node (used in the greedy heuristics) */
     Node *Next; /* Auxiliary pointer, usually to the next node in a list
                    of nodes (e.g., the list of "active" nodes) */
-    Node *Prev; /* Auxiliary pointer, usually to the previous node 
+    Node *Prev; /* Auxiliary pointer, usually to the previous node
                    in a list of nodes */
     Node *Mark; /* Visited mark */
     Node *FixedTo1,    /* Pointers to the opposite end nodes of fixed edges. */
@@ -112,9 +112,9 @@ struct Node {
                           tree representation is used */
     double X, Y;     /* Coordinates of the node */
     char Axis;  /* The axis partitioned when the node is part of a KDTree */
-    char OldPredExcluded, OldSucExcluded;  /* Booleans used for indicating 
-                                              whether one (or both) of the 
-                                              adjoining nodes on the old tour 
+    char OldPredExcluded, OldSucExcluded;  /* Booleans used for indicating
+                                              whether one (or both) of the
+                                              adjoining nodes on the old tour
                                               has been excluded */
 };
 
@@ -126,13 +126,13 @@ struct Candidate {
     int Alpha;  /* Its alpha-value */
 };
 
-/* The Segment structure is used to represent the segments in the two-level 
+/* The Segment structure is used to represent the segments in the two-level
    representation of tours */
 
 struct Segment {
     char Reversed;       /* Reversal bit */
     Node *First, *Last;  /* First and last node in the segment */
-    Segment *Pred, *Suc; /* Predecessor and successor in the two-way 
+    Segment *Pred, *Suc; /* Predecessor and successor in the two-way
                             list of segments */
     int Rank;   /* Ordinal number of the segment in the list */
     int Size;   /* Number of nodes in the segment */
@@ -157,35 +157,35 @@ struct SwapRecord {
 extern int AscentCandidates;   /* Number of candidate edges to be associated
                                   with each node during the ascent */
 extern int BackboneTrials;     /* Number of backbone trials in each run */
-extern int Backtracking;       /* Specifies whether backtracking is used for 
+extern int Backtracking;       /* Specifies whether backtracking is used for
                                   the first move in a sequence of moves */
 extern GainType BestCost;      /* Cost of the tour in BestTour */
 extern int *BestTour;  /* Table containing best tour found */
 extern GainType BetterCost;    /* Cost of the tour stored in BetterTour */
-extern int *BetterTour;        /* Table containing the currently best tour 
+extern int *BetterTour;        /* Table containing the currently best tour
                                   in a run */
 extern int CacheMask;  /* Mask for indexing the cache */
 extern int *CacheVal;  /* Table of cached distances */
-extern int *CacheSig;  /* Table of the signatures of cached 
+extern int *CacheSig;  /* Table of the signatures of cached
                           distances */
 extern int CandidateFiles;     /* Number of CANDIDATE_FILEs */
 extern int Dimension;  /* Number of nodes in the problem */
 extern int EdgeFiles;          /* Number of EDGE_FILEs */
-extern double Excess;  /* Maximum alpha-value allowed for any 
-                          candidate edge is set to Excess times the 
-                          absolute value of the lower bound of a 
+extern double Excess;  /* Maximum alpha-value allowed for any
+                          candidate edge is set to Excess times the
+                          absolute value of the lower bound of a
                           solution tour */
-extern int ExtraCandidates;    /* Number of extra neighbors to be added to 
+extern int ExtraCandidates;    /* Number of extra neighbors to be added to
                                   the candidate set of each node */
-extern Node *FirstActive, *LastActive; /* First and last node in the list 
+extern Node *FirstActive, *LastActive; /* First and last node in the list
                                           of "active" nodes */
 extern Node *FirstNode;        /* First node in the list of nodes */
-extern Segment *FirstSegment;  /* A pointer to the first segment in the cyclic 
+extern Segment *FirstSegment;  /* A pointer to the first segment in the cyclic
                                   list of segments */
 extern SSegment *FirstSSegment;  /* A pointer to the first super segment in
                                     the cyclic list of segments */
 extern int Gain23Used; /* Specifies whether Gain23 is used */
-extern int GainCriterionUsed;  /* Specifies whether L&K's gain criterion is 
+extern int GainCriterionUsed;  /* Specifies whether L&K's gain criterion is
                                   used */
 extern int GroupSize;  /* Desired initial size of each segment */
 extern int SGroupSize; /* Desired initial size of each super segment */
@@ -200,61 +200,61 @@ extern char *LastLine; /* Last input line */
 extern double LowerBound;  /* Lower bound found by the ascent */
 extern int Kicks;      /* Specifies the number of K-swap-kicks */
 extern int KickType;   /* Specifies K for a K-swap-kick */
-extern int MaxBreadth; /* The maximum number of candidate edges 
+extern int MaxBreadth; /* The maximum number of candidate edges
                           considered at each level of the search for
                           a move */
-extern int MaxCandidates;      /* Maximum number of candidate edges to be 
+extern int MaxCandidates;      /* Maximum number of candidate edges to be
                                   associated with each node */
 extern int MaxMatrixDimension; /* Maximum dimension for an explicit cost
                                   matrix */
-extern int MaxSwaps;   /* Maximum number of swaps made during the 
+extern int MaxSwaps;   /* Maximum number of swaps made during the
                           search for a move */
 extern int MaxTrials;  /* Maximum number of trials in each run */
-extern int MoveType;   /* Specifies the sequantial move type to be used 
-                          in local search. A value K >= 2 signifies 
+extern int MoveType;   /* Specifies the sequantial move type to be used
+                          in local search. A value K >= 2 signifies
                           that a k-opt moves are tried for k <= K */
 extern Node *NodeSet;  /* Array of all nodes */
 extern int Norm;       /* Measure of a 1-tree's discrepancy from a tour */
 extern int NonsequentialMoveType; /* Specifies the nonsequential move type to
-                                     be used in local search. A value 
+                                     be used in local search. A value
                                      L >= 4 signifies that nonsequential
                                     l-opt moves are tried for l <= L */
 extern int PatchingA;  /* Specifies the maximum number of alternating
                           cycles to be used for patching disjunct cycles */
-extern int PatchingC;  /* Specifies the maximum number of disjoint cycles to be 
+extern int PatchingC;  /* Specifies the maximum number of disjoint cycles to be
                           patched (by one or more alternating cycles) */
-extern int Precision;  /* Internal precision in the representation of 
+extern int Precision;  /* Internal precision in the representation of
                           transformed distances */
 extern int PredSucCostAvailable;  /* PredCost and SucCost are available */
 extern unsigned *Rand; /* Table of random values */
 extern int Recombination; /* IPT or GPX2 */
-extern int RestrictedSearch;      /* Specifies whether the choice of the first 
+extern int RestrictedSearch;      /* Specifies whether the choice of the first
                                      edge to be broken is restricted */
-extern short Reversed; /* Boolean used to indicate whether a tour has 
+extern short Reversed; /* Boolean used to indicate whether a tour has
                           been reversed */
 extern int Run;        /* Current run number */
 extern int Runs;       /* Total number of runs */
 extern unsigned Seed;  /* Initial seed for random number generation */
 extern double StartTime;       /* Time when execution starts */
-extern int Subgradient;        /* Specifies whether the Pi-values should be 
+extern int Subgradient;        /* Specifies whether the Pi-values should be
                                   determined by subgradient optimization */
-extern int SubsequentMoveType; /* Specifies the move type to be used for all 
-                                  moves following the first move in a sequence 
-                                  of moves. The value K >= 2 signifies that a 
+extern int SubsequentMoveType; /* Specifies the move type to be used for all
+                                  moves following the first move in a sequence
+                                  of moves. The value K >= 2 signifies that a
                                   K-opt move is to be used */
-extern int SubsequentPatching; /* Species whether patching is used for 
+extern int SubsequentPatching; /* Species whether patching is used for
                                   subsequent moves */
 extern SwapRecord *SwapStack;  /* Stack of SwapRecords */
 extern int Swaps;      /* Number of swaps made during a tentative move */
 extern double TimeLimit;       /* The time limit in seconds */
-extern int TraceLevel; /* Specifies the level of detail of the output 
-                          given during the solution process. 
-                          The value 0 signifies a minimum amount of 
-                          output. The higher the value is the more 
+extern int TraceLevel; /* Specifies the level of detail of the output
+                          given during the solution process.
+                          The value 0 signifies a minimum amount of
+                          output. The higher the value is the more
                           information is given */
 extern int Trial;      /* Ordinal number of the current trial */
 
-/* The following variables are read by the functions ReadParameters and 
+/* The following variables are read by the functions ReadParameters and
    ReadProblem: */
 
 extern int CandidateSetSymmetric, CandidateSetType,
@@ -338,12 +338,12 @@ int IsPossibleCandidate(Node * From, Node * To);
 void KSwapKick(int K);
 GainType LinKernighan(void);
 void Make2OptMove(Node * t1, Node * t2, Node * t3, Node * t4);
-void Make3OptMove(Node * t1, Node * t2, Node * t3, Node * t4, 
+void Make3OptMove(Node * t1, Node * t2, Node * t3, Node * t4,
                   Node * t5, Node * t6, int Case);
-void Make4OptMove(Node * t1, Node * t2, Node * t3, Node * t4, 
-                  Node * t5, Node * t6, Node * t7, Node * t8, 
+void Make4OptMove(Node * t1, Node * t2, Node * t3, Node * t4,
+                  Node * t5, Node * t6, Node * t7, Node * t8,
                   int Case);
-void Make5OptMove(Node * t1, Node * t2, Node * t3, Node * t4, 
+void Make5OptMove(Node * t1, Node * t2, Node * t3, Node * t4,
                   Node * t5, Node * t6, Node * t7, Node * t8,
                   Node * t9, Node * t10, int Case);
 void MakeKOptMove(int K);
@@ -354,7 +354,7 @@ GainType Minimum1TreeCost(int Sparse);
 void MinimumSpanningTree(int Sparse);
 void NormalizeNodeList(void);
 void NormalizeSegmentList(void);
-void OrderCandidateSet(int MaxCandidates, 
+void OrderCandidateSet(int MaxCandidates,
                        GainType MaxAlpha, int Symmetric);
 GainType PatchCycles(int k, GainType Gain);
 void printff(char *fmt, ...);

@@ -42,8 +42,8 @@ GainType MergeWithTourGPX2()
     if (NewDimension == 0)
         return Cost1;
 
-    /* Shrink the tours. 
-       OldPred and OldSuc represent the shrunken T1. 
+    /* Shrink the tours.
+       OldPred and OldSuc represent the shrunken T1.
        Prev and Next represent the shrunken T2 */
     N = First;
     Last = 0;
@@ -94,7 +94,7 @@ GainType MergeWithTourGPX2()
 
     /* Perform GPX2 recombination */
     NewCost = gpx(red, blue, offspring);
-    
+
     free(red);
     free(blue);
     if (NewCost >= ShrunkCost1 || NewCost >= ShrunkCost2) {
@@ -128,7 +128,7 @@ GainType MergeWithTourGPX2()
             N->OldSuc = !N->OldPred->Mark ? N->OldPred : First;
         N->Mark = N;
     } while ((N = N->OldSuc) != First);
-    
+
     Cost1 = 0;
     Hash = 0;
     do {

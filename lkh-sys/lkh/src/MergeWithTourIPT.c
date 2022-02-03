@@ -2,18 +2,18 @@
 
 /*
  * The MergeWithTourIPT function attempts to find a short tour
- * by merging a given tour, T1, with another tour, T2. 
- * T1 is given by the Suc pointers of its nodes. 
+ * by merging a given tour, T1, with another tour, T2.
+ * T1 is given by the Suc pointers of its nodes.
  * T2 is given by the Next pointers of its nodes.
  *
  * The merging algorithm may be described as follows:
- * Let G be the graph consisting of the nodes and the union of the 
- * edges of T1 and T2. Attempt - in all possible ways - 
- * to separate the nodes of G into two disjoint sets (A,B) such 
- * that the cardinality of edges connecting A with B is exactly two. 
+ * Let G be the graph consisting of the nodes and the union of the
+ * edges of T1 and T2. Attempt - in all possible ways -
+ * to separate the nodes of G into two disjoint sets (A,B) such
+ * that the cardinality of edges connecting A with B is exactly two.
  * If this is possible, any replacement of T1's A-edges with T2's
- * A-edges results in a tour. The same holds for the B-edges. 
- * If such a replacement reduces the cost of one the tours, then make it. 
+ * A-edges results in a tour. The same holds for the B-edges.
+ * If such a replacement reduces the cost of one the tours, then make it.
  *
  * If a tour T shorter than T2 is found, Pred and Suc of each node
  * point to its neighbors in T, and T's cost is returned.
@@ -23,8 +23,8 @@
  * The implementation is inspired by the algorithm described in the
  * paper
  *
- *   A. Mobius, B. Freisleben, P. Merz, and M. Schreiber, 
- *   "Combinatorial Optimization by Iterative Partial Transcription", 
+ *   A. Mobius, B. Freisleben, P. Merz, and M. Schreiber,
+ *   "Combinatorial Optimization by Iterative Partial Transcription",
  *   Physical Review E, Volume 59, Number 4, pp. 4667-4674, 1999.
  */
 
@@ -60,8 +60,8 @@ GainType MergeWithTourIPT()
     } while ((N = N->Next) != FirstNode);
     OldCost1 = Cost1;
 
-    /* Shrink the tours. 
-       OldPred and OldSuc represent the shrunken T1. 
+    /* Shrink the tours.
+       OldPred and OldSuc represent the shrunken T1.
        Prev and Next represent the shrunken T2 */
     N = First;
     Last = 0;

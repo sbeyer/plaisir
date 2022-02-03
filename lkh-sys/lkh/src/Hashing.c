@@ -2,17 +2,17 @@
 
 /*
  * The functions HashInitialize, HashInsert and HashSearch is used
- * to maintain a hash table of tours. 
+ * to maintain a hash table of tours.
  *
- * A hash function maps tours to locations in a hash table. Each time 
- * a tour improvement has been found, the hash table is consulted to 
- * see whether the new tour happens to be local optimum found earlier. 
- * If this is the case, fruitless checkout time is avoided. 
+ * A hash function maps tours to locations in a hash table. Each time
+ * a tour improvement has been found, the hash table is consulted to
+ * see whether the new tour happens to be local optimum found earlier.
+ * If this is the case, fruitless checkout time is avoided.
  */
 
 /*
- * HashInitialize(T) empties the hash table T.  
- * Empty entries have Cost equal to MINUS_INFINITY. 
+ * HashInitialize(T) empties the hash table T.
+ * Empty entries have Cost equal to MINUS_INFINITY.
  */
 
 void HashInitialize(HashTable * T)
@@ -27,16 +27,16 @@ void HashInitialize(HashTable * T)
 }
 
 /*
- * HashInsert(T,H,Cost) inserts H and Cost (the cost of the tour) in 
- * the table T in a location given by the hash value H. 
+ * HashInsert(T,H,Cost) inserts H and Cost (the cost of the tour) in
+ * the table T in a location given by the hash value H.
  *
  * Collisions are handled by double hashing.
  *
- * The table size is fixed. If the load factor becomes greater than 
+ * The table size is fixed. If the load factor becomes greater than
  * a specified maximum, MaxLoadFactor, no more insertions will be
- * made. However, if the table entry given by H has a cost greater 
- * than or equal Cost, then Cost of this entry replaces its pervious 
- * value.      
+ * made. However, if the table entry given by H has a cost greater
+ * than or equal Cost, then Cost of this entry replaces its pervious
+ * value.
  */
 
 void HashInsert(HashTable * T, unsigned Hash, GainType Cost)
@@ -57,7 +57,7 @@ void HashInsert(HashTable * T, unsigned Hash, GainType Cost)
 }
 
 /*
- * HashSearch(T,H,Cost) returns 1 if table T has an entry containing 
+ * HashSearch(T,H,Cost) returns 1 if table T has an entry containing
  * Cost and H. Otherwise, the function returns 0.
  */
 

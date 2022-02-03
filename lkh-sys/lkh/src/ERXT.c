@@ -1,18 +1,18 @@
 #include "LKH.h"
 
-/* 
+/*
  * The ERXT function applies the Edge Recombination Crossover operator (ERX)
  * on the two individuals (tours) represented by the Suc and Next references,
  * resepectively.
- * 
- * ERX was originally described in 
+ *
+ * ERX was originally described in
  *
  *     D. Whitley, T. Starkweather, and D. Fuquay,
  *     Scheduling Problems and the Traveling Salesman:
- *     the Genetic Edge Recombination Operator. 
+ *     the Genetic Edge Recombination Operator.
  *     Proc. Third Int. Conf. on Genetic Algorithms and Their Applications
  *     (1989)
- * 
+ *
  * ERXT implements the variant of ERX based on tabu-edges (Edge-T) described in
  *
  *     Chuan-Kang Ting,
@@ -20,7 +20,7 @@
  *     Greedy Manner.
  *     Lecture Notes in Computer Science 3004, pp. 207-216 (2004)
  *
- * However, ERXT does not implement the greedy strategy used by Edge-T for 
+ * However, ERXT does not implement the greedy strategy used by Edge-T for
  * choosing foreign edges.
  */
 

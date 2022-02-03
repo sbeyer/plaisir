@@ -1,13 +1,13 @@
 #include "LKH.h"
 
 /*
- * The Flip function performs a 2-opt move. Edges (t1,t2) and (t3,t4) 
- * are exchanged with edges (t2,t3) and (t4,t1). Node t4 is one of 
+ * The Flip function performs a 2-opt move. Edges (t1,t2) and (t3,t4)
+ * are exchanged with edges (t2,t3) and (t4,t1). Node t4 is one of
  * t3's two neighbors on the tour; which one is uniquely determined
  * by the orientation of (t1,t2).
  *
- * The function is only used if the doubly linked list representation 
- * is used for a tour; if the two-level tree representation is used, 
+ * The function is only used if the doubly linked list representation
+ * is used for a tour; if the two-level tree representation is used,
  * the function Flip_SL is used instead.
  *
  * The 2-opt move is made by swapping Pred and Suc of each node of the
@@ -18,13 +18,13 @@
  *
  * Any of two segments defined by the 2-opt move may be reversed. The
  * segment with the smallest number of nodes is reversed in order to
- * speed up computations. The number of nodes in a segment is found 
- * from the Rank-values. 
- * 
+ * speed up computations. The number of nodes in a segment is found
+ * from the Rank-values.
+ *
  * The move is pushed onto a stack of 2-opt moves. The stack makes it
  * possible to undo moves (by the RestoreTour function).
  *
- * Finally, the hash value corresponding to the tour is updated. 
+ * Finally, the hash value corresponding to the tour is updated.
  */
 
 void Flip(Node * t1, Node * t2, Node * t3)
