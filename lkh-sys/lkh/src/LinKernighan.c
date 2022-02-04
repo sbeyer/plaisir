@@ -110,7 +110,7 @@ GainType LinKernighan()
                 if (FixedOrCommon(t1, t2) ||
                     (RestrictedSearch && Near(t1, t2) &&
                      (Trial == 1 ||
-                      (Trial > BackboneTrials &&
+                      (Trial > 0 &&
                        (KickType == 0 || Kicks == 0)))))
                     continue;
                 G0 = C(t1, t2);

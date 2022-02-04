@@ -85,27 +85,14 @@ GainType FindTour()
             printff("  %d: Cost = " GainFormat ", Time = %0.2f sec.\n",
                     Trial, Cost, fabs(GetTime() - EntryTime));
         /* Record backbones if wanted */
-        if (Trial <= BackboneTrials && BackboneTrials < MaxTrials) {
+        if (Trial == 0) {
             SwapCandidateSets();
             AdjustCandidateSet();
-            if (Trial == BackboneTrials) {
-                if (TraceLevel >= 1) {
-                    printff("# %d: Backbone candidates ->\n", Trial);
-                    CandidateReport();
-                }
-            } else
-                SwapCandidateSets();
+            if (TraceLevel >= 1) {
+                printff("# %d: Backbone candidates ->\n", Trial);
+                CandidateReport();
+            }
         }
-    }
-    if (BackboneTrials > 0 && BackboneTrials < MaxTrials) {
-        if (Trial > BackboneTrials ||
-            (Trial == BackboneTrials))
-            SwapCandidateSets();
-        t = FirstNode;
-        do {
-            free(t->BackboneCandidateSet);
-            t->BackboneCandidateSet = 0;
-        } while ((t = t->Suc) != FirstNode);
     }
     t = FirstNode;
     if (Norm == 0 || MaxTrials == 0 || !t->BestSuc) {

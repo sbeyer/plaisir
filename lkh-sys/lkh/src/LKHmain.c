@@ -16,11 +16,6 @@ static void ResetParameters()
      */
     AscentCandidates = 50;
     /*
-     * BACKBONE_TRIALS = <integer of at least 0>
-     * The number of backbone trials in each run.
-     */
-    BackboneTrials = 0;
-    /*
      * CANDIDATE_SET_TYPE = { ALPHA | DELAUNAY [ PURE ] | NEAREST-NEIGHBOR |
      *                        QUADRANT }
      * Specifies the candidate set type.
