@@ -37,7 +37,6 @@ _OBJ = Activate.o AddCandidate.o                                       \
 	   RecordBestTour.o \
 	   RecordBetterTour.o RemoveFirstActive.o                          \
        ResetCandidateSet.o RestoreTour.o SegmentSize.o Sequence.o      \
-       SFCTour.o \
        Statistics.o StoreTour.o SymmetrizeCandidateSet.o               \
        TrimCandidateSet.o \
        LKH.o

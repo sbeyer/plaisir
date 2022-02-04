@@ -22,9 +22,7 @@ void CreateCandidateSet()
     double EntryTime = GetTime();
 
     Norm = 9999;
-    if ((MaxTrials == 0 &&
-             (FirstNode->InitialSuc ||
-              InitialTourAlgorithm == MOORE))) {
+    if (MaxTrials == 0 && FirstNode->InitialSuc) {
         AddTourCandidates();
         goto End_CreateCandidateSet;
     }
@@ -59,21 +57,18 @@ void CreateCandidateSet()
 
 End_CreateCandidateSet:
     ResetCandidateSet();
-    if (MaxTrials > 0 ||
-            (InitialTourAlgorithm != MOORE)) {
-        Na = FirstNode;
-        do {
-            if (!Na->CandidateSet || !Na->CandidateSet[0].To) {
-                if (MaxCandidates == 0)
-                    eprintf
-                        ("MAX_CANDIDATES = 0: Node %d has no candidates",
-                         Na->Id);
-                else
-                    eprintf("Node %d has no candidates", Na->Id);
-            }
+    Na = FirstNode;
+    do {
+        if (!Na->CandidateSet || !Na->CandidateSet[0].To) {
+            if (MaxCandidates == 0)
+                eprintf
+                    ("MAX_CANDIDATES = 0: Node %d has no candidates",
+                     Na->Id);
+            else
+                eprintf("Node %d has no candidates", Na->Id);
         }
-        while ((Na = Na->Suc) != FirstNode);
     }
+    while ((Na = Na->Suc) != FirstNode);
     if (TraceLevel >= 1) {
         CandidateReport();
         printff("Preprocessing time = %0.2f sec.\n",

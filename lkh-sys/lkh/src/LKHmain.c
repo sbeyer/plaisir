@@ -56,7 +56,7 @@ static void ResetParameters()
      */
     InitialStepSize = 1;
     /*
-     * INITIAL_TOUR_ALGORITHM = { GREEDY | MOORE | NEAREST-NEIGHBOR |
+     * INITIAL_TOUR_ALGORITHM = { GREEDY | NEAREST-NEIGHBOR |
      *                            WALK }
      * Specifies the algorithm for obtaining an initial tour.
      */

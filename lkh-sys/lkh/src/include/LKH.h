@@ -39,9 +39,7 @@
 #define SLink(a, b) { (a)->Suc = (b); (b)->Pred = (a); }
 
 enum CandidateSetTypes { ALPHA, DELAUNAY, NN, QUADRANT };
-enum InitialTourAlgorithms { GREEDY, MOORE, NEAREST_NEIGHBOR,
-    WALK
-};
+enum InitialTourAlgorithms { GREEDY, NEAREST_NEIGHBOR, WALK };
 
 typedef struct Node Node;
 typedef struct Candidate Candidate;

@@ -44,10 +44,8 @@ void ChooseInitialTour()
     }
     if (Trial == 1 && !FirstNode->InitialSuc) {
         if (InitialTourAlgorithm == GREEDY ||
-            InitialTourAlgorithm == MOORE ||
             InitialTourAlgorithm == NEAREST_NEIGHBOR) {
-            GainType Cost = InitialTourAlgorithm == MOORE ?
-                SFCTour(InitialTourAlgorithm) : GreedyTour();
+            GainType Cost = GreedyTour();
             if (MaxTrials == 0) {
                 BetterCost = Cost;
                 RecordBetterTour();
