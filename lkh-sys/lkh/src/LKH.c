@@ -100,7 +100,6 @@ int TraceLevel; /* Specifies the level of detail of the output
 int Trial;      /* Ordinal number of the current trial */
 
 int CandidateSetSymmetric, CandidateSetType,
-    DelaunayPure,
     InitialTourAlgorithm,
     SubproblemBorders, SubproblemsCompressed;
 

@@ -38,7 +38,7 @@
     { Link((a)->Pred, (a)->Suc); Link(a, a); Link((b)->Pred, a); Link(a, b); }
 #define SLink(a, b) { (a)->Suc = (b); (b)->Pred = (a); }
 
-enum CandidateSetTypes { ALPHA, DELAUNAY, NN, QUADRANT };
+enum CandidateSetTypes { ALPHA, NN, QUADRANT };
 enum InitialTourAlgorithms { GREEDY, NEAREST_NEIGHBOR, WALK };
 
 typedef struct Node Node;
@@ -248,7 +248,6 @@ extern int Trial;      /* Ordinal number of the current trial */
    ReadProblem: */
 
 extern int CandidateSetSymmetric, CandidateSetType,
-           DelaunayPure,
            InitialTourAlgorithm;
 
 extern MoveFunction BestMove, BacktrackMove, BestSubsequentMove;
@@ -293,7 +292,6 @@ void ChooseInitialTour(void);
 void Connect(Node * N1, int Max, int Sparse);
 void CandidateReport(void);
 void CreateCandidateSet(void);
-void CreateDelaunayCandidateSet(void);
 void CreateNearestNeighborCandidateSet(int K);
 void CreateNNCandidateSet(int K);
 void CreateQuadrantCandidateSet(int K);
@@ -336,7 +334,7 @@ void MinimumSpanningTree(int Sparse);
 void NormalizeNodeList(void);
 void NormalizeSegmentList(void);
 void OrderCandidateSet(int MaxCandidates,
-                       GainType MaxAlpha, int Symmetric);
+                       int Symmetric);
 GainType PatchCycles(int k, GainType Gain);
 void printff(char *fmt, ...);
 void PrintStatistics(void);

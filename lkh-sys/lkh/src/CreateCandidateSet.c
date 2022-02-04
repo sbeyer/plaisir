@@ -48,12 +48,12 @@ void CreateCandidateSet()
         printff(", Ascent time = %0.2f sec.\n",
                 fabs(GetTime() - EntryTime));
     }
-    MaxAlpha = (GainType) fabs(Excess * Cost);
-    if (CandidateSetType == DELAUNAY ||
-            MaxCandidates == 0)
-        OrderCandidateSet(MaxCandidates, MaxAlpha, CandidateSetSymmetric);
-    else
+    if (MaxCandidates == 0)
+        OrderCandidateSet(MaxCandidates, CandidateSetSymmetric);
+    else {
+        MaxAlpha = (GainType) fabs(Excess * Cost);
         GenerateCandidates(MaxCandidates, MaxAlpha, CandidateSetSymmetric);
+    }
 
 End_CreateCandidateSet:
     ResetCandidateSet();

@@ -31,15 +31,12 @@ GainType Ascent()
     do
         t->Pi = t->BestPi = 0;
     while ((t = t->Suc) != FirstNode);
-    if (CandidateSetType == DELAUNAY && !FirstNode->CandidateSet)
-        CreateDelaunayCandidateSet();
-    else if (MaxCandidates == 0) {
+    if (MaxCandidates == 0) {
         AddTourCandidates();
     }
 
     /* Compute the cost of a minimum 1-tree */
-    W = Minimum1TreeCost(CandidateSetType == DELAUNAY ||
-                         MaxCandidates == 0);
+    W = Minimum1TreeCost(MaxCandidates == 0);
 
     /* Return this cost
        if either
@@ -53,14 +50,7 @@ GainType Ascent()
     if (MaxCandidates > 0) {
         /* Generate symmetric candididate sets for all nodes */
         MaxAlpha = INT_MAX;
-        if (CandidateSetType != DELAUNAY)
-            GenerateCandidates(AscentCandidates, MaxAlpha, 1);
-        else {
-            OrderCandidateSet(AscentCandidates, MaxAlpha, 1);
-            W = Minimum1TreeCost(1);
-            if (!Norm)
-                return W;
-        }
+        GenerateCandidates(AscentCandidates, MaxAlpha, 1);
     }
     if (TraceLevel >= 2) {
         CandidateReport();
@@ -108,8 +98,7 @@ GainType Ascent()
                    too sparse */
                 if (W - W0 > (W0 >= 0 ? W0 : -W0) && AscentCandidates > 0
                     && AscentCandidates < Dimension) {
-                    W = Minimum1TreeCost(CandidateSetType == DELAUNAY ||
-                                         MaxCandidates == 0);
+                    W = Minimum1TreeCost(MaxCandidates == 0);
                     if (W < W0) {
                         /* Double the number of candidate edges
                            and start all over again */
@@ -139,8 +128,7 @@ GainType Ascent()
                     T *= 2;
                 /* If the improvement was found at the last iteration of the
                    current period, then double the period */
-                if (CandidateSetType != DELAUNAY &&
-                    P == Period && (Period *= 2) > InitialPeriod)
+                if (P == Period && (Period *= 2) > InitialPeriod)
                     Period = InitialPeriod;
             } else {
                 if (TraceLevel >= 3)
@@ -164,13 +152,10 @@ GainType Ascent()
     } while ((t = t->Suc) != FirstNode);
 
     /* Compute a minimum 1-tree */
-    W = BestW = Minimum1TreeCost(CandidateSetType == DELAUNAY ||
-                                 MaxCandidates == 0);
+    W = BestW = Minimum1TreeCost(MaxCandidates == 0);
 
     if (MaxCandidates > 0) {
         FreeCandidateSets();
-        if (CandidateSetType == DELAUNAY)
-            CreateDelaunayCandidateSet();
     } else {
         Candidate *Nt;
         t = FirstNode;

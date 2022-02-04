@@ -9,8 +9,7 @@
  * their Alpha-values.
  *
  * The parameter MaxCandidates specifies the maximum number of candidate
- * edges allowed for each node, and MaxAlpha puts an upper limit on their
- * Alpha-values.
+ * edges allowed for each node.
  *
  * A non-zero value of Symmetric specifies that the candidate set is to be
  * complemented such that every candidate edge is associated with both its
@@ -28,16 +27,14 @@ static Candidate *FindCandidate(Node * From, Node * To);
 #undef max
 static int max(const int a, const int b);
 
-void OrderCandidateSet(int MaxCandidates, GainType MaxAlpha, int Symmetric)
+void OrderCandidateSet(int MaxCandidates, int Symmetric)
 {
-    Node *From, *To, *N;
+    Node *From, *To;
     Candidate *NFrom, *NN;
-    int Alpha, Beta;
+    int Beta;
 
     if (TraceLevel >= 2)
         printff("Ordering candidates ... ");
-    if (MaxAlpha < 0 || MaxAlpha > INT_MAX)
-        MaxAlpha = INT_MAX;
     /* Add edges from the 1-tree to the candidate set */
     if (MaxCandidates > 0) {
         From = FirstNode;
@@ -96,62 +93,11 @@ void OrderCandidateSet(int MaxCandidates, GainType MaxAlpha, int Symmetric)
                 Beta = BetaValue(From, To);
                 NFrom->Alpha =
                     Beta != INT_MIN ? max(NFrom->Cost - Beta, 0) : INT_MAX;
-                if (NFrom->Alpha > MaxAlpha &&
-                    !DelaunayPure && CandidateSetType == DELAUNAY)
-                    NFrom->Alpha = INT_MAX;
             }
         }
         From->AlphaComputed = 1;
     }
     while ((From = From->Suc) != FirstNode);
-
-    if (MaxCandidates > 0 && !DelaunayPure && CandidateSetType == DELAUNAY) {
-        do {
-            int Count = 0;
-            for (NFrom = From->CandidateSet; NFrom->To; NFrom++)
-                Count++;
-            From->OriginalCandidates = Count;
-            From->Mark = 0;
-            From->AlphaComputed = 0;
-        }
-        while ((From = From->Suc) != FirstNode);
-
-        /* Augment the original candidate set */
-        do {
-            int i, j;
-            From->Mark = From;
-            for (i = 0; i < From->OriginalCandidates; i++) {
-                N = From->CandidateSet[i].To;
-                N->Mark = From;
-                for (j = 0; j < N->OriginalCandidates; j++) {
-                    To = N->CandidateSet[j].To;
-                    if (To->Mark == From)
-                        continue;
-                    To->Mark = From;
-                    if (FindCandidate(From, To))
-                        continue;
-                    if (FixedOrCommon(From, To))
-                        Alpha = INT_MIN;
-                    else if (From->FixedTo2 || To->FixedTo2)
-                        continue;
-                    else if ((NN = FindCandidate(To, From)))
-                        Alpha = NN->Alpha;
-                    else {
-                        if (To->AlphaComputed)
-                            continue;
-                        Beta = BetaValue(From, To);
-                        if (Beta == INT_MIN)
-                            continue;
-                        Alpha = max(D(From, To) - Beta, 0);
-                    }
-                    if (Alpha <= MaxAlpha)
-                        AddCandidate(From, To, D(From, To), Alpha);
-                }
-            }
-            From->AlphaComputed = 1;
-        }
-        while ((From = From->Suc) != FirstNode);
-    }
 
     /* Order candidates according to their Alpha-values */
     ResetCandidateSet();

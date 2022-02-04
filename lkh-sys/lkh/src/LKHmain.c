@@ -16,16 +16,12 @@ static void ResetParameters()
      */
     AscentCandidates = 50;
     /*
-     * CANDIDATE_SET_TYPE = { ALPHA | DELAUNAY [ PURE ] | NEAREST-NEIGHBOR |
-     *                        QUADRANT }
+     * CANDIDATE_SET_TYPE = { ALPHA | NEAREST-NEIGHBOR | QUADRANT }
      * Specifies the candidate set type.
      * ALPHA is LKH's default type. ALPHA is applicable in general.
      * The other types can only be used for instances given by coordinates.
-     * The optional suffix PURE for the DELAUNAY type specifies that only
-     * edges of the Delaunay graph are used as candidates.
      */
     CandidateSetType = ALPHA;
-    DelaunayPure = 0; // in case of DELAUNAY
     /*
      * EXCESS = <real of at least 0>
      * The maximum alpha-value allowed for any candidate edge is set to
