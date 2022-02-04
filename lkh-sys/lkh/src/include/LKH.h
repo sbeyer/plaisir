@@ -254,14 +254,11 @@ extern int Trial;      /* Ordinal number of the current trial */
    ReadProblem: */
 
 extern int CandidateSetSymmetric, CandidateSetType,
-           DelaunayPartitioning, DelaunayPure,
+           DelaunayPure,
            ExtraCandidateSetSymmetric, ExtraCandidateSetType,
            InitialTourAlgorithm,
-           KarpPartitioning, KCenterPartitioning, KMeansPartitioning,
-           MoorePartitioning,
            PatchingAExtended, PatchingARestricted,
-           PatchingCExtended, PatchingCRestricted,
-           RohePartitioning, SierpinskiPartitioning;
+           PatchingCExtended, PatchingCRestricted;
 
 extern MoveFunction BestMove, BacktrackMove, BestSubsequentMove;
 extern MergeTourFunction MergeWithTour;

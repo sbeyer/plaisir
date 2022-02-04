@@ -104,14 +104,11 @@ int TraceLevel; /* Specifies the level of detail of the output
 int Trial;      /* Ordinal number of the current trial */
 
 int CandidateSetSymmetric, CandidateSetType,
-    DelaunayPartitioning, DelaunayPure,
+    DelaunayPure,
     ExtraCandidateSetSymmetric, ExtraCandidateSetType,
     InitialTourAlgorithm,
-    KarpPartitioning, KCenterPartitioning, KMeansPartitioning,
-    MoorePartitioning,
     PatchingAExtended, PatchingARestricted,
     PatchingCExtended, PatchingCRestricted,
-    RohePartitioning, SierpinskiPartitioning,
     SubproblemBorders, SubproblemsCompressed;
 
 FILE *ParameterFile, *ProblemFile, *PiFile, *InputTourFile,

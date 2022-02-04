@@ -26,7 +26,6 @@ static void ResetParameters()
      */
     CandidateSetType = ALPHA;
     DelaunayPure = 0; // in case of DELAUNAY
-    DelaunayPartitioning = 0;
     /*
      * EXCESS = <real of at least 0>
      * The maximum alpha-value allowed for any candidate edge is set to
@@ -78,9 +77,6 @@ static void ResetParameters()
      * Specifies the algorithm for obtaining an initial tour.
      */
     InitialTourAlgorithm = WALK;
-    KarpPartitioning = 0;
-    KCenterPartitioning = 0;
-    KMeansPartitioning = 0;
     /*
      * KICKS = <integer of at least 0>
      * Specifies the number of times to "kick" a tour found by Lin-Kernighan.
@@ -126,7 +122,6 @@ static void ResetParameters()
      * Default: DIMENSION
      */
     MaxTrials = -1;
-    MoorePartitioning = 0;
     /*
      * MOVE_TYPE = <integer>
      * Specifies the move type to be used as submove in Lin-Kernighan.
@@ -190,7 +185,6 @@ static void ResetParameters()
      * Default: YES
      */
     RestrictedSearch = 1;
-    RohePartitioning = 0;
     /*
      * RUNS = <integer of at least 1>
      * The total number of runs.
@@ -204,7 +198,6 @@ static void ResetParameters()
      * Default: 1
      */
     Seed = 1;
-    SierpinskiPartitioning = 0;
     /*
      * SUBGRADIENT = { YES | NO }
      * Specifies whether the Pi-values should be determined by subgradient
