@@ -16,13 +16,6 @@ static void ResetParameters()
      */
     AscentCandidates = 50;
     /*
-     * CANDIDATE_SET_TYPE = { ALPHA | NEAREST-NEIGHBOR }
-     * Specifies the candidate set type.
-     * ALPHA is LKH's default type. ALPHA is applicable in general.
-     * The other types can only be used for instances given by coordinates.
-     */
-    CandidateSetType = ALPHA;
-    /*
      * EXCESS = <real of at least 0>
      * The maximum alpha-value allowed for any candidate edge is set to
      * EXCESS times the absolute value of the lower bound of a solution
