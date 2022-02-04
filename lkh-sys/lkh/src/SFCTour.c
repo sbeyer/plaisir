@@ -18,7 +18,6 @@
  * The function returns the cost of the resulting tour.
  */
 
-static int SierpinskiIndex(double x, double y);
 static int MooreIndex(double x, double y);
 static int compare(const void *Na, const void *Nb);
 
@@ -33,15 +32,9 @@ GainType SFCTour(int CurveType)
     GainType Cost;
     double EntryTime = GetTime();
 
-    if (CurveType == SIERPINSKI) {
-        if (TraceLevel >= 1)
-            printff("Sierpinski = ");
-        Index = SierpinskiIndex;
-    } else {
-        if (TraceLevel >= 1)
-            printff("Moore = ");
-        Index = MooreIndex;
-    }
+    if (TraceLevel >= 1)
+        printff("Moore = ");
+    Index = MooreIndex;
     N = FirstNode;
     XMin = XMax = N->X;
     YMin = YMax = N->Y;
@@ -97,40 +90,6 @@ GainType SFCTour(int CurveType)
         printff(", Time = %0.2f sec.\n", fabs(GetTime() - EntryTime));
     }
     return Cost;
-}
-
-static int SierpinskiIndex(double x, double y)
-{
-    int idx = 0;
-    double oldx;
-    int i = 8 * sizeof(int);
-
-    if (x > y) {
-        idx = 1;
-        x = 1 - x;
-        y = 1 - y;
-    }
-    while (--i > 0) {
-        idx *= 2;
-        if (x + y > 1) {
-            idx++;
-            oldx = x;
-            x = 1 - y;
-            y = oldx;
-        }
-        if (--i <= 0)
-            break;
-        x *= 2;
-        y *= 2;
-        idx *= 2;
-        if (y > 1) {
-            idx++;
-            oldx = x;
-            x = y - 1;
-            y = 1 - oldx;
-        }
-    }
-    return idx;
 }
 
 static int MooreIndex(double x, double y)

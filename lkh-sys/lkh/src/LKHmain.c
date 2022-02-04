@@ -56,8 +56,8 @@ static void ResetParameters()
      */
     InitialStepSize = 1;
     /*
-     * INITIAL_TOUR_ALGORITHM = { BORUVKA | GREEDY | MOORE | NEAREST-NEIGHBOR |
-     *                            QUICK-BORUVKA | SIERPINSKI | WALK }
+     * INITIAL_TOUR_ALGORITHM = { GREEDY | MOORE | NEAREST-NEIGHBOR |
+     *                            WALK }
      * Specifies the algorithm for obtaining an initial tour.
      */
     InitialTourAlgorithm = WALK;

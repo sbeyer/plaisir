@@ -23,7 +23,7 @@ void CreateCandidateSet()
 
     Norm = 9999;
     if ((MaxTrials == 0 &&
-             (FirstNode->InitialSuc || InitialTourAlgorithm == SIERPINSKI ||
+             (FirstNode->InitialSuc ||
               InitialTourAlgorithm == MOORE))) {
         AddTourCandidates();
         goto End_CreateCandidateSet;
@@ -60,8 +60,7 @@ void CreateCandidateSet()
 End_CreateCandidateSet:
     ResetCandidateSet();
     if (MaxTrials > 0 ||
-            (InitialTourAlgorithm != SIERPINSKI &&
-             InitialTourAlgorithm != MOORE)) {
+            (InitialTourAlgorithm != MOORE)) {
         Na = FirstNode;
         do {
             if (!Na->CandidateSet || !Na->CandidateSet[0].To) {

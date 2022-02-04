@@ -40,7 +40,7 @@
 
 enum CandidateSetTypes { ALPHA, DELAUNAY, NN, QUADRANT };
 enum InitialTourAlgorithms { GREEDY, MOORE, NEAREST_NEIGHBOR,
-    SIERPINSKI, WALK
+    WALK
 };
 
 typedef struct Node Node;
