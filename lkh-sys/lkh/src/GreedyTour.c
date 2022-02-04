@@ -6,9 +6,6 @@
  *
  *      (1) Nearest Neighbor (NEAREST-NEIGHBOR),
  *      (2) Bentley's multiple fragment heuristic (GREEDY),
- *      (3) Boruvka (BORUVKA), or
- *      (4) Applegate, Cook and Rohe's Quick-Boruvka heuristic
- *          (QUICK-BORUVKA).
  *
  *    J. L. Bentley,
  *    Fast Algorithms for Geometric Traveling Salesman Problems,
@@ -38,8 +35,6 @@ static Node *NearestInList(Node * From, Node * First);
 static int MayBeAddedToFragments(Node * From, Node * To);
 static void AddEdgeToFragments(Node * From, Node * To);
 static void RemoveFromList(Node * N, Node ** First);
-static int compareX(const void *Na, const void *Nb);
-static int compareCost(const void *Na, const void *Nb);
 
 static int EdgesInFragments;
 static GainType Cost;
@@ -51,14 +46,10 @@ GainType GreedyTour()
     double EntryTime = GetTime();
 
     if (TraceLevel >= 1) {
-        if (InitialTourAlgorithm == BORUVKA)
-            printff("Boruvka = ");
-        else if (InitialTourAlgorithm == GREEDY)
+        if (InitialTourAlgorithm == GREEDY)
             printff("Greedy = ");
         else if (InitialTourAlgorithm == NEAREST_NEIGHBOR)
             printff("Nearest-Neighbor = ");
-        else if (InitialTourAlgorithm == QUICK_BORUVKA)
-            printff("Quick-Boruvka = ");
     }
     Cost = 0;
     EdgesInFragments = 0;
@@ -140,35 +131,6 @@ GainType GreedyTour()
             for (From = FirstNode, i = 0; i < Count; From = From->Next)
                 if (From->Nearest)
                     Perm[i++] = From;
-            if (InitialTourAlgorithm == QUICK_BORUVKA) {
-                qsort(Perm, Count, sizeof(Node *), compareX);
-                for (i = 0; i < Count; i++) {
-                    From = Perm[i];
-                    if ((To = NearestNeighbor(From))) {
-                        AddEdgeToFragments(From, To);
-                        i--;
-                    }
-                }
-            } else if (InitialTourAlgorithm == BORUVKA) {
-                while (Count > 0) {
-                    qsort(Perm, Count, sizeof(Node *), compareCost);
-                    for (i = 0; i < Count; i++) {
-                        From = Perm[i];
-                        To = From->Nearest;
-                        if (MayBeAddedToFragments(From, To))
-                            AddEdgeToFragments(From, To);
-                    }
-                    for (i = 0; i < Count;) {
-                        From = Perm[i];
-                        if (!(To = NearestNeighbor(From)))
-                            Perm[i] = Perm[--Count];
-                        else {
-                            From->Nearest = To;
-                            i++;
-                        }
-                    }
-                }
-            }
             free(Perm);
         }
         if (EdgesInFragments < Dimension) {
@@ -385,18 +347,4 @@ static void RemoveFromList(Node * N, Node ** First)
         *First = N->OldSuc;
     N->OldPred->OldSuc = N->OldSuc;
     N->OldSuc->OldPred = N->OldPred;
-}
-
-static int compareX(const void *Na, const void *Nb)
-{
-    double x1 = (*(Node **) Na)->X;
-    double y1 = (*(Node **) Na)->Y;
-    double x2 = (*(Node **) Nb)->X;
-    double y2 = (*(Node **) Nb)->Y;
-    return x1 < x2 ? -1 : x1 > x2 ? 1 : y1 < y2 ? -1 : y1 > y2 ? 1 : 0;
-}
-
-static int compareCost(const void *Na, const void *Nb)
-{
-    return (*(Node **) Na)->Cost - (*(Node **) Nb)->Cost;
 }

@@ -39,8 +39,8 @@
 #define SLink(a, b) { (a)->Suc = (b); (b)->Pred = (a); }
 
 enum CandidateSetTypes { ALPHA, DELAUNAY, NN, QUADRANT };
-enum InitialTourAlgorithms { BORUVKA, GREEDY, MOORE, NEAREST_NEIGHBOR,
-    QUICK_BORUVKA, SIERPINSKI, WALK
+enum InitialTourAlgorithms { GREEDY, MOORE, NEAREST_NEIGHBOR,
+    SIERPINSKI, WALK
 };
 enum RecombinationTypes { IPT, GPX2 };
 

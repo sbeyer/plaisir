@@ -43,11 +43,9 @@ void ChooseInitialTour()
         return;
     }
     if (Trial == 1 && !FirstNode->InitialSuc) {
-        if (InitialTourAlgorithm == BORUVKA ||
-            InitialTourAlgorithm == GREEDY ||
+        if (InitialTourAlgorithm == GREEDY ||
             InitialTourAlgorithm == MOORE ||
             InitialTourAlgorithm == NEAREST_NEIGHBOR ||
-            InitialTourAlgorithm == QUICK_BORUVKA ||
             InitialTourAlgorithm == SIERPINSKI) {
             GainType Cost = InitialTourAlgorithm == MOORE ||
                 InitialTourAlgorithm == SIERPINSKI ?
