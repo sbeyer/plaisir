@@ -280,7 +280,6 @@ int AddCandidate(Node * From, Node * To, int Cost, int Alpha);
 void AddExtraCandidates(int K, int CandidateSetType, int Symmetric);
 void AddTourCandidates(void);
 void AdjustCandidateSet(void);
-void AdjustClusters(int K, Node ** Center);
 void AllocateSegments(void);
 void AllocateStructures(void);
 GainType Ascent(void);
