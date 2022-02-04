@@ -35,22 +35,6 @@ static void ResetParameters()
      */
     Excess = -1;
     /*
-     * EXTRA_CANDIDATES = <integer> [ SYMMETRIC ]
-     * Number of extra candidate edges to be added to the candidate set
-     * of each node. Their candidate set type may be specified after the
-     * keyword EXTRA_CANDIDATE_SET_TYPE.
-     * The integer may be followed by the keyword SYMMETRIC, signifying
-     * that these extra candidate edges is to be complemented such
-     * that each of them is associated with both its two end nodes.
-     */
-    ExtraCandidates = 0;
-    ExtraCandidateSetSymmetric = 0;
-    /*
-     * EXTRA_CANDIDATE_SET_TYPE = { NEAREST-NEIGHBOR | QUADRANT }
-     * The candidate set type of extra candidate edges.
-     */
-    ExtraCandidateSetType = QUADRANT;
-    /*
      * GAIN23 = { YES | NO }
      * Specifies whether the Gain23 function is used.
      */
@@ -243,8 +227,6 @@ static void AdjustParameters()
         Runs = 10;
     if (MaxCandidates > Dimension - 1)
         MaxCandidates = Dimension - 1;
-    if (ExtraCandidates > Dimension - 1)
-        ExtraCandidates = Dimension - 1;
     if (AscentCandidates > Dimension - 1)
         AscentCandidates = Dimension - 1;
     if (InitialPeriod < 0) {

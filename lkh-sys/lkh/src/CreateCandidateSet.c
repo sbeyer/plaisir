@@ -58,12 +58,6 @@ void CreateCandidateSet()
         GenerateCandidates(MaxCandidates, MaxAlpha, CandidateSetSymmetric);
 
 End_CreateCandidateSet:
-    if (ExtraCandidates > 0) {
-        AddExtraCandidates(ExtraCandidates,
-                ExtraCandidateSetType,
-                ExtraCandidateSetSymmetric);
-        AddTourCandidates();
-    }
     ResetCandidateSet();
     if (MaxTrials > 0 ||
             (InitialTourAlgorithm != SIERPINSKI &&

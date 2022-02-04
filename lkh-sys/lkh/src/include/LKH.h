@@ -171,8 +171,6 @@ extern double Excess;  /* Maximum alpha-value allowed for any
                           candidate edge is set to Excess times the
                           absolute value of the lower bound of a
                           solution tour */
-extern int ExtraCandidates;    /* Number of extra neighbors to be added to
-                                  the candidate set of each node */
 extern Node *FirstActive, *LastActive; /* First and last node in the list
                                           of "active" nodes */
 extern Node *FirstNode;        /* First node in the list of nodes */
@@ -253,7 +251,6 @@ extern int Trial;      /* Ordinal number of the current trial */
 
 extern int CandidateSetSymmetric, CandidateSetType,
            DelaunayPure,
-           ExtraCandidateSetSymmetric, ExtraCandidateSetType,
            InitialTourAlgorithm;
 
 extern MoveFunction BestMove, BacktrackMove, BestSubsequentMove;
@@ -277,7 +274,6 @@ int c(Node * Na, Node * Nb);
 
 void Activate(Node * t);
 int AddCandidate(Node * From, Node * To, int Cost, int Alpha);
-void AddExtraCandidates(int K, int CandidateSetType, int Symmetric);
 void AddTourCandidates(void);
 void AdjustCandidateSet(void);
 void AllocateSegments(void);

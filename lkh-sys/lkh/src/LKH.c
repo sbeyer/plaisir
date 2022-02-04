@@ -22,8 +22,6 @@ double Excess;  /* Maximum alpha-value allowed for any
                    candidate edge is set to Excess times the
                    absolute value of the lower bound of a
                    solution tour */
-int ExtraCandidates;    /* Number of extra neighbors to be added to
-                           the candidate set of each node */
 Node *FirstActive, *LastActive; /* First and last node in the list
                                    of "active" nodes */
 Node *FirstNode;        /* First node in the list of nodes */
@@ -103,7 +101,6 @@ int Trial;      /* Ordinal number of the current trial */
 
 int CandidateSetSymmetric, CandidateSetType,
     DelaunayPure,
-    ExtraCandidateSetSymmetric, ExtraCandidateSetType,
     InitialTourAlgorithm,
     SubproblemBorders, SubproblemsCompressed;
 

@@ -12,7 +12,7 @@ _DEPS = Delaunay.h GainType.h GeoConversion.h Hashing.h      \
 
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = Activate.o AddCandidate.o AddExtraCandidates.o                  \
+_OBJ = Activate.o AddCandidate.o                                       \
        AddTourCandidates.o AdjustCandidateSet.o                        \
        AllocateStructures.o Ascent.o                                   \
        Best2OptMove.o Best3OptMove.o Best4OptMove.o Best5OptMove.o     \
