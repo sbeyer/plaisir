@@ -21,12 +21,6 @@ static void ResetParameters()
      */
     BackboneTrials = 0;
     /*
-     * BACKTRACKING = { YES | NO }
-     * Specifies whether a backtracking k-opt move is to be used as the first
-     * move in a sequence of moves (where k = MOVE_TYPE).
-     */
-    Backtracking = 0;
-    /*
      * CANDIDATE_SET_TYPE = { ALPHA | DELAUNAY [ PURE ] | NEAREST-NEIGHBOR |
      *                        QUADRANT }
      * Specifies the candidate set type.

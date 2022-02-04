@@ -73,8 +73,6 @@ Node *Best3OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                 Swap1(t1, t2, t3);
                 return 0;
             }
-            if (Backtracking && !Excludable(t3, t4))
-                continue;
             Breadth4 = 0;
             /* Choose (t4,t5) as a candidate edge emanating from t4 */
             for (Nt4 = t4->CandidateSet; (t5 = Nt4->To); Nt4++) {
@@ -105,37 +103,22 @@ Node *Best3OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                     }
                     if (GainCriterionUsed && G4 - Precision < t6->Cost)
                         continue;
-                    if (!Backtracking || Swaps > 0) {
-                        if ((G4 > BestG4 ||
-                             (G4 == BestG4 && !Near(t5, t6) &&
-                              Near(T5, T6))) &&
-                            Swaps < MaxSwaps &&
-                            Excludable(t5, t6) && !InInputTour(t5, t6)) {
-                            /* Ignore the move if the gain does not vary */
-                            if (RestrictedSearch &&
-                                G2 - t4->Pi == G4 - t6->Pi &&
-                                G3 + t5->Pi == G1 + t3->Pi)
-                                continue;
-                            T3 = t3;
-                            T4 = t4;
-                            T5 = t5;
-                            T6 = t6;
-                            BestCase6 = Case6;
-                            BestG4 = G4;
-                        }
-                    } else if (MaxSwaps > 0) {
-                        GainType G = G4;
-                        Node *t = t6;
-                        Make3OptMove(t1, t2, t3, t4, t5, t6, Case6);
-                        Exclude(t1, t2);
-                        Exclude(t3, t4);
-                        Exclude(t5, t6);
-                        while ((t = BestSubsequentMove(t1, t, &G, Gain)));
-                        if (*Gain > 0)
-                            return 0;
-                        RestoreTour();
-                        if (t2 != SUC(t1))
-                            Reversed ^= 1;
+                    if ((G4 > BestG4 ||
+                         (G4 == BestG4 && !Near(t5, t6) &&
+                          Near(T5, T6))) &&
+                        Swaps < MaxSwaps &&
+                        Excludable(t5, t6) && !InInputTour(t5, t6)) {
+                        /* Ignore the move if the gain does not vary */
+                        if (RestrictedSearch &&
+                            G2 - t4->Pi == G4 - t6->Pi &&
+                            G3 + t5->Pi == G1 + t3->Pi)
+                            continue;
+                        T3 = t3;
+                        T4 = t4;
+                        T5 = t5;
+                        T6 = t6;
+                        BestCase6 = Case6;
+                        BestG4 = G4;
                     }
                 }
             }

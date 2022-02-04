@@ -108,8 +108,6 @@ static GainType BestKOptMoveRec(int k, GainType G0)
                 MakeKOptMove(k);
                 return G3;
             }
-            if (Backtracking && !Excludable(t3, t4))
-                continue;
             MarkDeleted(t3, t4);
             G[2 * k - 1] = G2 - t4->Pi;
             if (k < K) {
@@ -139,55 +137,25 @@ static GainType BestKOptMoveRec(int k, GainType G0)
             if (k == K && t4 != t1 && t3 != t1 && G3 <= 0 &&
                 !Added(t4, t1) &&
                 (!GainCriterionUsed || G2 - Precision >= t4->Cost)) {
-                if (!Backtracking || Swaps > 0) {
-                    if ((G2 > BestG2 ||
-                         (G2 == BestG2 && !Near(t3, t4) &&
-                          Near(T[2 * K - 1], T[2 * K]))) &&
-                        Swaps < MaxSwaps &&
-                        Excludable(t3, t4) && !InInputTour(t3, t4)) {
-                        if (RestrictedSearch && K > 2) {
-                            /* Ignore the move if the gain does not vary */
-                            G[0] = G[2 * K - 2];
-                            G[1] = G[2 * K - 1];
-                            for (i = 2 * K - 3; i >= 2; i--)
-                                if (G[i] != G[i % 2])
-                                    break;
-                            if (i < 2)
-                                continue;
-                        }
-                        if (FeasibleKOptMove(K)) {
-                            BestG2 = G2;
-                            memcpy(T + 1, t + 1, 2 * K * sizeof(Node *));
-                        }
+                if ((G2 > BestG2 ||
+                     (G2 == BestG2 && !Near(t3, t4) &&
+                      Near(T[2 * K - 1], T[2 * K]))) &&
+                    Swaps < MaxSwaps &&
+                    Excludable(t3, t4) && !InInputTour(t3, t4)) {
+                    if (RestrictedSearch && K > 2) {
+                        /* Ignore the move if the gain does not vary */
+                        G[0] = G[2 * K - 2];
+                        G[1] = G[2 * K - 1];
+                        for (i = 2 * K - 3; i >= 2; i--)
+                            if (G[i] != G[i % 2])
+                                break;
+                        if (i < 2)
+                            continue;
                     }
-                } else if (MaxSwaps > 0 && FeasibleKOptMove(K)) {
-                    Node *SUCt1 = SUC(t1);
-                    MakeKOptMove(K);
-                    for (i = 1; i < 2 * k; i += 2) {
-                        Exclude(t[i], t[i + 1]);
-                        UnmarkDeleted(t[i], t[i + 1]);
+                    if (FeasibleKOptMove(K)) {
+                        BestG2 = G2;
+                        memcpy(T + 1, t + 1, 2 * K * sizeof(Node *));
                     }
-                    for (i = 2; i < 2 * k; i += 2)
-                        UnmarkAdded(t[i], t[i + 1]);
-                    memcpy(tSaved + 1, t + 1, 2 * k * sizeof(Node *));
-                    while ((t4 = BestSubsequentMove(t1, t4, &G2, &Gain)));
-                    if (Gain > 0) {
-                        UnmarkAdded(t2, t3);
-                        return Gain;
-                    }
-                    RestoreTour();
-                    K = k;
-                    memcpy(t + 1, tSaved + 1, 2 * K * sizeof(Node *));
-                    for (i = 1; i < 2 * K - 2; i += 2)
-                        MarkDeleted(t[i], t[i + 1]);
-                    for (i = 2; i < 2 * K; i += 2)
-                        MarkAdded(t[i], t[i + 1]);
-                    for (i = 2; i < 2 * K; i += 2)
-                        incl[incl[i] = i + 1] = i;
-                    incl[incl[1] = 2 * K] = 1;
-                    if (SUCt1 != SUC(t1))
-                        Reversed ^= 1;
-                    T[2 * K] = 0;
                 }
             }
         }

@@ -7,8 +7,6 @@
 int AscentCandidates;   /* Number of candidate edges to be associated
                            with each node during the ascent */
 int BackboneTrials;     /* Number of backbone trials in each run */
-int Backtracking;       /* Specifies whether backtracking is used for
-                           the first move in a sequence of moves */
 GainType BestCost;      /* Cost of the tour in BestTour */
 int *BestTour;  /* Table containing best tour found */
 GainType BetterCost;    /* Cost of the tour stored in BetterTour */

@@ -156,8 +156,6 @@ struct SwapRecord {
 extern int AscentCandidates;   /* Number of candidate edges to be associated
                                   with each node during the ascent */
 extern int BackboneTrials;     /* Number of backbone trials in each run */
-extern int Backtracking;       /* Specifies whether backtracking is used for
-                                  the first move in a sequence of moves */
 extern GainType BestCost;      /* Cost of the tour in BestTour */
 extern int *BestTour;  /* Table containing best tour found */
 extern GainType BetterCost;    /* Cost of the tour stored in BetterTour */

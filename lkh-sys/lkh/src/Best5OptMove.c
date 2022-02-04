@@ -77,8 +77,6 @@ Node *Best5OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                 Make2OptMove(t1, t2, t3, t4);
                 return 0;
             }
-            if (Backtracking && !Excludable(t3, t4))
-                continue;
             Breadth4 = 0;
             /* Choose (t4,t5) as a candidate edge emanating from t4 */
             for (Nt4 = t4->CandidateSet; (t5 = Nt4->To); Nt4++) {
@@ -120,8 +118,6 @@ Node *Best5OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                         Make3OptMove(t1, t2, t3, t4, t5, t6, Case6);
                         return 0;
                     }
-                    if (Backtracking && !Excludable(t5, t6))
-                        continue;
                     Breadth6 = 0;
                     /* Choose (t6,t7) as a candidate edge emanating from t6 */
                     for (Nt6 = t6->CandidateSet; (t7 = Nt6->To); Nt6++) {
@@ -220,8 +216,6 @@ Node *Best5OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                                              t8, Case8);
                                 return 0;
                             }
-                            if (Backtracking && !Excludable(t7, t8))
-                                continue;
                             Breadth8 = 0;
                             /* Choose (t8,t9) as a candidate edge emanating
                                from t8 */
@@ -492,60 +486,38 @@ Node *Best5OptMove(Node * t1, Node * t2, GainType * G0, GainType * Gain)
                                     if (GainCriterionUsed &&
                                         G8 - Precision < t10->Cost)
                                         continue;
-                                    if (!Backtracking || Swaps > 0) {
-                                        if ((G8 > BestG8 ||
-                                             (G8 == BestG8
-                                              && !Near(t9, t10)
-                                              && Near(T9, T10)))
-                                            && Swaps < MaxSwaps
-                                            && Excludable(t9, t10)
-                                            && !InInputTour(t9, t10)) {
-                                            /* Ignore the move if the gain
-                                               does not vary */
-                                            if (RestrictedSearch &&
-                                                G2 - t4->Pi == G4 - t6->Pi
-                                                && G4 - t6->Pi ==
-                                                G6 - t8->Pi
-                                                && G6 - t8->Pi ==
-                                                G8 - t10->Pi
-                                                && G3 + t5->Pi ==
-                                                G1 + t3->Pi
-                                                && G5 + t7->Pi ==
-                                                G3 + t5->Pi
-                                                && G7 + t9->Pi ==
-                                                G5 + t7->Pi)
-                                                continue;
-                                            T3 = t3;
-                                            T4 = t4;
-                                            T5 = t5;
-                                            T6 = t6;
-                                            T7 = t7;
-                                            T8 = t8;
-                                            T9 = t9;
-                                            T10 = t10;
-                                            BestCase10 = Case10;
-                                            BestG8 = G8;
-                                        }
-                                    } else if (MaxSwaps > 0) {
-                                        GainType G = G8;
-                                        Node *t = t10;
-                                        Make5OptMove(t1, t2, t3, t4, t5,
-                                                     t6, t7, t8, t9, t10,
-                                                     Case10);
-                                        Exclude(t1, t2);
-                                        Exclude(t3, t4);
-                                        Exclude(t5, t6);
-                                        Exclude(t7, t8);
-                                        Exclude(t9, t10);
-                                        while ((t =
-                                                BestSubsequentMove(t1, t,
-                                                                   &G,
-                                                                   Gain)));
-                                        if (*Gain > 0)
-                                            return 0;
-                                        RestoreTour();
-                                        if (t2 != SUC(t1))
-                                            Reversed ^= 1;
+                                    if ((G8 > BestG8 ||
+                                         (G8 == BestG8
+                                          && !Near(t9, t10)
+                                          && Near(T9, T10)))
+                                        && Swaps < MaxSwaps
+                                        && Excludable(t9, t10)
+                                        && !InInputTour(t9, t10)) {
+                                        /* Ignore the move if the gain
+                                           does not vary */
+                                        if (RestrictedSearch &&
+                                            G2 - t4->Pi == G4 - t6->Pi
+                                            && G4 - t6->Pi ==
+                                            G6 - t8->Pi
+                                            && G6 - t8->Pi ==
+                                            G8 - t10->Pi
+                                            && G3 + t5->Pi ==
+                                            G1 + t3->Pi
+                                            && G5 + t7->Pi ==
+                                            G3 + t5->Pi
+                                            && G7 + t9->Pi ==
+                                            G5 + t7->Pi)
+                                            continue;
+                                        T3 = t3;
+                                        T4 = t4;
+                                        T5 = t5;
+                                        T6 = t6;
+                                        T7 = t7;
+                                        T8 = t8;
+                                        T9 = t9;
+                                        T10 = t10;
+                                        BestCase10 = Case10;
+                                        BestG8 = G8;
                                     }
                                 }
                             }
