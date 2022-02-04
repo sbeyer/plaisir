@@ -71,8 +71,6 @@ int NonsequentialMoveType;      /* Specifies the nonsequential move type to
                                    l-opt moves are tried for l <= L */
 int PatchingA;  /* Specifies the maximum number of alternating
                    cycles to be used for patching disjunct cycles */
-int PatchingC;  /* Specifies the maximum number of disjoint cycles to be
-                   patched (by one or more alternating cycles) */
 int Precision;  /* Internal precision in the representation of
                    transformed distances */
 int PredSucCostAvailable;  /* PredCost and SucCost are available */
@@ -107,8 +105,6 @@ int CandidateSetSymmetric, CandidateSetType,
     DelaunayPure,
     ExtraCandidateSetSymmetric, ExtraCandidateSetType,
     InitialTourAlgorithm,
-    PatchingAExtended, PatchingARestricted,
-    PatchingCExtended, PatchingCRestricted,
     SubproblemBorders, SubproblemsCompressed;
 
 FILE *ParameterFile, *ProblemFile, *PiFile, *InputTourFile,

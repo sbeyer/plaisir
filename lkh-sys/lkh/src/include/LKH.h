@@ -217,8 +217,6 @@ extern int NonsequentialMoveType; /* Specifies the nonsequential move type to
                                     l-opt moves are tried for l <= L */
 extern int PatchingA;  /* Specifies the maximum number of alternating
                           cycles to be used for patching disjunct cycles */
-extern int PatchingC;  /* Specifies the maximum number of disjoint cycles to be
-                          patched (by one or more alternating cycles) */
 extern int Precision;  /* Internal precision in the representation of
                           transformed distances */
 extern int PredSucCostAvailable;  /* PredCost and SucCost are available */
@@ -256,9 +254,7 @@ extern int Trial;      /* Ordinal number of the current trial */
 extern int CandidateSetSymmetric, CandidateSetType,
            DelaunayPure,
            ExtraCandidateSetSymmetric, ExtraCandidateSetType,
-           InitialTourAlgorithm,
-           PatchingAExtended, PatchingARestricted,
-           PatchingCExtended, PatchingCRestricted;
+           InitialTourAlgorithm;
 
 extern MoveFunction BestMove, BacktrackMove, BestSubsequentMove;
 extern MergeTourFunction MergeWithTour;

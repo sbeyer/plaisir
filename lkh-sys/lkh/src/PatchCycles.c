@@ -43,7 +43,7 @@ GainType PatchCycles(int k, GainType Gain)
         MakeKOptMove(k);
         return Gain;
     }
-    if (M == 1 || M > PatchingC || k + M > NonsequentialMoveType)
+    if (M > 0 || k + M > NonsequentialMoveType)
         return 0;
     if (RecLevel == 0)
         Patchwork = 0;
@@ -77,7 +77,7 @@ static GainType PatchCyclesRec(int k, int m, int M, GainType G0)
     Node *s1, *s2, *s3, *s4, *s5, *s6, *S3 = 0, *S4 = 0;
     Candidate *Ns2, *Ns4;
     GainType G1, G2, G3, G4, Gain, CloseUpGain,
-        BestCloseUpGain = PatchingAExtended ? MINUS_INFINITY : 0;
+        BestCloseUpGain = 0 ? MINUS_INFINITY : 0;
     int X4, X6;
     int i, NewCycle, *cycleSaved = 0, *pSaved = 0;
     int Breadth2 = 0, Breadth4;
@@ -120,8 +120,7 @@ static GainType PatchCyclesRec(int k, int m, int M, GainType G0)
                 }
                 memcpy(cycle + 1, cycleSaved, 2 * k * sizeof(int));
                 if (PatchingA >= 2 && Patchwork < MaxPatchwork &&
-                    k + M < NonsequentialMoveType &&
-                    (!PatchingARestricted || IsCandidate(s4, s1))) {
+                    k + M < NonsequentialMoveType) {
                     GainType Bound = BestCloseUpGain >= 0 ||
                         IsCandidate(s4, s1) ? BestCloseUpGain : 0;
                     if ((G2 - c(s4, s1) > Bound) &&
@@ -143,7 +142,7 @@ static GainType PatchCyclesRec(int k, int m, int M, GainType G0)
         }
         UnmarkAdded(s2, s3);
     }
-    if (M == 2 && !PatchingCRestricted) {
+    if (M == 2) {
         /* Try to patch the two cycles by a sequential 3-opt move */
         incl[incl[2 * (k + m)] = 2 * (k + m) + 1] = 2 * (k + m);
         incl[incl[2 * k + 1] = 2 * (k + m) + 2] = 2 * k + 1;

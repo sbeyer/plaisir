@@ -152,23 +152,6 @@ static void ResetParameters()
      */
     PatchingA = 1;
     /*
-     * PATCHING_C = <integer of at least 0> [ RESTRICTED | EXTENDED ]
-     * The maximum number of disjoint cycles to be patched in an attempt
-     * to find a feasible and gainful move. An attempt to patch cycles is
-     * made if the corresponding non-sequential move is gainful.
-     * The integer may be followed by the keyword RESTRICTED or EXTENDED.
-     * The keyword RESTRICTED signifies that gainful moves are only
-     * considered if all its inclusion edges are candidate edges.
-     * The keyword EXTENDED signifies that the non-sequential move need
-     * not be gainful if only all its inclusion edges are candidate edges.
-     * Default: 0
-     */
-    PatchingC = 0;
-    PatchingAExtended = 0;
-    PatchingARestricted = 0;
-    PatchingCExtended = 0;
-    PatchingCRestricted = 0;
-    /*
      * PRECISION = <integer>
      * The internal precision in the representation of transformed distances:
      *    d[i][j] = PRECISION*c[i][j] + pi[i] + pi[j],
@@ -278,30 +261,15 @@ static void AdjustParameters()
         SubsequentMoveType = MoveType;
     K = MoveType >= SubsequentMoveType
         || !SubsequentPatching ? MoveType : SubsequentMoveType;
-    if (PatchingC > K)
-        PatchingC = K;
-    if (PatchingA > 1 && PatchingA >= PatchingC)
-        PatchingA = PatchingC > 2 ? PatchingC - 1 : 1;
     if (NonsequentialMoveType == -1 ||
-            NonsequentialMoveType > K + PatchingC + PatchingA - 1)
-        NonsequentialMoveType = K + PatchingC + PatchingA - 1;
-    if (PatchingC >= 1) {
-        BestMove = BestSubsequentMove = BestKOptMove;
-        if (!SubsequentPatching && SubsequentMoveType <= 5) {
-            MoveFunction BestOptMove[] =
-            { 0, 0, Best2OptMove, Best3OptMove,
-                Best4OptMove, Best5OptMove
-            };
-            BestSubsequentMove = BestOptMove[SubsequentMoveType];
-        }
-    } else {
-        MoveFunction BestOptMove[] = { 0, 0, Best2OptMove, Best3OptMove,
-            Best4OptMove, Best5OptMove
-        };
-        BestMove = MoveType <= 5 ? BestOptMove[MoveType] : BestKOptMove;
-        BestSubsequentMove = SubsequentMoveType <= 5 ?
-            BestOptMove[SubsequentMoveType] : BestKOptMove;
-    }
+            NonsequentialMoveType > K + PatchingA - 1)
+        NonsequentialMoveType = K + PatchingA - 1;
+    MoveFunction BestOptMove[] = { 0, 0, Best2OptMove, Best3OptMove,
+        Best4OptMove, Best5OptMove
+    };
+    BestMove = MoveType <= 5 ? BestOptMove[MoveType] : BestKOptMove;
+    BestSubsequentMove = SubsequentMoveType <= 5 ?
+        BestOptMove[SubsequentMoveType] : BestKOptMove;
 }
 
 static void ReadCoords(struct NodeCoords const * coords)

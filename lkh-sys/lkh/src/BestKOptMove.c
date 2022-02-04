@@ -118,21 +118,6 @@ static GainType BestKOptMoveRec(int k, GainType G0)
                 }
                 incl[incl[1] = 2 * k] = 1;
             }
-            if (t4 != t1 &&
-                k + 1 < NonsequentialMoveType &&
-                PatchingC >= 2 && PatchingA >= 1 &&
-                (Swaps == 0 || SubsequentPatching)) {
-                if (G3 == MINUS_INFINITY)
-                    G3 = G2 - C(t4, t1);
-                if ((PatchingCRestricted ? G3 > 0 && IsCandidate(t4, t1) :
-                     PatchingCExtended ? G3 > 0
-                     || IsCandidate(t4, t1) : G3 > 0)
-                    && (Gain = PatchCycles(k, G3)) > 0) {
-                    UnmarkAdded(t2, t3);
-                    UnmarkDeleted(t3, t4);
-                    return Gain;
-                }
-            }
             UnmarkDeleted(t3, t4);
             if (k == K && t4 != t1 && t3 != t1 && G3 <= 0 &&
                 !Added(t4, t1) &&
