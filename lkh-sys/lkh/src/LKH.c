@@ -1,6 +1,5 @@
 #include "LKH.h"
 #include "Sequence.h"
-#include "gpx.h"
 
 /* All global variables of the program. */
 
@@ -81,7 +80,6 @@ int Precision;  /* Internal precision in the representation of
                    transformed distances */
 int PredSucCostAvailable;  /* PredCost and SucCost are available */
 unsigned *Rand; /* Table of random values */
-int Recombination; /* IPT or GPX2 */
 int RestrictedSearch;      /* Specifies whether the choice of the first
                               edge to be broken is restricted */
 short Reversed; /* Boolean used to indicate whether a tour has

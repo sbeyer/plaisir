@@ -193,11 +193,6 @@ static void ResetParameters()
      */
     Precision = 100;
     /*
-     * RECOMBINATION = { IPT | GPX2 }
-     * Default: IPT
-     */
-    Recombination = IPT;
-    /*
      * RESTRICTED_SEARCH = { YES | NO }
      * Specifies whether the following search pruning technique is used:
      * The first edge to be broken in a move must not belong to the currently
@@ -362,8 +357,7 @@ int const *run(int dimension, struct NodeCoords const * coords)
     /* Read the specification of the problem */
     StartTime = LastTime = GetTime();
     MaxMatrixDimension = 20000;
-    MergeWithTour = Recombination == IPT ? MergeWithTourIPT :
-        MergeWithTourGPX2;
+    MergeWithTour = MergeWithTourIPT;
     FreeStructures();
     FirstNode = 0;
     ReadCoords(coords);

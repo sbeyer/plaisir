@@ -8,7 +8,7 @@ ODIR = obj
 CFLAGS = -O3 -flto -Wall -I$(IDIR) -D$(TREE_TYPE) -g -DNDEBUG
 
 _DEPS = Delaunay.h GainType.h GeoConversion.h Hashing.h      \
-        Heap.h libLKH.h LKH.h Segment.h Sequence.h gpx.h
+        Heap.h libLKH.h LKH.h Segment.h Sequence.h
 
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
@@ -40,7 +40,7 @@ _OBJ = Activate.o AddCandidate.o AddExtraCandidates.o                  \
        SFCTour.o \
        Statistics.o StoreTour.o SymmetrizeCandidateSet.o               \
        TrimCandidateSet.o \
-       MergeWithTourGPX2.o gpx.o LKH.o
+       LKH.o
 
 all:
 	$(MAKE) LKH

@@ -42,7 +42,6 @@ enum CandidateSetTypes { ALPHA, DELAUNAY, NN, QUADRANT };
 enum InitialTourAlgorithms { GREEDY, MOORE, NEAREST_NEIGHBOR,
     SIERPINSKI, WALK
 };
-enum RecombinationTypes { IPT, GPX2 };
 
 typedef struct Node Node;
 typedef struct Candidate Candidate;
@@ -349,7 +348,6 @@ void Make5OptMove(Node * t1, Node * t2, Node * t3, Node * t4,
 void MakeKOptMove(int K);
 GainType MergeTourWithBestTour(void);
 GainType MergeWithTourIPT(void);
-GainType MergeWithTourGPX2(void);
 GainType Minimum1TreeCost(int Sparse);
 void MinimumSpanningTree(int Sparse);
 void NormalizeNodeList(void);
