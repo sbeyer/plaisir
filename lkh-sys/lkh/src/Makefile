@@ -7,7 +7,7 @@ IDIR = include
 ODIR = obj
 CFLAGS = -O3 -flto -Wall -I$(IDIR) -D$(TREE_TYPE) -g -DNDEBUG
 
-_DEPS = Delaunay.h GainType.h Genetic.h GeoConversion.h Hashing.h      \
+_DEPS = Delaunay.h GainType.h GeoConversion.h Hashing.h      \
         Heap.h libLKH.h LKH.h Segment.h Sequence.h gpx.h
 
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
@@ -24,7 +24,7 @@ _OBJ = Activate.o AddCandidate.o AddExtraCandidates.o                  \
        Delaunay.o Distance.o eprintf.o ERXT.o       \
        Excludable.o Exclude.o FindTour.o FixedOrCommonCandidates.o     \
        Flip.o Flip_SL.o Flip_SSL.o FreeStructures.o        \
-       fscanint.o Gain23.o GenerateCandidates.o Genetic.o              \
+       fscanint.o Gain23.o GenerateCandidates.o                        \
        GeoConversion.o GetTime.o GreedyTour.o Hashing.o Heap.o         \
        IsCandidate.o \
        IsPossibleCandidate.o KSwapKick.o LinKernighan.o LKHmain.o      \

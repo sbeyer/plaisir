@@ -1,6 +1,5 @@
 #include "LKH.h"
 #include "Sequence.h"
-#include "Genetic.h"
 
 /*
  * The FreeStructures function frees all allocated structures.
@@ -29,7 +28,6 @@ void FreeStructures()
     Free(incl);
     Free(cycle);
     Free(G);
-    FreePopulation();
 }
 
 /*

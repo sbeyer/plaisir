@@ -1,6 +1,5 @@
 #include "libLKH.h"
 #include "LKH.h"
-#include "Genetic.h"
 #include "Heap.h"
 
 /*
@@ -38,7 +37,6 @@ static void ResetParameters()
      */
     CandidateSetType = ALPHA;
     DelaunayPure = 0; // in case of DELAUNAY
-    Crossover = ERXT;
     DelaunayPartitioning = 0;
     /*
      * EXCESS = <real of at least 0>
@@ -126,12 +124,6 @@ static void ResetParameters()
      */
     MaxCandidates = 5;
     CandidateSetSymmetric = 0;
-    /*
-     * POPULATION_SIZE = <integer>
-     * Specifies the maximum size of the population in the genetic algorithm.
-     * Default: 0
-     */
-    MaxPopulationSize = 0;
     /*
      * MAX_SWAPS = <integer of at least 0>
      * Specifies the maximum number of swaps (flips) allowed in any search
@@ -402,30 +394,7 @@ int const *run(int dimension, struct NodeCoords const * coords)
             break;
         }
         Cost = FindTour();      /* using the Lin-Kernighan heuristic */
-        if (MaxPopulationSize > 1) {
-            /* Genetic algorithm */
-            int i;
-            for (i = 0; i < PopulationSize; i++) {
-                GainType OldCost = Cost;
-                Cost = MergeTourWithIndividual(i);
-                if (TraceLevel >= 1 && Cost < OldCost) {
-                    printff("  Merged with %d: Cost = " GainFormat "\n", i + 1,
-                            Cost);
-                }
-            }
-            if (!HasFitness(Cost)) {
-                if (PopulationSize < MaxPopulationSize) {
-                    AddToPopulation(Cost);
-                    if (TraceLevel >= 1)
-                        PrintPopulation();
-                } else if (Cost < Fitness[PopulationSize - 1]) {
-                    i = ReplacementIndividual(Cost);
-                    ReplaceIndividualWithTour(i, Cost);
-                    if (TraceLevel >= 1)
-                        PrintPopulation();
-                }
-            }
-        } else if (Run > 1)
+        if (Run > 1)
             Cost = MergeTourWithBestTour();
         if (Cost < BestCost) {
             BestCost = Cost;
@@ -437,25 +406,6 @@ int const *run(int dimension, struct NodeCoords const * coords)
         if (TraceLevel >= 1 && Cost != PLUS_INFINITY) {
             printff("Run %d: Cost = " GainFormat, Run, Cost);
             printff(", Time = %0.2f sec.\n\n", Time);
-        }
-        if (PopulationSize >= 2 &&
-            (PopulationSize == MaxPopulationSize ||
-             Run >= 2 * MaxPopulationSize) && Run < Runs) {
-            Node *N;
-            int Parent1, Parent2;
-            Parent1 = LinearSelection(PopulationSize, 1.25);
-            do
-                Parent2 = LinearSelection(PopulationSize, 1.25);
-            while (Parent2 == Parent1);
-            ApplyCrossover(Parent1, Parent2);
-            N = FirstNode;
-            do {
-                int d = C(N, N->Suc);
-                AddCandidate(N, N->Suc, d, INT_MAX);
-                AddCandidate(N->Suc, N, d, INT_MAX);
-                N = N->InitialSuc = N->Suc;
-            }
-            while (N != FirstNode);
         }
         SRandom(++Seed);
     }

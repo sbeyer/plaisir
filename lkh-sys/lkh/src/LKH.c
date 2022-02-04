@@ -1,5 +1,4 @@
 #include "LKH.h"
-#include "Genetic.h"
 #include "Sequence.h"
 #include "gpx.h"
 
@@ -124,15 +123,6 @@ FILE *ParameterFile, *ProblemFile, *PiFile, *InputTourFile,
     *TourFile, *InitialTourFile, *SubproblemTourFile, **MergeTourFile;
 MoveFunction BestMove, BacktrackMove, BestSubsequentMove;
 MergeTourFunction MergeWithTour;
-
-/* Genetic.h variables */
-int MaxPopulationSize; /* The maximum size of the population */
-int PopulationSize;    /* The current size of the population */
-CrossoverFunction Crossover;
-int **Population;      /* Array of individuals (solution tours) */
-GainType *PenaltyFitness;  /* The fitnessl (tour penalty) of
-                              each individual */
-GainType *Fitness;     /* The fitness (tour cost) of each individual */
 
 /* Sequence.h variables */
 Node **t;      /* The sequence of nodes to be used in a move */
