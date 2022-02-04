@@ -16,7 +16,7 @@ static void ResetParameters()
      */
     AscentCandidates = 50;
     /*
-     * CANDIDATE_SET_TYPE = { ALPHA | NEAREST-NEIGHBOR | QUADRANT }
+     * CANDIDATE_SET_TYPE = { ALPHA | NEAREST-NEIGHBOR }
      * Specifies the candidate set type.
      * ALPHA is LKH's default type. ALPHA is applicable in general.
      * The other types can only be used for instances given by coordinates.

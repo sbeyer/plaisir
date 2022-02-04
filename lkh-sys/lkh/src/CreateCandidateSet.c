@@ -29,7 +29,7 @@ void CreateCandidateSet()
     if (TraceLevel >= 2)
         printff("Creating candidates ...\n");
     if (MaxCandidates > 0 &&
-            (CandidateSetType == QUADRANT || CandidateSetType == NN)) {
+            CandidateSetType == NN) {
         AddTourCandidates();
         if (CandidateSetSymmetric)
             SymmetrizeCandidateSet();

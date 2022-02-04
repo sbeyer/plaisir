@@ -38,7 +38,7 @@
     { Link((a)->Pred, (a)->Suc); Link(a, a); Link((b)->Pred, a); Link(a, b); }
 #define SLink(a, b) { (a)->Suc = (b); (b)->Pred = (a); }
 
-enum CandidateSetTypes { ALPHA, NN, QUADRANT };
+enum CandidateSetTypes { ALPHA, NN };
 enum InitialTourAlgorithms { GREEDY, NEAREST_NEIGHBOR, WALK };
 
 typedef struct Node Node;
@@ -294,7 +294,6 @@ void CandidateReport(void);
 void CreateCandidateSet(void);
 void CreateNearestNeighborCandidateSet(int K);
 void CreateNNCandidateSet(int K);
-void CreateQuadrantCandidateSet(int K);
 void eprintf(const char *fmt, ...);
 int Excludable(Node * ta, Node * tb);
 void Exclude(Node * ta, Node * tb);
